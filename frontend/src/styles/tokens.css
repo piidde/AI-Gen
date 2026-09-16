@@ -1,0 +1,14 @@
+:root {
+  color-scheme: dark;
+  font-family: "Geist", sans-serif;
+  font-synthesis: none;
+  --bg: #101112;
+  --sidebar: #141516;
+  --panel: #191b1d;
+  --text: #f2f2f3;
+  --muted: #b6b8bd;
+  --accent: #57c99b;
+  --border: #37393d;
+  --control-border: #4d5055;
+  --danger: #f2b9ac;
+}

@@ -33,8 +33,11 @@ Use these labels consistently:
 4. Update affected guides in the same change. Record meaningful architecture
    decisions using [ADRs](docs/decisions/README.md).
 5. Run relevant existing checks and report actual results and limitations.
-   Current checks are `npm run typecheck` and `npm run build`. There are no format,
-   lint, or test scripts yet; do not invent results or add tooling just to tick boxes.
+   Node checks are `npm run typecheck` and `npm run build`. Frontend checks are
+   `npm --prefix frontend run typecheck`, `npm --prefix frontend run build`, and
+   `npm --prefix frontend test` (desktop/mobile Playwright with local Chrome).
+   There are no format, lint, or root test scripts; do not invent results or add
+   tooling just to tick boxes. Keep browser artifacts outside the repository.
 6. Summarize changes, unresolved decisions, assumptions, and risks. Do not commit
    or push unless explicitly instructed.
 

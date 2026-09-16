@@ -149,8 +149,11 @@ See [BILLING.md](BILLING.md).
   milestone. The original specification need not be retained; follow
   [ADR-001](decisions/ADR-001-api-only-mvp.md) and [PRODUCT.md](PRODUCT.md).
 - No backend framework is selected. The first slice uses an API client, not a
-  first-party chat page. Future generation UI timing is uncommitted; any account/
-  payment management interface remains unspecified under OD-001/003.
+  first-party chat page. Future generation UI timing is uncommitted. Public website
+  and customer dashboard scope is now accepted in [FRONTEND.md](FRONTEND.md);
+  auth/payment mechanisms remain open under OD-001/003. Frontend technology and
+  navigation are accepted in that guide and [ADR-002](decisions/ADR-002-frontend-stack.md).
+  Hosting, public-page indexing, notifications and support/status delivery remain open.
 - `.env.example` names anticipated Supabase/Stripe/upstream integration variables;
   none are consumed by the starter. Monitoring variables await OD-012.
 - These repository guides are the permanent source of truth; the initial bootstrap

@@ -5,8 +5,14 @@
 The repository contains an npm-managed Node.js starter (`node >=24`, `.nvmrc` 24),
 TypeScript with strict NodeNext/ES-module settings, and `tsx` development watch.
 `src/index.ts` prints a readiness message; compilation writes to `dist/`.
-There is no browser app, HTTP API, database, payment integration, provider adapter,
-deployment configuration, or test suite. Requirements below describe intended behavior.
+`frontend/` is a separate React/TypeScript/Vite browser application with React
+Router and ordinary CSS. It implements the reviewed seven-screen design using
+local demo fixtures, plus a public catalogue and pending-content/missing-page
+states. Its package, lockfile, TypeScript configuration and build output are
+independent of the Node starter. Playwright covers routes and key interactions
+at desktop/mobile widths; generated test artifacts stay outside the repository.
+There is no HTTP API, database, authentication, payment integration, provider
+adapter or deployment configuration. Backend requirements below describe intended behavior.
 
 ## DECIDED — boundaries
 
@@ -21,6 +27,14 @@ Responses return from upstream through the adapter/backend to the calling API
 client, which decides how to display or use them. No first-party generation UI
 is required. If one is added later, it must reuse the same backend logic.
 See [ADR-001](decisions/ADR-001-api-only-mvp.md).
+
+A public website and customer management dashboard are accepted scope in
+[FRONTEND.md](FRONTEND.md). They add account, billing, key, and usage management
+surfaces without adding a browser generation interface. The frontend stack is
+accepted in [ADR-002](decisions/ADR-002-frontend-stack.md); hosting and management
+API contracts remain open. `frontend/src/demo/fixtures.ts` contains fictional
+view data, not network contracts. Components never perform credit arithmetic or
+issue credentials. Demo settings remain component state, with no persistence.
 
 Clients call only our API. Keep upstream credentials, privileged database
 credentials, payment secrets, pricing, credit deduction, and routing server-side.

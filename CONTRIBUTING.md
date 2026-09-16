@@ -8,8 +8,9 @@ See [README.md](README.md) for local setup and commands.
 
 Prefer short-lived feature branches and small, coherent pull requests. Keep
 `main` working; do not combine unrelated refactors with feature work.
-Current rough ownership is non-exclusive: Mario handles frontend and payment
-research; Samuel handles database/Supabase; Pippi + Imerian handle cloud/deployment.
+Current rough ownership is non-exclusive: JannesG / PlaYa-44 leads frontend;
+Mario handles payment research; Samuel handles database/Supabase;
+Pippi + Imerian handle cloud/deployment.
 Four people are involved, with approximately three expected to contribute actively.
 
 Inspect existing work before changing it. Follow YAGNI, KISS, pragmatic DRY/SOLID,
@@ -28,11 +29,15 @@ review and evidence beyond compilation. Commit/push only when authorized.
 
 ## Validation
 
-Existing checks: `npm run typecheck` and `npm run build`.
+Node starter checks: `npm run typecheck` and `npm run build`.
 After building, `npm start` is a starter smoke check, not a product test suite.
 `npm run dev` uses `tsx` and does not type-check.
-Format, lint, and test scripts do not exist yet. Run relevant checks that exist;
-report skipped or blocked checks without claiming success.
+Frontend checks: `npm --prefix frontend run typecheck`,
+`npm --prefix frontend run build`, and `npm --prefix frontend test` (Playwright,
+desktop/mobile, local Chrome required). Tests use a local preview on port 4173;
+traces/results go to the OS temporary directory, not the repository. The frontend
+test script builds first. No root test, format or lint script exists. Run relevant
+checks and report skipped or blocked checks without claiming success.
 
 When behavior is implemented, prioritize billing, credits, auth, API keys,
 permissions, idempotency, webhooks, request accounting, adapters, pricing, and

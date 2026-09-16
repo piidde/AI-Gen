@@ -37,3 +37,14 @@ management interface or remove existing billing/security requirements.
 The original bootstrap's conflicting launch scope is superseded; retaining that
 file is not required to understand this decision. Other unresolved choices remain
 in [OPEN_DECISIONS.md](../OPEN_DECISIONS.md).
+
+## Subsequent clarification (2026-09-15)
+
+The user accepted a public website and customer management dashboard, recorded
+in [FRONTEND.md](../FRONTEND.md). This resolves the previously unspecified
+management-interface scope while preserving this ADR's API-only generation
+boundary. Frameworks and auth/payment implementation remain open.
+
+Subsequently, the frontend framework was accepted on 2026-09-16 in
+[ADR-002](ADR-002-frontend-stack.md). Backend framework and auth/payment choices
+remain open; the generation boundary is unchanged.

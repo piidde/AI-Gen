@@ -7,6 +7,8 @@ Accepted records:
 
 - [ADR-001: API-only MVP](ADR-001-api-only-mvp.md) — explicit scope correction
   following the documentation bootstrap.
+- [ADR-002: Separate React frontend with Vite](ADR-002-frontend-stack.md) —
+  approved frontend tooling with demo data and an independent Node starter.
 
 Track unresolved choices and evidence in [OPEN_DECISIONS.md](../OPEN_DECISIONS.md).
 An assumption or investigation is not an accepted ADR. When the team explicitly

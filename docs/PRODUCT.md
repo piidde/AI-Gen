@@ -27,7 +27,9 @@ The upstream is an implementation detail, never the customer integration surface
 The API-only scope was explicitly clarified on 2026-09-15 and supersedes the
 bootstrap's browser-at-launch requirement and browser-first milestone; see
 [ADR-001](decisions/ADR-001-api-only-mvp.md). A future generation UI is not a
-committed milestone. Any account/payment management interface remains unspecified.
+committed milestone. A public website and customer management dashboard are now
+accepted frontend scope; see [frontend scope](FRONTEND.md). Backend integrations
+and hosting remain open, and generation stays API-only.
 
 Node.js/TypeScript is the existing default. Supabase, Stripe, and Cloudflare are
 working technology directions; see [architecture](ARCHITECTURE.md).
@@ -44,7 +46,8 @@ may be absent from the upstream model list. Do not advertise it before verificat
 
 ## Delivery direction and non-goals
 
-Current code is only a starter. After documentation review, aim for one controlled
+Backend code is only a starter; the Takewing frontend is a local demo with fictional
+data, not a connected service. After documentation review, aim for one controlled
 text-generation request from a test API client through our API/backend and provider
 adapter to the upstream, with the response returned through our backend to that
 same client. Validate integration, configuration, deployment compatibility, and
