@@ -208,10 +208,25 @@ test("sample key results retain modal focus and never create or revoke a credent
   expect(requests).toEqual([]);
 });
 
-test("settings keyboard tabs, recoverable save errors and reset on reload", async ({
+test("account menu stays in the viewport and settings use the live profile", async ({
   page,
 }) => {
-  await signIn(page, "/dashboard/settings");
+  await signIn(page, "/dashboard");
+  const accountTrigger = page.locator(".account-trigger");
+  await accountTrigger.click();
+  const accountPopover = page.locator(".account-popover");
+  await expect(accountPopover).toBeVisible();
+  const popoverBox = await accountPopover.boundingBox();
+  const viewport = page.viewportSize();
+  expect(popoverBox).not.toBeNull();
+  expect(viewport).not.toBeNull();
+  expect(popoverBox!.x).toBeGreaterThanOrEqual(0);
+  expect(popoverBox!.x + popoverBox!.width).toBeLessThanOrEqual(viewport!.width);
+
+  await accountPopover.getByRole("menuitem", { name: "Account settings" }).click();
+  await expect(page).toHaveURL(/\/dashboard\/settings$/);
+  await expect(page.getByLabel("Email address")).toHaveValue(e2eEmail!);
+  const originalName = await page.getByLabel("Display name").inputValue();
   await page.getByLabel("Display name").fill("Edited demo");
   await page.getByLabel("Demo state").selectOption("save-error");
   await page.getByRole("button", { name: "Save changes" }).click();
@@ -221,9 +236,12 @@ test("settings keyboard tabs, recoverable save errors and reset on reload", asyn
   await expect(page.getByLabel("Display name")).toHaveValue("Edited demo");
   await page.getByLabel("Demo state").selectOption("populated");
   await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByRole("status")).toContainText(
-    "Nothing was saved to an account",
-  );
+  await expect(page.getByRole("status")).toContainText("Profile saved.");
+  await page.reload();
+  await expect(page.getByLabel("Display name")).toHaveValue("Edited demo");
+  await page.getByLabel("Display name").fill(originalName);
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByRole("status")).toContainText("Profile saved.");
   await page.getByRole("tab", { name: "Profile", exact: true }).focus();
   await page.keyboard.press("End");
   await expect(
@@ -234,9 +252,7 @@ test("settings keyboard tabs, recoverable save errors and reset on reload", asyn
   );
   await page.getByRole("checkbox", { name: "Product updates" }).uncheck();
   await page.getByRole("button", { name: "Save preferences" }).click();
-  await expect(page.getByRole("status")).toContainText("Nothing was saved");
-  await page.reload();
-  await expect(page.getByLabel("Display name")).toHaveValue("Sample account");
+  await expect(page.getByRole("status")).toContainText("local demo state");
 });
 
 test("billing cannot accept payments and chart tabs expose updated data", async ({

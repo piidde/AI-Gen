@@ -6,14 +6,20 @@ export function DemoBar({
   state,
   onChange,
   settings = false,
+  liveAccount = false,
 }: {
   state: DemoState;
   onChange: (value: DemoState) => void;
   settings?: boolean;
+  liveAccount?: boolean;
 }) {
   return (
     <div className="demo-bar">
-      <span>LOCAL DEMO · FICTIONAL DATA · NO LIVE ACCOUNT</span>
+      <span>
+        {liveAccount
+          ? "LOCAL DEMO · FICTIONAL DATA · AUTHENTICATED PROFILE"
+          : "LOCAL DEMO · FICTIONAL DATA · NO LIVE ACCOUNT"}
+      </span>
       <label>
         Demo state{" "}
         <select

@@ -36,7 +36,8 @@ surfaces without adding a browser generation interface. The frontend stack is
 accepted in [ADR-002](decisions/ADR-002-frontend-stack.md); hosting and management
 API contracts remain open. `frontend/src/demo/fixtures.ts` contains fictional
 view data, not network contracts. Components never perform credit arithmetic or
-issue credentials. Demo settings remain component state, with no persistence.
+issue credentials. Notification preferences remain component state, while the
+authenticated display name is persisted through Supabase Auth user metadata.
 
 Clients call only our API. Keep upstream credentials, privileged database
 credentials, payment secrets, pricing, credit deduction, and routing server-side.

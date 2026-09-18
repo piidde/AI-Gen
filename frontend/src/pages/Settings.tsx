@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import type { User } from "@supabase/supabase-js";
 import { Link } from "react-router-dom";
+import { useAuth } from "../auth/AuthProvider";
+import { supabase, SUPABASE_CONFIG_ERROR } from "../auth/supabase";
 import Button from "../components/Button";
 import { DemoBar, DataState } from "../components/DemoState";
 import type { DemoState } from "../components/DemoState";
@@ -11,29 +14,85 @@ import Tabs from "../components/Tabs";
 import { profile } from "../demo/fixtures";
 
 const sections = ["Profile", "Security", "Notifications"] as const;
+
+function readMetadataString(user: User | null, key: string): string {
+  const value = user?.user_metadata?.[key];
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function getDisplayName(user: User | null): string {
+  return (
+    readMetadataString(user, "full_name") ||
+    readMetadataString(user, "name") ||
+    user?.email?.split("@")[0] ||
+    ""
+  );
+}
+
 export default function Settings() {
+  const { user } = useAuth();
   const [state, setState] = useState<DemoState>("populated");
   const [tab, setTab] = useState<(typeof sections)[number]>("Profile");
-  const [name, setName] = useState(profile.name);
+  const [name, setName] = useState(() => getDisplayName(user));
   const [productUpdates, setProductUpdates] = useState(profile.productUpdates);
   const [documentationUpdates, setDocumentationUpdates] = useState(
     profile.documentationUpdates,
   );
   const [message, setMessage] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
   const [security, setSecurity] = useState(false);
-  const save = (event: FormEvent) => {
+
+  useEffect(() => {
+    setName(getDisplayName(user));
+  }, [user]);
+
+  async function saveProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (state === "save-error") {
+      setMessage("Simulated save failure. Your edits are still here.");
+      return;
+    }
+
+    const displayName = name.trim();
+    if (!displayName) {
+      setMessage("Please enter a display name.");
+      return;
+    }
+    if (!supabase || !user) {
+      setMessage(SUPABASE_CONFIG_ERROR);
+      return;
+    }
+
+    setSavingProfile(true);
+    setMessage("");
+    const { error } = await supabase.auth.updateUser({
+      data: { full_name: displayName },
+    });
+    setSavingProfile(false);
+
+    if (error) {
+      setMessage(`Profile save failed: ${error.message}`);
+      return;
+    }
+
+    setName(displayName);
+    setMessage("Profile saved.");
+  }
+
+  function saveNotifications(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(
       state === "save-error"
         ? "Simulated save failure. Your edits are still here."
-        : "Applied to this demo only. Nothing was saved to an account; reloading resets the sample.",
+        : "Notification preferences remain local demo state and were not saved.",
     );
-  };
+  }
   return (
     <>
       <DemoBar
         state={state}
         settings
+        liveAccount
         onChange={(value) => {
           setState(value);
           setMessage("");
@@ -68,7 +127,7 @@ export default function Settings() {
           tabIndex={0}
         >
           {tab === "Profile" && (
-            <form className="panel setting-section" onSubmit={save}>
+            <form className="panel setting-section" onSubmit={saveProfile}>
               <h2>
                 <MetricIcon name="profile" />
                 Profile details
@@ -89,6 +148,7 @@ export default function Settings() {
                     setMessage("");
                   }}
                   aria-describedby="name-hint"
+                  disabled={savingProfile}
                 />
                 <p id="name-hint">
                   Use the name you’d like displayed in your account.
@@ -99,7 +159,7 @@ export default function Settings() {
                 <input
                   id="account-email"
                   type="email"
-                  value={profile.email}
+                  value={user?.email ?? ""}
                   disabled
                   aria-describedby="email-hint"
                 />
@@ -109,7 +169,9 @@ export default function Settings() {
                 </p>
               </div>
               <div className="form-footer">
-                <Button type="submit">Save changes</Button>
+                <Button type="submit" disabled={savingProfile}>
+                  {savingProfile ? "Saving..." : "Save changes"}
+                </Button>
                 <span
                   role="status"
                   className={`save-status ${state === "save-error" ? "error" : ""}`}
@@ -158,15 +220,15 @@ export default function Settings() {
                 </div>
               </div>
               <p className="review-note">
-                Authentication is not connected. Password, SSO, multifactor
-                authentication and session controls depend on the agreed
-                authentication contract.
+                Authentication is connected through Supabase Auth. Password
+                changes, multifactor authentication and session controls are
+                not available in this first slice.
               </p>
             </>
           )}
           {tab === "Notifications" && (
             <>
-              <form className="panel setting-section" onSubmit={save}>
+              <form className="panel setting-section" onSubmit={saveNotifications}>
                 <h2>
                   <MetricIcon name="bell" />
                   Notification preferences

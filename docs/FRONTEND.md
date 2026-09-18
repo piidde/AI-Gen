@@ -156,10 +156,12 @@ asset notices and licenses ship under `frontend/public/`.
 
 Fixtures remain separate in `frontend/src/demo/fixtures.ts`. All balances,
 prices, dates, requests, accounts and model entries are illustrative. Filters,
-details, chart metrics, keyboard tabs, empty/error states and settings feedback
-are local interactions. Key actions only preview results, with an unmistakably
-invalid sample value; no credentials are issued or revoked. Purchase/receipt
-dialogs explain unavailable integration. Settings edits reset on reload.
+details, chart metrics, keyboard tabs, empty/error states, notification controls
+and most settings feedback are local interactions. The authenticated profile
+page reads the current Supabase email and profile name; display-name changes
+persist through Supabase Auth user metadata. Key actions only preview results,
+with an unmistakably invalid sample value; no credentials are issued or
+revoked. Purchase/receipt dialogs explain unavailable integration.
 
 The prototype density comparison control is omitted in this increment; the grid
 uses two desktop columns and one mobile column. Whether to ship a user density
