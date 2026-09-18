@@ -83,20 +83,22 @@ export default function DashboardLayout() {
         Skip to content
       </a>
       <aside className="sidebar">
-        <Brand />
-        <div className="nav-label">YOUR ACCOUNT</div>
-        <nav className="dashboard-nav" aria-label="Dashboard">
-          {navigation.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={item.path === "/dashboard"}
-            >
-              <Icon name={item.icon} />
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
+        <div className="sidebar-scroll">
+          <Brand />
+          <div className="nav-label">YOUR ACCOUNT</div>
+          <nav className="dashboard-nav" aria-label="Dashboard">
+            {navigation.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                end={item.path === "/dashboard"}
+              >
+                <Icon name={item.icon} />
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
         <div className="sidebar-bottom">
           <nav className="dashboard-nav" aria-label="Resources">
             <Link to="/docs">Documentation ↗</Link>

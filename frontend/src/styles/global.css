@@ -164,12 +164,18 @@ button:disabled {
 .sidebar {
   position: fixed;
   inset: 0 auto 0 0;
+  z-index: 10;
   width: 216px;
   padding: 30px 18px;
   border-right: 1px solid #303134;
   background: var(--sidebar);
   display: flex;
   flex-direction: column;
+  overflow: visible;
+}
+.sidebar-scroll {
+  min-height: 0;
+  flex: 1 1 auto;
   overflow-y: auto;
 }
 .nav-label {
@@ -1026,6 +1032,10 @@ dialog::backdrop {
     padding: 20px;
     border-right: 0;
     border-bottom: 1px solid var(--border);
+  }
+  .sidebar-scroll {
+    flex: 0 0 auto;
+    overflow: visible;
   }
   .nav-label,
   .sidebar-bottom {
