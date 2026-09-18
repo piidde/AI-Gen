@@ -61,12 +61,12 @@ export default function Home() {
           <Brand />
           <nav className="home-links" aria-label="Main navigation">
             <Link to="/models">Models &amp; pricing</Link>
-            <Link to="/information?topic=docs">Docs</Link>
-            <Link to="/information?topic=support">Support</Link>
+            <Link to="/docs">Docs</Link>
+            <Link to="/support">Support</Link>
           </nav>
           <div className="home-links home-account-links">
-            <Link to="/information?topic=signin">Sign in</Link>
-            <Link className="button" to="/dashboard">
+            <Link to="/login">Sign in</Link>
+            <Link className="button" to="/login?next=%2Fdashboard">
               Explore demo
             </Link>
           </div>
@@ -89,7 +89,7 @@ export default function Home() {
                 <Link className="button" to="/models">
                   Explore models ↗
                 </Link>
-                <Link className="button secondary" to="/information?topic=docs">
+                <Link className="button secondary" to="/docs">
                   Read the quickstart
                 </Link>
               </div>
@@ -142,7 +142,15 @@ export default function Home() {
               {models.slice(0, 3).map((model) => (
                 <article className="panel model-card" key={model.id}>
                   <div className="provider-line">
-                    <img className="provider-icon" src={model.provider === "OpenAI" ? openaiIcon : geminiIcon} alt="" />
+                    <img
+                      className="provider-icon"
+                      src={model.provider === "OpenAI" ? openaiIcon : geminiIcon}
+                      alt=""
+                      width={30}
+                      height={30}
+                      loading="lazy"
+                      decoding="async"
+                    />
                     <span>{model.provider}</span>
                     <span className="capability"><Icon name={model.capability === "Text" ? "text" : "image"} />{model.capability}</span>
                   </div>
@@ -174,7 +182,7 @@ export default function Home() {
                 <li><Icon name="usage" />Usage over time, with request details</li>
                 <li><Icon name="keys" />A place for every integration’s key</li>
               </ul>
-              <Link className="text-link" to="/dashboard">Explore the dashboard demo ↗</Link>
+              <Link className="text-link" to="/login?next=%2Fdashboard">Explore the dashboard demo ↗</Link>
             </div>
             <div className="panel home-dashboard-preview" aria-label="Dashboard preview with fictional data">
               <div className="home-preview-top"><span>Account / Overview</span><span>Demo · Fictional data</span></div>
@@ -230,7 +238,7 @@ export default function Home() {
             <p>Explore the models. Find a fit for what you’re building.</p>
             <div className="home-actions">
               <Link className="button" to="/models">Explore models ↗</Link>
-              <Link className="text-link" to="/information?topic=docs">Read the documentation ↗</Link>
+              <Link className="text-link" to="/docs">Read the documentation ↗</Link>
             </div>
           </section>
         </main>
@@ -238,11 +246,11 @@ export default function Home() {
         <footer className="home-foot">
           <Brand />
           <nav className="home-links" aria-label="Footer navigation">
-            <Link to="/information?topic=support">Support</Link>
-            <Link to="/information?topic=status">Service status</Link>
-            <Link to="/information?topic=contact">Contact</Link>
-            <Link to="/information?topic=privacy">Privacy</Link>
-            <Link to="/information?topic=terms">Terms</Link>
+            <Link to="/support">Support</Link>
+            <Link to="/status">Service status</Link>
+            <Link to="/contact">Contact</Link>
+            <Link to="/privacy">Privacy</Link>
+            <Link to="/terms">Terms</Link>
           </nav>
         </footer>
       </div>

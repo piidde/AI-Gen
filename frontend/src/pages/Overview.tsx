@@ -66,7 +66,7 @@ export default function Overview() {
               From creating a key to inspecting your first request, start with
               the quickstart.
             </p>
-            <Link className="text-link" to="/information?topic=docs">
+            <Link className="text-link" to="/docs">
               Read the guide ↗
             </Link>
           </article>

@@ -8,11 +8,13 @@ TypeScript with strict NodeNext/ES-module settings, and `tsx` development watch.
 `frontend/` is a separate React/TypeScript/Vite browser application with React
 Router and ordinary CSS. It implements the reviewed seven-screen design using
 local demo fixtures, plus a public catalogue and pending-content/missing-page
-states. Its package, lockfile, TypeScript configuration and build output are
-independent of the Node starter. Playwright covers routes and key interactions
-at desktop/mobile widths; generated test artifacts stay outside the repository.
-There is no HTTP API, database, authentication, payment integration, provider
-adapter or deployment configuration. Backend requirements below describe intended behavior.
+states. The initial Supabase Auth browser slice adds Google OAuth, email/password
+auth, password reset, callback handling, session guards and logout. Its package,
+lockfile, TypeScript configuration and build output are independent of the Node
+starter. Playwright covers public routes and key interactions at desktop/mobile
+widths; generated test artifacts stay outside the repository. There is still no
+HTTP API, database schema, payment integration, provider adapter or deployment
+configuration. Backend requirements below describe intended behavior.
 
 ## DECIDED — boundaries
 
@@ -48,8 +50,9 @@ behavior; do not build multi-provider machinery or speculative video methods.
 ## ASSUMPTION — technology direction
 
 - Node.js/TypeScript remains the default existing setup, not a decision against Workers.
-- Supabase is planned for PostgreSQL/auth; database access, migrations, RLS, and
-  any limited internal storage remain subject to database design.
+- Supabase Auth is selected for the initial browser auth slice. Supabase/PostgreSQL
+  remains the database direction; database access, migrations, RLS, and any
+  limited internal storage remain subject to database design.
 - Stripe is the primary payment candidate. Do not add alternative providers for
   theoretical flexibility.
 - Cloudflare is a cloud direction. DNS/CDN/WAF, limits, Workers, R2, hosting, and

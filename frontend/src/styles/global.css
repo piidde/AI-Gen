@@ -1153,3 +1153,54 @@ dialog::backdrop {
     scroll-behavior: auto !important;
   }
 }
+
+/* Consent banner. Fixed to the bottom so it never covers the main heading,
+   which would otherwise hurt both the first impression and LCP measurement. */
+.consent-banner {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 50;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+}
+
+.consent-inner {
+  max-width: 1120px;
+  margin-inline: auto;
+  padding: 16px 24px;
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.consent-inner h2 {
+  font-size: 15px;
+  margin: 0 0 4px;
+}
+
+.consent-inner p {
+  margin: 0;
+  max-width: 68ch;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.consent-actions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .consent-actions {
+    width: 100%;
+  }
+
+  .consent-actions .button {
+    flex: 1;
+    text-align: center;
+  }
+}

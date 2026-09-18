@@ -1,0 +1,18 @@
+{
+  "name": "Takewing AI",
+  "short_name": "Takewing",
+  "description": "Affordable AI API access for independent builders and small teams.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#101112",
+  "theme_color": "#101112",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+# Redirects for static hosts that read this file (Cloudflare Pages, Netlify).
+
+# Legacy query-parameter topic URLs now have their own paths. 301 so the
+# ranking signals of any existing links transfer to the new URL.
+/information?topic=docs     /docs      301
+/information?topic=support  /support   301
+/information?topic=status   /status    301
+/information?topic=contact  /contact   301
+/information?topic=privacy  /privacy   301
+/information?topic=terms    /terms     301
+
+# Single-page app fallback. Must stay last: it matches everything, and the
+# 200 (rewrite, not redirect) is what lets client-side routes deep-link.
+/*  /index.html  200

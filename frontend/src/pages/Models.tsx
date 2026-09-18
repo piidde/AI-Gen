@@ -91,6 +91,10 @@ export default function Models({
                   className="provider-icon"
                   src={model.provider === "OpenAI" ? openaiIcon : geminiIcon}
                   alt=""
+                  width={30}
+                  height={30}
+                  loading="lazy"
+                  decoding="async"
                 />
                 <span>{model.provider}</span>
                 <span className="capability">

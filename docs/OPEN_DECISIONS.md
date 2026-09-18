@@ -13,10 +13,14 @@ documented assumptions; resolve blockers before dependent implementation.
 
 ## OD-001 Authentication
 
-Status: **OPEN**. Suggested owner: Samuel. **ASSUMPTION:** Supabase Auth.
+Status: **DECIDED for the initial browser auth slice**. Owner: Samuel.
+Supabase Auth is the selected auth platform.
 
-Choose auth platform, email/password vs magic links vs OAuth providers, session
-handling, and RLS usage. See [SECURITY.md](SECURITY.md).
+The first slice uses email/password and Google OAuth, with email confirmation,
+password reset, browser session persistence, protected dashboard routes, and
+logout. Discord is deferred. Backend token verification, production session
+strategy, account records, and RLS remain OPEN and must be coordinated with
+OD-002 before server-backed features ship. See [SECURITY.md](SECURITY.md).
 
 ## OD-002 Database structure
 
@@ -139,6 +143,32 @@ Coordinate currencies/packages with OD-003 and units with OD-009.
 **DECIDED:** pricing and final charges are server-authoritative.
 See [BILLING.md](BILLING.md).
 
+## OD-015 Search visibility activation and rendering strategy
+
+Status: **OPEN**. Suggested owner: Samuel.
+**DECIDED:** indexing is opt-in and off by default; see
+[ADR-004](decisions/ADR-004-seo-and-measurement.md).
+
+The SEO, structured-data and consent-gated measurement infrastructure exists and
+is inactive. What remains open is when to activate it and how public pages are
+rendered.
+
+- Activation is blocked by real content and verified pricing, and by the domain
+  decision in OD-004. It must not be enabled while the catalogue shows fictional
+  prices: an "unverified" label on the page does not travel into a search snippet.
+- **INVESTIGATION:** whether client-side rendering is sufficient. Google executes
+  JavaScript; other engines and most social scrapers do not, so they currently see
+  only the static `index.html`. Decide whether to pre-render or server-render the
+  public routes, and gather evidence before claiming either is required.
+- **OPEN:** whether paid acquisition is pursued at launch, which determines
+  whether conversion tracking and a Google Ads account are needed at all.
+- **OPEN:** structured data for models and prices. `Product`/`Offer` markup is
+  deliberately absent and must not be added before prices are verified.
+
+Coordinate with OD-004 (hosting, which determines whether `_headers` and
+`_redirects` apply), OD-012 (monitoring and retention overlap with analytics), and
+OD-014 (pricing). See [FRONTEND.md](FRONTEND.md) for the launch checklist.
+
 ## Review notes and uncertainties
 
 - The existing Node.js starter agrees with the bootstrap technology default, but
@@ -151,9 +181,11 @@ See [BILLING.md](BILLING.md).
 - No backend framework is selected. The first slice uses an API client, not a
   first-party chat page. Future generation UI timing is uncommitted. Public website
   and customer dashboard scope is now accepted in [FRONTEND.md](FRONTEND.md);
-  auth/payment mechanisms remain open under OD-001/003. Frontend technology and
+  the initial browser auth slice is implemented under OD-001; backend auth,
+  payments and the database remain open under OD-002/003. Frontend technology and
   navigation are accepted in that guide and [ADR-002](decisions/ADR-002-frontend-stack.md).
-  Hosting, public-page indexing, notifications and support/status delivery remain open.
+  Hosting, notifications and support/status delivery remain open. Public-page
+  indexing is now built but deliberately inactive under OD-015.
 - `.env.example` names anticipated Supabase/Stripe/upstream integration variables;
   none are consumed by the starter. Monitoring variables await OD-012.
 - These repository guides are the permanent source of truth; the initial bootstrap

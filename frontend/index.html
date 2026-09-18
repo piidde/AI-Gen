@@ -4,10 +4,31 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#101112" />
+
+    <!--
+      Baseline metadata for the first paint and for crawlers that do not run
+      JavaScript. src/seo/head.ts rewrites these per route once the app mounts.
+
+      robots stays restrictive here on purpose: it is the safe default if the
+      runtime layer ever fails to load. A deployment opts in to indexing with
+      VITE_SITE_INDEXABLE=true, which relaxes this tag at runtime and emits a
+      permissive robots.txt at build time.
+    -->
     <meta name="robots" content="noindex, nofollow" />
-    <meta name="description" content="Takewing AI frontend demo. Illustrative data; no live account or payment operations." />
+    <title>Takewing AI — Affordable AI API access for independent builders</title>
+    <meta
+      name="description"
+      content="Takewing AI gives independent builders and small teams affordable access to AI models through one API, with clear billing units and usage you can follow."
+    />
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Takewing AI · Demo</title>
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Resolve the tag host early so that, if the visitor consents, loading
+         the tag does not also pay for a DNS lookup. Only a hint: nothing is
+         fetched from this host until consent allows it. -->
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
   </head>
   <body>
     <div id="root"></div>

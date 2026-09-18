@@ -1,15 +1,27 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 const routes = [
   ["/", "More room"],
-  ["/dashboard", "Overview"],
-  ["/dashboard/models", "Models & pricing"],
-  ["/dashboard/api-keys", "API keys"],
-  ["/dashboard/usage", "Usage & requests"],
-  ["/dashboard/billing", "Billing"],
-  ["/dashboard/settings", "Account settings"],
   ["/models", "Models & pricing"],
+  ["/login", "Sign in to Takewing AI"],
+  ["/signup", "Create your account"],
+  ["/forgot-password", "Reset your password"],
 ] as const;
+
+const e2eEmail = process.env.E2E_EMAIL;
+const e2ePassword = process.env.E2E_PASSWORD;
+
+async function signIn(page: Page, route: string) {
+  if (!e2eEmail || !e2ePassword) {
+    test.skip(true, "Set E2E_EMAIL and E2E_PASSWORD to run authenticated dashboard tests.");
+    return;
+  }
+  await page.goto(`/login?next=${encodeURIComponent(route)}`);
+  await page.getByLabel("Email").fill(e2eEmail);
+  await page.getByLabel("Password").fill(e2ePassword);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.locator(".dashboard-main")).toBeVisible();
+}
 
 test("wide layouts use the available screen space", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "Wide-screen regression");
@@ -61,10 +73,18 @@ test("reviewed routes load directly without runtime errors or document overflow"
   expect(errors).toEqual([]);
 });
 
+test("dashboard routes require an authenticated session", async ({ page }) => {
+  await page.goto("/dashboard");
+  await expect(page).toHaveURL(/\/login\?next=%2Fdashboard$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Sign in to Takewing AI",
+  );
+});
+
 test("navigation, history, missing pages and unusual topic names", async ({
   page,
 }) => {
-  await page.goto("/dashboard");
+  await signIn(page, "/dashboard");
   await page
     .getByRole("navigation", { name: "Dashboard" })
     .getByRole("link", { name: "Models", exact: true })
@@ -92,7 +112,7 @@ test("navigation, history, missing pages and unusual topic names", async ({
 test("catalogue filters, neutral detail links, modal Escape and focus return", async ({
   page,
 }) => {
-  await page.goto("/dashboard/models");
+  await signIn(page, "/dashboard/models");
   await page.getByLabel("Filter provider").selectOption("Gemini");
   await page.getByLabel("Filter capability").selectOption("Image");
   await expect(page.locator(".model-card")).toHaveCount(1);
@@ -118,7 +138,7 @@ test("catalogue filters, neutral detail links, modal Escape and focus return", a
 test("request filters combine, details are metadata only, and table scroll stays local", async ({
   page,
 }) => {
-  await page.goto("/dashboard/usage");
+  await signIn(page, "/dashboard/usage");
   await page.getByLabel("Filter status").selectOption("Failed");
   await expect(page.locator("tbody tr")).toHaveCount(1);
   await page.getByRole("button", { name: "Details for req_9c10" }).click();
@@ -143,7 +163,7 @@ test("sample key results retain modal focus and never create or revoke a credent
   page.on("request", (request) => {
     if (request.method() !== "GET") requests.push(request.url());
   });
-  await page.goto("/dashboard/api-keys");
+  await signIn(page, "/dashboard/api-keys");
   const create = page.getByRole("button", {
     name: "Create API key +",
     exact: true,
@@ -191,7 +211,7 @@ test("sample key results retain modal focus and never create or revoke a credent
 test("settings keyboard tabs, recoverable save errors and reset on reload", async ({
   page,
 }) => {
-  await page.goto("/dashboard/settings");
+  await signIn(page, "/dashboard/settings");
   await page.getByLabel("Display name").fill("Edited demo");
   await page.getByLabel("Demo state").selectOption("save-error");
   await page.getByRole("button", { name: "Save changes" }).click();
@@ -222,7 +242,7 @@ test("settings keyboard tabs, recoverable save errors and reset on reload", asyn
 test("billing cannot accept payments and chart tabs expose updated data", async ({
   page,
 }) => {
-  await page.goto("/dashboard/billing");
+  await signIn(page, "/dashboard/billing");
   await page.getByRole("button", { name: "Add credits +" }).click();
   await expect(page.getByRole("dialog")).toContainText(
     "cannot accept payments",
@@ -233,7 +253,7 @@ test("billing cannot accept payments and chart tabs expose updated data", async 
     "No document is generated",
   );
   await page.keyboard.press("Escape");
-  await page.goto("/dashboard");
+  await signIn(page, "/dashboard");
   await page.getByRole("tab", { name: "Requests", exact: true }).focus();
   await page.keyboard.press("ArrowRight");
   await expect(

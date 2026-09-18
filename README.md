@@ -7,9 +7,10 @@ A first-party browser chat/generation interface is outside the MVP.
 
 Current implementation: a TypeScript/Node.js starter plus a separate Takewing AI
 React frontend in `frontend/`. The seven reviewed screens run with explicit
-fictional demo data. Backend features and service integrations are not implemented.
-Supabase, Stripe, and Cloudflare are working directions, not installed integrations
-or finalized architecture choices.
+fictional demo data, and the initial Supabase Auth browser flow supports Google,
+email/password, confirmation, password reset and logout. Backend features and
+service integrations are not implemented. Supabase/PostgreSQL, Stripe, and
+Cloudflare remain the documented directions for later slices.
 
 ## Requirements
 
@@ -46,6 +47,12 @@ From the repository root, run `npm --prefix frontend ci`, then
 `npm --prefix frontend run dev`. Open the localhost URL printed by Vite (normally
 `http://127.0.0.1:5173`). The root Node starter and its commands are unchanged.
 
+For local browser auth, copy `frontend/.env.example` to the ignored
+`frontend/.env.local` and set the Supabase project URL and publishable key. Add
+the local app origins (for example `http://127.0.0.1:5173` and
+`http://localhost:5173`) to Supabase Auth's URL configuration. OAuth client
+secrets remain in the Supabase provider settings and never belong in the frontend.
+
 - `npm --prefix frontend run typecheck` — check browser application types.
 - `npm --prefix frontend run build` — typecheck and build into `frontend/dist/`.
 - `npm --prefix frontend run preview` — serve the frontend build locally.
@@ -53,18 +60,29 @@ From the repository root, run `npm --prefix frontend ci`, then
   Tests use locally installed Google Chrome, start a preview on port 4173,
   and write failure artifacts to the OS temporary directory, outside the repo.
 
-Routes: `/`, `/models`, `/dashboard`, and `/dashboard/{models,usage,billing,api-keys,settings}`.
-Documentation, support, legal and sign-in links lead to explicit pending-content
-notices. Unknown routes show a missing-page screen. Browser Back and direct local
+Routes: `/`, `/models`, `/docs`, `/support`, `/status`, `/contact`, `/privacy`,
+`/terms`, `/login`, `/signup`, `/forgot-password`, `/update-password`,
+`/auth/callback`, `/dashboard`, and `/dashboard/{models,usage,billing,api-keys,settings}`.
+The dashboard routes require a Supabase session. Documentation, support and legal
+routes lead to explicit pending-content notices; the older `/information?topic=`
+links still resolve to the same content. Unknown routes show a missing-page
+screen. Browser Back and direct local
 route loads work; a future static host must serve `index.html` for application
 routes. No hosting or deployment has been selected.
 
 Demo fixtures live in `frontend/src/demo/fixtures.ts`. Filters, tabs and dialogs
 work locally. Key creation/revocation, purchases and profile saves do not change
-an account; reloading resets the demo. No credentials or environment variables
-are needed. The frontend does not consume `.env.example` or call the upstream.
-Public indexing remains disabled with `noindex` until content and integrations
-are ready. See [frontend scope](docs/FRONTEND.md) for boundaries and limitations.
+an account; reloading resets the demo. Public pages need no auth, while auth and
+dashboard routes use the browser-safe Supabase variables. The frontend does not
+call the upstream.
+Search indexing is opt-in and **disabled by default**. Titles, descriptions,
+canonical URLs, structured data, `robots.txt` and `sitemap.xml` are generated from
+one route registry, but stay inactive until a deployment sets
+`VITE_SITE_INDEXABLE=true`. Leave it off while the catalogue shows fictional
+prices. Analytics and advertising tags are likewise inert until their IDs are
+configured, and never load before the visitor consents. See
+[ADR-004](docs/decisions/ADR-004-seo-and-measurement.md) for the decision and
+[frontend scope](docs/FRONTEND.md) for the launch checklist and limitations.
 
 ## Project documentation
 

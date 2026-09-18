@@ -1,6 +1,10 @@
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import Brand from "../components/Brand";
 
+// Each topic is its own addressable page at `/<slug>`. A single URL carrying a
+// `?topic=` parameter cannot rank for seven different subjects: crawlers
+// canonicalise the parameter away, so only one of them would ever be indexed.
+// The `?topic=` form still resolves here so existing links keep working.
 const topics: Record<string, { title: string; description: string }> = {
   docs: {
     title: "Documentation is being prepared",
@@ -32,18 +36,24 @@ const topics: Record<string, { title: string; description: string }> = {
       "Commercial terms have not been published. This local demo does not offer a paid service.",
   },
   signin: {
-    title: "Sign-in is not connected",
+    title: "Sign in to Takewing AI",
     description:
-      "Authentication is still being coordinated. You can explore the dashboard with fictional sample data.",
+      "Use Google or an email and password account to access the dashboard. Discord is not enabled yet.",
   },
 };
+
+/** Topic slugs that are reachable as their own path. */
+export const topicSlugs = Object.keys(topics).filter((slug) => slug !== "signin");
+
 export default function Information({
   missing = false,
 }: {
   missing?: boolean;
 }) {
   const [params] = useSearchParams();
-  const topicKey = params.get("topic") ?? "";
+  const routeParams = useParams();
+  // A path segment (/docs) wins; the legacy ?topic= form is the fallback.
+  const topicKey = routeParams["topic"] ?? params.get("topic") ?? "";
   const topic = Object.hasOwn(topics, topicKey) ? topics[topicKey] : undefined;
   return (
     <main id="main-content" className="information">
@@ -60,7 +70,7 @@ export default function Information({
         <Link className="button" to="/">
           Back to home
         </Link>
-        <Link className="text-link" to="/dashboard">
+        <Link className="text-link" to="/login?next=%2Fdashboard">
           Explore dashboard demo ↗
         </Link>
       </div>

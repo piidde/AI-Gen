@@ -1,23 +1,30 @@
 # Security guide
 
 These are requirements for implementation, not claims of deployed controls or
-regulatory compliance. No auth, payments, or production infrastructure exists yet.
+regulatory compliance. Supabase Auth is implemented for the browser login slice;
+no backend authorization, payments, or production infrastructure exists yet.
 
 ## Secrets and trust boundaries
 
 Never commit upstream keys/accounts, payment/webhook secrets, Supabase privileged
 credentials, database passwords, or production authentication secrets. Use
-environment variables or a secret manager. `.env.example` contains empty expected
-names only; the current starter does not load or validate them.
+environment variables or a secret manager. The frontend may expose only the
+Supabase project URL and publishable key; service-role or secret keys must never
+reach browser code. Google OAuth client secrets stay in Supabase Auth settings.
+The tracked frontend `.env.example` contains names/placeholders only, while the
+ignored local `.env.local` supplies browser-safe development values.
 Keep production credentials out of routine local development. Aim for separate
 development, preview/staging, and production access; use payment test mode where possible.
 
-The browser is untrusted and calls only our backend. Keep privileged credentials,
+The browser is untrusted and calls only our backend or the selected Supabase Auth
+client flow. Keep privileged credentials,
 upstream access, routing, pricing, credit deduction, and payment secrets server-side.
 Validate external requests, webhooks, configuration, and necessary upstream responses
 at boundaries. Enforce account ownership, permissions, model availability, balances,
 rate limits, and payment state server-side on every relevant operation.
-Auth/session/RLS details remain OPEN (OD-001/002).
+The current client guard protects dashboard navigation, but it is not a substitute
+for server-side token verification or authorization. Backend auth/session and RLS
+details remain OPEN (OD-001/002).
 
 ## API keys and payments
 

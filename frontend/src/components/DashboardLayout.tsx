@@ -1,4 +1,6 @@
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthProvider";
 import Brand from "./Brand";
 import Icon from "./Icon";
 import type { IconName } from "./Icon";
@@ -11,7 +13,70 @@ const navigation: { path: string; label: string; icon: IconName }[] = [
   { path: "/dashboard/api-keys", label: "API keys", icon: "keys" },
   { path: "/dashboard/settings", label: "Settings", icon: "settings" },
 ];
+
+function readMetadataString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
 export default function DashboardLayout() {
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const [signOutError, setSignOutError] = useState<string | null>(null);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+  const accountTriggerRef = useRef<HTMLButtonElement>(null);
+  const email = user?.email ?? "Signed-in account";
+  const displayName =
+    readMetadataString(user?.user_metadata?.full_name) ??
+    readMetadataString(user?.user_metadata?.name) ??
+    email;
+  const avatarUrl =
+    readMetadataString(user?.user_metadata?.avatar_url) ??
+    readMetadataString(user?.user_metadata?.picture);
+  const initial = displayName.charAt(0).toUpperCase() || "T";
+  const provider = readMetadataString(user?.app_metadata?.provider);
+  const providerLabel = provider === "google" ? "Google account" : "Authenticated account";
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (
+        event.target instanceof Node &&
+        !accountMenuRef.current?.contains(event.target)
+      ) {
+        setAccountMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setAccountMenuOpen(false);
+        accountTriggerRef.current?.focus();
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [accountMenuOpen]);
+
+  async function handleSignOut() {
+    setSignOutError(null);
+    try {
+      await signOut();
+      navigate("/", { replace: true });
+    } catch (error) {
+      setSignOutError(
+        error instanceof Error ? error.message : "Sign out failed.",
+      );
+    }
+  }
+
   return (
     <>
       <a className="skip-link" href="#main-content">
@@ -34,22 +99,93 @@ export default function DashboardLayout() {
         </nav>
         <div className="sidebar-bottom">
           <nav className="dashboard-nav" aria-label="Resources">
-            <Link to="/information?topic=docs">Documentation ↗</Link>
-            <Link to="/information?topic=support">Help & support ↗</Link>
+            <Link to="/docs">Documentation ↗</Link>
+            <Link to="/support">Help &amp; support ↗</Link>
           </nav>
-          <div className="account">
-            <span className="avatar">S</span>
-            <div>
-              Sample account
-              <div className="small muted">Personal account · demo</div>
-            </div>
+          <div className="account-menu" ref={accountMenuRef}>
+            <button
+              ref={accountTriggerRef}
+              type="button"
+              className="account-trigger"
+              aria-expanded={accountMenuOpen}
+              aria-controls="account-menu"
+              onClick={() => setAccountMenuOpen((open) => !open)}
+            >
+              <span className="avatar" aria-hidden="true">
+                {avatarUrl && !avatarFailed ? (
+                  <img
+                    src={avatarUrl}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                    onError={() => setAvatarFailed(true)}
+                  />
+                ) : (
+                  initial
+                )}
+              </span>
+              <span className="account-copy">
+                <span className="account-email">{email}</span>
+                <span className="small muted">{providerLabel}</span>
+              </span>
+              <span className="account-chevron" aria-hidden="true">
+                {accountMenuOpen ? "⌃" : "⌄"}
+              </span>
+            </button>
+            {accountMenuOpen && (
+              <div className="account-popover" id="account-menu" role="menu">
+                <div className="account-popover-user">
+                  <span className="avatar" aria-hidden="true">
+                    {avatarUrl && !avatarFailed ? (
+                      <img
+                        src={avatarUrl}
+                        alt=""
+                        referrerPolicy="no-referrer"
+                        onError={() => setAvatarFailed(true)}
+                      />
+                    ) : (
+                      initial
+                    )}
+                  </span>
+                  <span className="account-popover-copy">
+                    <strong>{displayName}</strong>
+                    <span>{email}</span>
+                  </span>
+                </div>
+                <div className="account-popover-provider">{providerLabel}</div>
+                <div className="account-menu-divider" />
+                <Link
+                  className="account-menu-item"
+                  to="/dashboard/settings"
+                  role="menuitem"
+                  onClick={() => setAccountMenuOpen(false)}
+                >
+                  Account settings
+                </Link>
+                <button
+                  type="button"
+                  className="account-menu-item"
+                  role="menuitem"
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    void handleSignOut();
+                  }}
+                >
+                  Sign out
+                </button>
+              </div>
+            )}
           </div>
+          {signOutError && (
+            <p className="account-error" role="alert">
+              {signOutError}
+            </p>
+          )}
         </div>
       </aside>
       <main id="main-content" className="dashboard-main" tabIndex={-1}>
         <Outlet />
         <footer className="page-footer">
-          Illustrative data only. No live account, payment or API connection.
+          Illustrative dashboard data only. Payments, API access and usage connections are not live.
         </footer>
       </main>
     </>

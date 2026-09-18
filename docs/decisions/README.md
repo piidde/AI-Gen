@@ -9,6 +9,10 @@ Accepted records:
   following the documentation bootstrap.
 - [ADR-002: Separate React frontend with Vite](ADR-002-frontend-stack.md) —
   approved frontend tooling with demo data and an independent Node starter.
+- [ADR-003: Supabase Auth for the initial browser account flow](ADR-003-supabase-auth.md) —
+  selected browser authentication with Google and email/password.
+- [ADR-004: Opt-in search indexing with consent-gated measurement](ADR-004-seo-and-measurement.md) —
+  SEO and analytics infrastructure that stays inactive until a deployment opts in.
 
 Track unresolved choices and evidence in [OPEN_DECISIONS.md](../OPEN_DECISIONS.md).
 An assumption or investigation is not an accepted ADR. When the team explicitly

@@ -87,9 +87,12 @@ React/TypeScript/Vite and ordinary CSS are now accepted and implemented as descr
 below. Hosting remains open. The visual system and dashboard navigation below
 are accepted; local HTML previews supplied the design review workflow.
 
-Authentication (OD-001), payments and invoice delivery (OD-003), API contracts
-(OD-008), credit units (OD-009), key lifecycle (OD-010), retention (OD-012), and
-pricing (OD-014) still require coordination with their owners. Notification
+The initial browser authentication slice is implemented under OD-001 with
+Supabase Auth, Google OAuth, email/password, reset flow and protected dashboard
+navigation. Backend token verification, account data and RLS still require
+coordination with the database/API owners. Payments and invoice delivery
+(OD-003), API contracts (OD-008), credit units (OD-009), key lifecycle (OD-010),
+retention (OD-012), and pricing (OD-014) still require coordination with their owners. Notification
 channels, support/status delivery, and announcement publishing are not selected.
 Record agreed contracts before dependent implementation; label mock data and
 provisional contracts as assumptions.
@@ -161,8 +164,9 @@ dialogs explain unavailable integration. Settings edits reset on reload.
 The prototype density comparison control is omitted in this increment; the grid
 uses two desktop columns and one mobile column. Whether to ship a user density
 control remains open. The unverified Veo entry is omitted; no video support is
-advertised. Support, documentation, legal and sign-in destinations display honest
-pending-content notices. No auth UI, payment flow or API schema is invented.
+advertised. Support, documentation and legal destinations display honest
+pending-content notices. The sign-in and account-creation slice is now connected
+to Supabase Auth; payment flow and API schema remain unimplemented.
 
 The frontend is a local demo, not a production launch. Indexing/prerendering,
 verified public content, hosting route fallback, and all listed backend contracts
@@ -198,3 +202,98 @@ diagonal lift along the artwork's slope (16 SVG units right, 8 up), on staggered
 4.5- and 5-second CSS cycles. Each plane's faces move together while the grid
 and caption stay still. Motion is enabled only when the visitor has no
 reduced-motion preference.
+
+## DECIDED — search visibility and measurement (2026-09-18)
+
+Owner: Samuel. See [ADR-004](decisions/ADR-004-seo-and-measurement.md) for the
+decision and its reasoning. This records what exists and how to operate it; the
+visual design is unchanged by this work.
+
+### Indexing is opt-in
+
+Search indexing is controlled by `VITE_SITE_INDEXABLE` and defaults to **false**.
+While it is false, every route emits `noindex, nofollow`, `robots.txt` disallows
+everything, the sitemap is empty, and no structured data is emitted. This is
+deliberate: the site publishes fictional prices and serves no live service, and
+the "unverified" labels on those prices do not appear in a search snippet.
+
+**Do not enable it** until the deployment serves verified content on a confirmed
+domain. Enabling it is a configuration change, not a code change.
+
+### Route metadata registry
+
+`frontend/src/seo/routes.ts` is the single source of truth for per-route titles,
+descriptions, robots directives and sitemap entries. Every addressable route
+belongs in it.
+
+- Adding a public page means adding an entry. A route with no entry falls back to
+  non-indexable — safe, but invisible to search.
+- Account and dashboard routes are marked `indexable: false` permanently,
+  independent of the deployment flag.
+- `robots.txt` and `sitemap.xml` are generated from this registry at build time
+  by a plugin in `vite.config.ts`, so the crawl surface cannot drift from the
+  routes the app actually serves.
+
+Metadata is applied per navigation in `src/seo/head.ts`, because this is a
+single-page app: titles, descriptions, canonicals and Open Graph tags must be
+rewritten on route change. Canonical URLs are built from the registered path, so
+tracking parameters never fragment a page's ranking signals.
+
+### Content topics have their own URLs
+
+Documentation, support, status, contact, privacy and terms previously shared one
+URL behind a `?topic=` parameter. Crawlers canonicalise such parameters away, so
+only one of the six could ever rank. Each now resolves at its own path
+(`/docs`, `/support`, `/status`, `/contact`, `/privacy`, `/terms`). The
+`?topic=` form still resolves for existing links, and host-level 301 redirects
+are configured in `frontend/public/_redirects`.
+
+### Structured data
+
+`src/seo/structuredData.ts` emits Organization, WebSite and BreadcrumbList
+JSON-LD on indexable public pages only.
+
+**Do not add `Product` or `Offer` markup while prices are unverified.** Marking
+up prices that are not real is a search and advertising policy violation, not a
+shortcut to rich results. That markup belongs in the same change that publishes
+verified pricing.
+
+### Analytics and advertising
+
+Tag IDs are configuration (`VITE_GA_MEASUREMENT_ID`, `VITE_ADS_CONVERSION_ID`).
+When unset, no third-party script loads and the consent banner does not appear,
+so local and demo builds carry no tracking at all.
+
+The service targets EU customers, so tags may not load before consent. Consent
+Mode v2 defaults (including `ad_user_data` and `ad_personalization`) are
+established before any tag loads; the tag script is requested only after the
+visitor accepts. Reject is presented at the same level as Accept, because a
+reject path that is harder to reach than accept is not valid consent.
+
+A Playwright test asserts that no request reaches a tracking host without
+consent. Treat a failure there as a compliance problem, not a flaky test.
+
+### Launch checklist
+
+Before the first public deployment:
+
+1. Confirm the production domain and set `VITE_SITE_ORIGIN` to it.
+2. Replace the placeholder content on `/docs`, `/support`, `/privacy`, `/terms`,
+   `/contact` and `/status` with real content. Metadata cannot compensate for a
+   page that does not answer the query it ranks for.
+3. Replace the fictional model catalogue with verified models and prices.
+4. Set `VITE_SITE_INDEXABLE=true`, deploy, then fetch `/robots.txt` and
+   `/sitemap.xml` from the live domain and confirm both are correct.
+5. Verify the `_headers` and `_redirects` files are honoured by the chosen host
+   (OD-004). If the host does not read them, translate the rules to its format.
+6. Register the domain in Google Search Console and Bing Webmaster Tools, and
+   submit the sitemap.
+7. Only then configure analytics or advertising tag IDs.
+
+### Known limitation
+
+The app is client-rendered. Google executes JavaScript, but other search engines
+and most social scrapers read only the static `index.html`, which carries
+homepage metadata and a restrictive robots directive. If organic search becomes a
+primary acquisition channel, evaluate pre-rendering the public routes. That is a
+larger change and was deliberately not made here.
