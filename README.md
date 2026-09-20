@@ -8,8 +8,9 @@ A first-party browser chat/generation interface is outside the MVP.
 Current implementation: a TypeScript/Node.js starter plus a separate Takewing AI
 React frontend in `frontend/`. The seven reviewed screens run with explicit
 fictional demo data, and the initial Supabase Auth browser flow supports Google,
-email/password, confirmation, password reset and logout. Backend features and
-service integrations are not implemented. Supabase/PostgreSQL, Stripe, and
+configuration-gated Discord, email/password, confirmation, password reset and
+logout. Backend features and service integrations are not implemented.
+Supabase/PostgreSQL, Stripe, and
 Cloudflare remain the documented directions for later slices.
 
 ## Requirements
@@ -53,6 +54,13 @@ the local app origins (for example `http://127.0.0.1:5173` and
 `http://localhost:5173`) to Supabase Auth's URL configuration. OAuth client
 secrets remain in the Supabase provider settings and never belong in the frontend.
 
+To prepare Discord sign-in, register the exact Supabase callback
+`https://<project-ref>.supabase.co/auth/v1/callback` in the Discord application,
+enable Discord in Supabase Auth with the Discord client ID and secret, and add
+the app's `/auth/callback` URL to Supabase Auth's redirect allow list. Only then
+set `VITE_AUTH_DISCORD_ENABLED=true`. That variable merely reveals the browser
+button; it is not a credential or a provider configuration.
+
 - `npm --prefix frontend run typecheck` — check browser application types.
 - `npm --prefix frontend run build` — typecheck and build into `frontend/dist/`.
 - `npm --prefix frontend run preview` — serve the frontend build locally.
@@ -71,10 +79,10 @@ route loads work; a future static host must serve `index.html` for application
 routes. No hosting or deployment has been selected.
 
 Demo fixtures live in `frontend/src/demo/fixtures.ts`. Filters, tabs and dialogs
-work locally. Key creation/revocation, purchases and profile saves do not change
-an account; reloading resets the demo. Public pages need no auth, while auth and
-dashboard routes use the browser-safe Supabase variables. The frontend does not
-call the upstream.
+work locally. Key creation/revocation and purchases do not change an account;
+the authenticated display name persists through Supabase Auth user metadata.
+Public pages need no auth, while auth and dashboard routes use the browser-safe
+Supabase variables. The frontend does not call the upstream.
 Search indexing is opt-in and **disabled by default**. Titles, descriptions,
 canonical URLs, structured data, `robots.txt` and `sitemap.xml` are generated from
 one route registry, but stay inactive until a deployment sets

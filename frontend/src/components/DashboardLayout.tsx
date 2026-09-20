@@ -36,7 +36,12 @@ export default function DashboardLayout() {
     readMetadataString(user?.user_metadata?.picture);
   const initial = displayName.charAt(0).toUpperCase() || "T";
   const provider = readMetadataString(user?.app_metadata?.provider);
-  const providerLabel = provider === "google" ? "Google account" : "Authenticated account";
+  const providerLabel =
+    provider === "google"
+      ? "Google account"
+      : provider === "discord"
+        ? "Discord account"
+        : "Authenticated account";
 
   useEffect(() => {
     if (!accountMenuOpen) return;

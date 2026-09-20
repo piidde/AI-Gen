@@ -18,9 +18,12 @@ Supabase Auth is the selected auth platform.
 
 The first slice uses email/password and Google OAuth, with email confirmation,
 password reset, browser session persistence, protected dashboard routes, and
-logout. Discord is deferred. Backend token verification, production session
-strategy, account records, and RLS remain OPEN and must be coordinated with
-OD-002 before server-backed features ship. See [SECURITY.md](SECURITY.md).
+logout. The frontend also contains a Discord OAuth option, disabled by default
+until its Discord and Supabase provider configuration is complete. Its client
+secret stays in Supabase Auth settings; `VITE_AUTH_DISCORD_ENABLED` is only a
+browser UI gate. Backend token verification, production session strategy,
+account records, and RLS remain OPEN and must be coordinated with OD-002 before
+server-backed features ship. See [SECURITY.md](SECURITY.md).
 
 ## OD-002 Database structure
 

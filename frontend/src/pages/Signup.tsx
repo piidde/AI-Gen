@@ -5,7 +5,13 @@ import AuthShell from "../components/AuthShell";
 import Button from "../components/Button";
 import { useAuth } from "../auth/AuthProvider";
 import { getAuthCallbackUrl, getErrorMessage, getSafeNext } from "../auth/authUtils";
-import { SUPABASE_CONFIG_ERROR, supabase } from "../auth/supabase";
+import {
+  isDiscordSignInEnabled,
+  SUPABASE_CONFIG_ERROR,
+  supabase,
+} from "../auth/supabase";
+
+type OAuthProvider = "google" | "discord";
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -17,26 +23,29 @@ export default function Signup() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [pending, setPending] = useState<"google" | "password" | null>(null);
+  const [pending, setPending] = useState<OAuthProvider | "password" | null>(null);
 
   useEffect(() => {
     if (!loading && session) navigate(next, { replace: true });
   }, [loading, navigate, next, session]);
 
-  async function handleGoogle() {
+  async function handleOAuth(provider: OAuthProvider) {
     setError(null);
-    setPending("google");
+    setPending(provider);
     if (!supabase) {
       setError(SUPABASE_CONFIG_ERROR);
       setPending(null);
       return;
     }
-    const { error: signInError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: getAuthCallbackUrl(next) },
-    });
-    if (signInError) {
-      setError(signInError.message);
+    try {
+      const { error: signInError } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: getAuthCallbackUrl(next) },
+      });
+      if (signInError) setError(signInError.message);
+    } catch (caught) {
+      setError(getErrorMessage(caught));
+    } finally {
       setPending(null);
     }
   }
@@ -84,19 +93,41 @@ export default function Signup() {
   return (
     <AuthShell
       title="Create your account"
-      description="Start with Google or create an account using your email address."
+      description={
+        isDiscordSignInEnabled
+          ? "Start with Google, Discord, or an account using your email address."
+          : "Start with Google or create an account using your email address."
+      }
     >
       <div className="auth-form auth-form-top">
         <Button
-          className="auth-oauth"
-          onClick={() => void handleGoogle()}
+          className="auth-oauth auth-oauth-google"
+          onClick={() => void handleOAuth("google")}
           disabled={pending !== null}
         >
-          <span className="auth-provider-mark" aria-hidden="true">
-            G
-          </span>
+          <img
+            className="auth-provider-logo auth-provider-logo-google"
+            src="/brand/google-g.svg"
+            alt=""
+            aria-hidden="true"
+          />
           Continue with Google
         </Button>
+        {isDiscordSignInEnabled && (
+          <Button
+            className="auth-oauth auth-oauth-discord"
+            onClick={() => void handleOAuth("discord")}
+            disabled={pending !== null}
+          >
+            <img
+              className="auth-provider-logo auth-provider-logo-discord"
+              src="/brand/discord-clyde-white.svg"
+              alt=""
+              aria-hidden="true"
+            />
+            Continue with Discord
+          </Button>
+        )}
         <div className="auth-divider" aria-hidden="true">
           <span>or use email</span>
         </div>

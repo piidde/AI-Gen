@@ -88,9 +88,11 @@ below. Hosting remains open. The visual system and dashboard navigation below
 are accepted; local HTML previews supplied the design review workflow.
 
 The initial browser authentication slice is implemented under OD-001 with
-Supabase Auth, Google OAuth, email/password, reset flow and protected dashboard
-navigation. Backend token verification, account data and RLS still require
-coordination with the database/API owners. Payments and invoice delivery
+Supabase Auth, Google OAuth, a configuration-gated Discord OAuth option,
+email/password, reset flow and protected dashboard navigation. The Discord
+button stays hidden until its provider is configured in Supabase Auth. Backend
+token verification, account data and RLS still require coordination with the
+database/API owners. Payments and invoice delivery
 (OD-003), API contracts (OD-008), credit units (OD-009), key lifecycle (OD-010),
 retention (OD-012), and pricing (OD-014) still require coordination with their owners. Notification
 channels, support/status delivery, and announcement publishing are not selected.

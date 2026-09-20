@@ -13,3 +13,9 @@ imply a partnership, endorsement, or confirmed catalogue availability.
 
 Takewing lift mark and homepage artwork are project implementation assets
 transferred from the owner's accepted design.
+
+Google and Discord OAuth sign-in marks
+Google G source: https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg
+Discord Clyde symbol source: https://discord.com/branding
+Used solely to identify the respective sign-in provider. Google and Discord
+marks belong to their respective owners and do not imply endorsement.

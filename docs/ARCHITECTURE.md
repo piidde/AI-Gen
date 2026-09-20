@@ -8,8 +8,9 @@ TypeScript with strict NodeNext/ES-module settings, and `tsx` development watch.
 `frontend/` is a separate React/TypeScript/Vite browser application with React
 Router and ordinary CSS. It implements the reviewed seven-screen design using
 local demo fixtures, plus a public catalogue and pending-content/missing-page
-states. The initial Supabase Auth browser slice adds Google OAuth, email/password
-auth, password reset, callback handling, session guards and logout. Its package,
+states. The initial Supabase Auth browser slice adds Google OAuth, a
+configuration-gated Discord OAuth option, email/password auth, password reset,
+callback handling, session guards and logout. Its package,
 lockfile, TypeScript configuration and build output are independent of the Node
 starter. Playwright covers public routes and key interactions at desktop/mobile
 widths; generated test artifacts stay outside the repository. There is still no

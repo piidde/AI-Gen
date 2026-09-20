@@ -9,6 +9,13 @@ export const isSupabaseConfigured = Boolean(
   supabaseUrl && supabasePublishableKey,
 );
 
+// This only controls whether the Discord option is rendered. Provider credentials
+// stay exclusively in Supabase Auth settings and must never be browser variables.
+export const isDiscordSignInEnabled =
+  String(import.meta.env.VITE_AUTH_DISCORD_ENABLED ?? "")
+    .trim()
+    .toLowerCase() === "true";
+
 export const SUPABASE_CONFIG_ERROR =
   "Supabase Auth ist noch nicht konfiguriert. Bitte die VITE_SUPABASE_* Werte setzen.";
 
