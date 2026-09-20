@@ -73,6 +73,45 @@ test("reviewed routes load directly without runtime errors or document overflow"
   expect(errors).toEqual([]);
 });
 
+test("lift hero enhances pointer interaction and respects reduced motion", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "Pointer enhancement regression");
+
+  await page.goto("/");
+  const artwork = page.locator(".home-art");
+  await expect(artwork).toBeVisible();
+
+  const box = await artwork.boundingBox();
+  expect(box).not.toBeNull();
+  await page.mouse.move(box!.x + box!.width * 0.8, box!.y + box!.height * 0.35);
+  await page.waitForTimeout(50);
+
+  const pointerState = await artwork.evaluate((element) => ({
+    interactive: element.dataset.liftInteractive,
+    upperTransform: element.querySelector<SVGGElement>(
+      ".home-plane-pointer-upper",
+    )?.getAttribute("style"),
+  }));
+  expect(pointerState.interactive).toBe("true");
+  expect(pointerState.upperTransform).toContain("--lift-pointer-x");
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.reload();
+  const reducedMotionState = await artwork.evaluate((element) => ({
+    interactive: element.dataset.liftInteractive,
+    planeAnimation: getComputedStyle(
+      element.querySelector(".home-plane")!,
+    ).animationName,
+    heroAnimation: getComputedStyle(
+      document.querySelector(".home-hero-copy")!,
+    ).animationName,
+  }));
+  expect(reducedMotionState.interactive).toBeUndefined();
+  expect(reducedMotionState.planeAnimation).toBe("none");
+  expect(reducedMotionState.heroAnimation).toBe("none");
+});
+
 test("dashboard routes require an authenticated session", async ({ page }) => {
   await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/login\?next=%2Fdashboard$/);

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import Brand from "../components/Brand";
 import Icon from "../components/Icon";
@@ -8,8 +9,79 @@ import geminiIcon from "../assets/gemini.svg";
 import "../styles/home.css";
 
 function LiftArtwork() {
+  const artRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const art = artRef.current;
+    if (!art) return;
+
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const finePointer = window.matchMedia("(pointer: fine)");
+    if (reduceMotion.matches || !finePointer.matches) return;
+
+    const planes = Array.from(
+      art.querySelectorAll<SVGGElement>("[data-lift-depth]"),
+    );
+    if (planes.length === 0) return;
+
+    let frame = 0;
+    art.dataset.liftInteractive = "true";
+
+    const reset = () => {
+      cancelAnimationFrame(frame);
+      planes.forEach((plane) => {
+        plane.style.removeProperty("--lift-pointer-x");
+        plane.style.removeProperty("--lift-pointer-y");
+      });
+      art.style.removeProperty("--lift-glow-x");
+      art.style.removeProperty("--lift-glow-y");
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (event.pointerType === "touch") return;
+      const bounds = art.getBoundingClientRect();
+      if (!bounds.width || !bounds.height) return;
+
+      const x = Math.max(
+        -1,
+        Math.min(1, ((event.clientX - bounds.left) / bounds.width) * 2 - 1),
+      );
+      const y = Math.max(
+        -1,
+        Math.min(1, ((event.clientY - bounds.top) / bounds.height) * 2 - 1),
+      );
+
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        planes.forEach((plane) => {
+          const depth = Number(plane.dataset.liftDepth ?? "1");
+          plane.style.setProperty(
+            "--lift-pointer-x",
+            `${(x * 13 * depth).toFixed(2)}px`,
+          );
+          plane.style.setProperty(
+            "--lift-pointer-y",
+            `${(y * 8 * depth).toFixed(2)}px`,
+          );
+        });
+        art.style.setProperty("--lift-glow-x", `${((x + 1) / 2) * 100}%`);
+        art.style.setProperty("--lift-glow-y", `${((y + 1) / 2) * 100}%`);
+      });
+    };
+
+    art.addEventListener("pointermove", handlePointerMove, { passive: true });
+    art.addEventListener("pointerleave", reset);
+
+    return () => {
+      art.removeEventListener("pointermove", handlePointerMove);
+      art.removeEventListener("pointerleave", reset);
+      reset();
+      art.removeAttribute("data-lift-interactive");
+    };
+  }, []);
+
   return (
-    <div className="home-art">
+    <div className="home-art" ref={artRef}>
       <svg
         viewBox="0 0 480 430"
         role="img"
@@ -30,13 +102,21 @@ function LiftArtwork() {
           <path d="M0 360 480 110M0 270 480 20M0 450 480 200" />
           <path d="m90 430 0-350m120 350V20m120 410V0m120 430V0" />
         </g>
-        <g className="home-plane home-plane-upper">
-          <path d="M40 252 402 68v83L40 335Z" fill="url(#home-lift)" />
-          <path d="m40 335 39 24 362-184-39-24Z" fill="#214F37" />
+        <g className="home-plane-pointer home-plane-pointer-upper" data-lift-depth="1">
+          <g className="home-plane-depth home-plane-depth-upper">
+            <g className="home-plane home-plane-upper">
+              <path d="M40 252 402 68v83L40 335Z" fill="url(#home-lift)" />
+              <path d="m40 335 39 24 362-184-39-24Z" fill="#214F37" />
+            </g>
+          </g>
         </g>
-        <g className="home-plane home-plane-lower">
-          <path d="M159 311 402 188v77L159 388Z" fill="url(#home-shade)" />
-          <path d="m159 388 32 18 242-123-31-18Z" fill="#1B3928" />
+        <g className="home-plane-pointer home-plane-pointer-lower" data-lift-depth=".55">
+          <g className="home-plane-depth home-plane-depth-lower">
+            <g className="home-plane home-plane-lower">
+              <path d="M159 311 402 188v77L159 388Z" fill="url(#home-shade)" />
+              <path d="m159 388 32 18 242-123-31-18Z" fill="#1B3928" />
+            </g>
+          </g>
         </g>
       </svg>
       <div className="home-caption">
@@ -74,7 +154,7 @@ export default function Home() {
 
         <main id="main-content" tabIndex={-1}>
           <section className="home-hero" aria-labelledby="home-title">
-            <div>
+            <div className="home-hero-copy">
               <div className="home-overline">AI access, within reach</div>
               <h1 id="home-title">
                 More room
