@@ -55,8 +55,9 @@ behavior; do not build multi-provider machinery or speculative video methods.
 - Supabase Auth is selected for the initial browser auth slice. Supabase/PostgreSQL
   remains the database direction; database access, migrations, RLS, and any
   limited internal storage remain subject to database design.
-- Stripe is the primary payment candidate. Do not add alternative providers for
-  theoretical flexibility.
+- Payment provider selection remains open; Stripe was the initial candidate, not
+  a commitment. Operator privacy is a selection priority. Do not add alternative
+  providers for theoretical flexibility.
 - Cloudflare is a cloud direction. DNS/CDN/WAF, limits, Workers, R2, hosting, and
   server/VM/hybrid arrangements are candidates, not provisioned infrastructure.
 - Prefer upstream-to-backend-to-client text streaming when supported. SSE or

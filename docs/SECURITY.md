@@ -64,8 +64,8 @@ current browser route guard cannot protect any future server-backed resource.
 
 Our keys must map to accounts, support creation/revocation, and stop working when
 revoked. They must not expose upstream credentials. Avoid unnecessary raw-secret
-storage. Display-once keys with a prefix, secure hash, and metadata are a likely
-approach, not a finalized design. Last-used metadata is optional. Document exact
+storage. Display-once secrets and last-used metadata are accepted frontend
+requirements. Prefix/hash storage remains a candidate design. Document exact
 generation/hashing and revocation behavior before production use (OD-010).
 
 Verify trusted server-side payment confirmation; frontend success is insufficient.

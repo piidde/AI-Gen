@@ -1,6 +1,13 @@
 # Open decisions and investigations
 
-All entries below remain unresolved. **OPEN** means no final choice;
+See the [2026-09-20 frontend review](FRONTEND_REVIEW.md) for subsequent frontend
+decisions and remaining details. Payment selection, backend mechanisms and
+investigations remain open unless explicitly resolved there.
+
+Entries distinguish accepted requirements from unresolved mechanisms. The
+[frontend implementation plan](superpowers/plans/2026-09-20-frontend-mvp.md) tracks
+execution, dependencies and subsequent implementation findings.
+**OPEN** means no final choice;
 **INVESTIGATION** means evidence is needed. **ASSUMPTION** permits provisional
 work without making a choice permanent; **DECIDED** marks accepted direction,
 not implemented functionality. Explicit decisions must update this register and
@@ -35,11 +42,14 @@ Candidate entities/job states in [DATA.md](DATA.md) are not schema commitments.
 
 ## OD-003 Payment architecture
 
-Status: **OPEN**. Suggested owner: Mario. **ASSUMPTION:** Stripe is primary candidate.
+Status: **OPEN** for provider/integration. Suggested owner: Mario. Stripe was an
+initial candidate; no provider is selected. Operator privacy is a selection priority.
 
-Choose Checkout or another flow, webhook design, credit purchase packages,
-currencies, refunds, alternative-provider need, and whether anonymous payment
-methods are desirable/possible. Do not add alternatives only for flexibility.
+Choose the provider flow, webhook/document integration and feasible methods.
+**DECIDED:** GRSAI-reference packages/bonuses, USD checkout with approximate EUR
+display, non-expiring credits and the refund/deletion policies in BILLING.md.
+Revalidate package amounts before implementation; do not reopen settled policies
+or add alternative providers solely for flexibility.
 See [BILLING.md](BILLING.md).
 
 ## OD-004 Deployment architecture
@@ -73,6 +83,9 @@ financial exposure; unlimited free usage is prohibited. See [PRODUCT.md](PRODUCT
 
 Status: **INVESTIGATION**. Owner: unassigned; team member must be assigned.
 
+Video is outside the accepted image/text MVP. This investigation is future scope,
+not a dependency for frontend launch.
+
 Test the apparent upstream endpoint; verify supported parameters, response format,
 cost, and reliability, including its absence from the model list. Do not advertise
 support before verification. No credentials or endpoint evidence were provided
@@ -101,9 +114,10 @@ is unresolved. See [BILLING.md](BILLING.md).
 
 Status: **OPEN**. Owner: unassigned.
 
-Define key format, secure generation/hashing, storage, creation/display lifecycle,
-and effective revocation behavior. Prefix + hash + metadata with display-once
-secrets is a likely approach; optional last-used metadata is not a requirement.
+**DECIDED:** named keys, display-once secrets, masked identifiers, creation and
+last-used metadata, confirmed revocation and preserved historical identification.
+Define key format, secure generation/hashing, storage and effective server-side
+revocation. Prefix + hash + metadata remains a candidate storage design.
 Document the design before production. See [SECURITY.md](SECURITY.md).
 
 ## OD-011 Rate limits and financial stop controls
@@ -140,8 +154,11 @@ See [SECURITY.md](SECURITY.md).
 
 Status: **OPEN**. Owner: unassigned (coordinate with payment/billing owners).
 
-Set model/token/image prices, price structure and margins, purchase packages,
-and introductory discount mechanics. No amounts or discount rules are finalized.
+**DECIDED:** research current GRSAI model prices and package bonuses as the frontend
+reference; model credit rates do not change with package size or usage. Catalogue
+money/savings use a fixed standard conversion, without a package selector. Credits
+never expire. Exact verified numeric rates, margin and historical comparison
+implementation remain open; trial/free-credit rules remain under OD-006.
 Coordinate currencies/packages with OD-003 and units with OD-009.
 **DECIDED:** pricing and final charges are server-authoritative.
 See [BILLING.md](BILLING.md).
@@ -159,12 +176,14 @@ rendered.
 - Activation is blocked by real content and verified pricing, and by the domain
   decision in OD-004. It must not be enabled while the catalogue shows fictional
   prices: an "unverified" label on the page does not travel into a search snippet.
-- **INVESTIGATION:** whether client-side rendering is sufficient. Google executes
-  JavaScript; other engines and most social scrapers do not, so they currently see
-  only the static `index.html`. Decide whether to pre-render or server-render the
-  public routes, and gather evidence before claiming either is required.
-- **OPEN:** whether paid acquisition is pursued at launch, which determines
-  whether conversion tracking and a Google Ads account are needed at all.
+- **DECIDED:** prerender public acquisition/content pages with content and metadata
+  in the initial HTML; implementation mechanism and hosting integration remain open.
+  **INVESTIGATION:** initial HTML currently has unconditional noindex that runtime
+  JS removes. Fix and verify production/preview behavior before launch; a flag
+  change alone is not yet proven sufficient. See the plan's issue F-001.
+- **DECIDED:** organic acquisition only, with equal image/text focus. Measure
+  conversions without enabling advertising campaigns/tags. All partners expect to
+  help with outreach; assign individual deliverables rather than assuming ownership.
 - **OPEN:** structured data for models and prices. `Product`/`Offer` markup is
   deliberately absent and must not be added before prices are verified.
 

@@ -11,6 +11,10 @@ Follow [CONTRIBUTING.md](CONTRIBUTING.md) for collaboration and validation.
 Repository documentation records shared decisions; chats and private memory do
 not replace it. These guides are the permanent source of truth and do not depend
 on retaining the initial bootstrap specification.
+For "Continue with the Implementation Plan" or frontend MVP continuation, read
+[the Frontend MVP Implementation Plan](docs/superpowers/plans/2026-09-20-frontend-mvp.md)
+first, including its current handoff, stage/step statuses and issue log. Update it
+as work proceeds and before handing off; never infer completion from accepted scope.
 The explicit API-only MVP correction supersedes the bootstrap's browser-at-launch
 scope; see [ADR-001](docs/decisions/ADR-001-api-only-mvp.md). Do not implement a
 first-party chat/generation frontend for the MVP.

@@ -76,6 +76,15 @@ another page.
 
 ## Known limitations
 
+Update from the 2026-09-20 frontend review: public content prerendering is now
+accepted direction, with the specific mechanism/deployment still to be decided.
+Organic acquisition only is selected. The original expectation that enabling the
+flag alone completes indexing is not sufficient: initial HTML contains noindex
+that runtime JavaScript removes, a crawler risk tracked as F-001 in the
+[implementation plan](../superpowers/plans/2026-09-20-frontend-mvp.md).
+Resolve it and verify raw production HTML before activation. These are planned
+follow-ups, not claims that the implementation below has changed.
+
 - The application is client-rendered. Google executes JavaScript, but other
   crawlers and most social scrapers do not, so they see only the static
   `index.html` metadata. If organic search becomes a primary acquisition channel,

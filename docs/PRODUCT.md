@@ -12,6 +12,9 @@ The upstream is an implementation detail, never the customer integration surface
 - Pay-as-you-go prepaid credits; customers purchase before paid generation.
 - API-only MVP: no first-party browser chat or generation interface at launch.
   Customers use their own applications, scripts, or API clients.
+- Launch modalities are image and text, clarified during the frontend/acquisition
+  review. Video is outside the MVP; historical video investigations do not expand
+  launch scope. See [frontend review](FRONTEND_REVIEW.md).
 - Our own public developer API at launch, simpler and better documented than the
   upstream where practical; exact upstream compatibility is not required.
 - Backend authentication, API keys, routing, metering, accounting, limits,
@@ -41,8 +44,9 @@ maximum financial exposure.
 
 Pricing, discounts, free usage, exact API contracts, image delivery, and launch
 operational scope remain unresolved in [the decision register](OPEN_DECISIONS.md).
-Veo/video is **INVESTIGATION**: an apparent endpoint is not verified support and
-may be absent from the upstream model list. Do not advertise it before verification.
+Veo/video remains an **INVESTIGATION** for possible later scope: an apparent
+endpoint is not verified support. It is outside the image/text MVP and requires
+both verification and a separate scope decision before being offered.
 
 ## Delivery direction and non-goals
 
@@ -57,7 +61,8 @@ A temporary/manual test balance is acceptable for this controlled milestone;
 it does not remove financial protection requirements for paid usage.
 
 Then complete production credit accounting, payments, API key management, images, limits,
-monitoring, and Veo investigation as appropriate. This order is a recommendation,
+and monitoring. Any Veo investigation belongs to separately approved post-MVP work.
+This order is a recommendation,
 not a rigid sequence; the public API is the initial product surface. Test access
 and upstream spending must be controlled from the first billable integration.
 

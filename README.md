@@ -87,7 +87,9 @@ Search indexing is opt-in and **disabled by default**. Titles, descriptions,
 canonical URLs, structured data, `robots.txt` and `sitemap.xml` are generated from
 one route registry, but stay inactive until a deployment sets
 `VITE_SITE_INDEXABLE=true`. Leave it off while the catalogue shows fictional
-prices. Analytics and advertising tags are likewise inert until their IDs are
+prices. Before launch, also resolve the initial-HTML noindex risk and public
+prerendering work tracked in the implementation plan; the flag alone has not been
+verified sufficient. Analytics and advertising tags are likewise inert until their IDs are
 configured, and never load before the visitor consents. See
 [ADR-004](docs/decisions/ADR-004-seo-and-measurement.md) for the decision and
 [frontend scope](docs/FRONTEND.md) for the launch checklist and limitations.
@@ -97,6 +99,7 @@ configured, and never load before the visitor consents. See
 - [Agent rules](AGENTS.md) and [contributing](CONTRIBUTING.md)
 - [Product scope](docs/PRODUCT.md) and [architecture](docs/ARCHITECTURE.md)
 - [Frontend scope](docs/FRONTEND.md)
+- [Frontend MVP Implementation Plan and persistent log](docs/superpowers/plans/2026-09-20-frontend-mvp.md)
 - [API contract direction](docs/API.md), [billing](docs/BILLING.md), and [data](docs/DATA.md)
 - [Security](docs/SECURITY.md)
 - [Open decisions and investigations](docs/OPEN_DECISIONS.md)

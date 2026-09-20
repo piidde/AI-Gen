@@ -1,5 +1,13 @@
 # Frontend scope
 
+For execution, current progress and session handoff, use the
+[Frontend MVP Implementation Plan](superpowers/plans/2026-09-20-frontend-mvp.md).
+Its accepted scope supersedes earlier provisional frontend directions below;
+historical implementation sections remain evidence of the existing foundation.
+
+The [2026-09-20 frontend review](FRONTEND_REVIEW.md) records the latest accepted
+direction and unresolved details. It is a decision record, not the final plan.
+
 ## DECIDED — initial scope (2026-09-15)
 
 Owner: JannesG / PlaYa-44 (frontend), coordinating with the relevant backend owners.
