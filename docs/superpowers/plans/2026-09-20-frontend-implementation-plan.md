@@ -1,8 +1,13 @@
-# Takewing AI Frontend MVP Implementation Plan
+# Takewing AI Frontend Implementation Plan
 
 > For agentic workers: use the executing-plans skill to work through this plan
 > task by task. Do not delegate unless authorized by the user or applicable
 > instructions. This is one implementation plan and persistent execution log.
+
+This plan covers the frontend workstream. Partners may maintain separate backend
+or infrastructure plans; their dependencies are tracked here without claiming
+ownership of those implementations. Resume with "Continue with the Frontend
+Implementation Plan" to distinguish this workstream.
 
 **Goal:** complete the agreed public website and API customer dashboard, including
 organic discovery, while preserving the approved design and allowing mock-first
@@ -608,10 +613,19 @@ context here rather than requiring a reader to reconstruct chat history.
 - User explicitly requested committing and pushing the full planning work on
   `docs/frontend-mvp-review` to `origin`. No merge or product implementation requested.
 - This entry is included in the planning commit; locate that commit with
-  `git log --oneline -- docs/superpowers/plans/2026-09-20-frontend-mvp.md`.
+  `git log --oneline -- docs/superpowers/plans/2026-09-20-frontend-implementation-plan.md`.
 - Pre-commit inspection: only the eleven intended documentation files are changed
   or new; `git diff --check` passes. Product tests remain unnecessary for this
   documentation-only delivery; S01.1 still establishes the runtime baseline.
 - Verify delivery using branch/upstream comparison and clean working-tree status;
   do not infer a successful push solely from this pre-commit entry.
 - Next implementation action remains S01.1. All 71 implementation steps remain pending.
+
+### H-003 — 2026-09-20 — Explicit frontend plan naming
+
+- Renamed the document to `2026-09-20-frontend-implementation-plan.md` and the title
+  to Takewing AI Frontend Implementation Plan at the user's request, to distinguish
+  it from possible partner-owned plans. Updated repository links and resume guidance.
+- The previous plan delivery is commit `7442b90`, pushed to the review branch.
+  User authorized committing and pushing this naming update on the same branch.
+- Scope and step statuses are unchanged; next implementation step remains S01.1.

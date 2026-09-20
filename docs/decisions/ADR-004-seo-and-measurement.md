@@ -81,7 +81,7 @@ accepted direction, with the specific mechanism/deployment still to be decided.
 Organic acquisition only is selected. The original expectation that enabling the
 flag alone completes indexing is not sufficient: initial HTML contains noindex
 that runtime JavaScript removes, a crawler risk tracked as F-001 in the
-[implementation plan](../superpowers/plans/2026-09-20-frontend-mvp.md).
+[implementation plan](../superpowers/plans/2026-09-20-frontend-implementation-plan.md).
 Resolve it and verify raw production HTML before activation. These are planned
 follow-ups, not claims that the implementation below has changed.
 

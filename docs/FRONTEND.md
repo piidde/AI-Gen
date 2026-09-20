@@ -1,7 +1,7 @@
 # Frontend scope
 
 For execution, current progress and session handoff, use the
-[Frontend MVP Implementation Plan](superpowers/plans/2026-09-20-frontend-mvp.md).
+[Frontend Implementation Plan](superpowers/plans/2026-09-20-frontend-implementation-plan.md).
 Its accepted scope supersedes earlier provisional frontend directions below;
 historical implementation sections remain evidence of the existing foundation.
 

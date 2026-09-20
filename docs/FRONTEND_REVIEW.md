@@ -4,7 +4,7 @@ This records the ongoing discussion, not an implementation plan or proof of
 implementation. The API-only MVP boundary remains in force. Review individual
 frontend areas before preparing the final implementation plan.
 
-The review is now consolidated into the [Frontend MVP Implementation Plan](superpowers/plans/2026-09-20-frontend-mvp.md).
+The review is now consolidated into the [Frontend Implementation Plan](superpowers/plans/2026-09-20-frontend-implementation-plan.md).
 Use that plan for current progress, handoff, issues and implementation decisions;
 this file preserves the scope-review history.
 

@@ -99,7 +99,7 @@ configured, and never load before the visitor consents. See
 - [Agent rules](AGENTS.md) and [contributing](CONTRIBUTING.md)
 - [Product scope](docs/PRODUCT.md) and [architecture](docs/ARCHITECTURE.md)
 - [Frontend scope](docs/FRONTEND.md)
-- [Frontend MVP Implementation Plan and persistent log](docs/superpowers/plans/2026-09-20-frontend-mvp.md)
+- [Frontend Implementation Plan and persistent log](docs/superpowers/plans/2026-09-20-frontend-implementation-plan.md)
 - [API contract direction](docs/API.md), [billing](docs/BILLING.md), and [data](docs/DATA.md)
 - [Security](docs/SECURITY.md)
 - [Open decisions and investigations](docs/OPEN_DECISIONS.md)

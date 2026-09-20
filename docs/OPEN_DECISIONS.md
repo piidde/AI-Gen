@@ -5,7 +5,7 @@ decisions and remaining details. Payment selection, backend mechanisms and
 investigations remain open unless explicitly resolved there.
 
 Entries distinguish accepted requirements from unresolved mechanisms. The
-[frontend implementation plan](superpowers/plans/2026-09-20-frontend-mvp.md) tracks
+[frontend implementation plan](superpowers/plans/2026-09-20-frontend-implementation-plan.md) tracks
 execution, dependencies and subsequent implementation findings.
 **OPEN** means no final choice;
 **INVESTIGATION** means evidence is needed. **ASSUMPTION** permits provisional
