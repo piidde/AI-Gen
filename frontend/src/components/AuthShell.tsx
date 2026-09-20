@@ -27,7 +27,7 @@ export default function AuthShell({
         <p className="auth-description">{description}</p>
         {!isSupabaseConfigured && (
           <p className="auth-warning" role="alert">
-            Supabase Auth ist lokal noch nicht konfiguriert.
+            Supabase Auth is not configured locally yet.
           </p>
         )}
         {children}

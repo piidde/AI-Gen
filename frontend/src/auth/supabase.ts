@@ -17,7 +17,7 @@ export const isDiscordSignInEnabled =
     .toLowerCase() === "true";
 
 export const SUPABASE_CONFIG_ERROR =
-  "Supabase Auth ist noch nicht konfiguriert. Bitte die VITE_SUPABASE_* Werte setzen.";
+  "Supabase Auth is not configured. Set the VITE_SUPABASE_* values.";
 
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabasePublishableKey)

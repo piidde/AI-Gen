@@ -1175,6 +1175,15 @@ dialog::backdrop {
   border-top: 1px solid var(--border);
 }
 
+/* The banner is fixed, so it would otherwise sit on top of the last thing on
+   the page - in practice the footer links and the closing call to action.
+   While it is shown, reserve exactly the space it occupies. The banner measures
+   itself and sets --consent-banner-height, so wrapped text at narrow widths
+   reserves the right amount rather than a guessed constant. */
+body[data-consent-banner-visible] {
+  padding-bottom: var(--consent-banner-height, 0px);
+}
+
 .consent-inner {
   max-width: 1120px;
   margin-inline: auto;

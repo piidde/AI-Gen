@@ -112,3 +112,61 @@ test("structured data is valid JSON and only on indexable pages", async ({ page 
   const onPrivate = await page.evaluate(() => document.getElementById("structured-data"));
   expect(onPrivate).toBeNull();
 });
+
+test("the SPA fallback does not turn unknown URLs into soft 404s", async ({ page }) => {
+  // A catch-all rewrite would list every route here as a 200 success page.
+  // The generated _redirects enumerates real routes so unknown paths can reach
+  // the host's 404 handling instead.
+  const redirects = await page.request.get("/_redirects");
+  expect(redirects.ok()).toBe(true);
+  const body = await redirects.text();
+
+  const rules = body
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "" && !line.startsWith("#"));
+
+  expect(rules.length).toBeGreaterThan(0);
+  // No bare catch-all: `/*` would swallow genuinely missing URLs.
+  expect(rules.some((rule) => rule.startsWith("/*"))).toBe(false);
+  // Query-string source matching is not portable across the supported hosts.
+  expect(rules.some((rule) => rule.includes("?"))).toBe(false);
+  // Real routes still deep-link.
+  expect(rules.some((rule) => rule.startsWith("/models "))).toBe(true);
+  expect(rules.some((rule) => rule.startsWith("/dashboard/*"))).toBe(true);
+});
+
+// The document declares lang="en". A stray non-English string is a correctness
+// problem for screen readers and a quality signal for crawlers. Checking only
+// rendered pages would miss strings behind an error path, so the shipped bundle
+// is checked too — that is where the Supabase configuration messages lived.
+const GERMAN_WORDS =
+  /\b(ist|nicht|konfiguriert|Bitte|Passwort|Anmeldung|Authentifizierung|werden|Fehler)\b/;
+
+test("rendered pages have no untranslated copy", async ({ page }) => {
+  for (const route of ["/", "/models", "/login", "/signup", "/docs"]) {
+    await page.goto(route);
+    const text = await page.evaluate(() => document.body.innerText);
+    expect(text, `${route} contains untranslated copy`).not.toMatch(GERMAN_WORDS);
+  }
+});
+
+test("no untranslated copy is shipped in the bundle", async ({ page }) => {
+  // Covers user-facing strings that appear only on an error path, such as the
+  // Supabase-not-configured messages: visiting a page never triggers them when
+  // the environment happens to be configured, so a render check passes blindly.
+  await page.goto("/");
+  const scripts = await page.evaluate(() =>
+    Array.from(document.querySelectorAll<HTMLScriptElement>("script[src]")).map(
+      (element) => element.src,
+    ),
+  );
+  expect(scripts.length).toBeGreaterThan(0);
+
+  for (const src of scripts) {
+    const response = await page.request.get(src);
+    expect(response.ok(), `could not fetch ${src}`).toBe(true);
+    const match = GERMAN_WORDS.exec(await response.text());
+    expect(match?.[0], `${src} ships untranslated copy`).toBeUndefined();
+  }
+});

@@ -70,7 +70,8 @@ another page.
   falls back to non-indexable, which is safe but invisible.
 - Content topics moved from `?topic=` parameters to their own paths (`/docs`,
   `/privacy`, …), so each can rank independently. The parameter form still
-  resolves, and host-level 301 redirects are configured for it.
+  resolves. A permanent redirect for that legacy query form must be configured
+  using the selected host's query-redirect mechanism after OD-004.
 - The consent banner occupies bottom screen space once a tag ID is configured.
 
 ## Known limitations

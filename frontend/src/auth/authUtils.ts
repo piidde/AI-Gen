@@ -18,5 +18,5 @@ export function getAuthCallbackUrl(next: string): string {
 export function getErrorMessage(error: unknown): string {
   return error instanceof Error
     ? error.message
-    : "Die Authentifizierung konnte nicht abgeschlossen werden.";
+    : "Authentication could not be completed.";
 }

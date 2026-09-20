@@ -249,8 +249,9 @@ Documentation, support, status, contact, privacy and terms previously shared one
 URL behind a `?topic=` parameter. Crawlers canonicalise such parameters away, so
 only one of the six could ever rank. Each now resolves at its own path
 (`/docs`, `/support`, `/status`, `/contact`, `/privacy`, `/terms`). The
-`?topic=` form still resolves for existing links, and host-level 301 redirects
-are configured in `frontend/public/_redirects`.
+`?topic=` form still resolves for existing links. A permanent host-level redirect
+for those legacy query URLs must use the selected host's query-redirect format
+after OD-004; `_redirects` cannot express that portably.
 
 ### Structured data
 
@@ -293,6 +294,28 @@ Before the first public deployment:
 6. Register the domain in Google Search Console and Bing Webmaster Tools, and
    submit the sitemap.
 7. Only then configure analytics or advertising tag IDs.
+
+### Follow-up fixes (2026-09-18)
+
+Three defects found while reviewing the work above, all corrected:
+
+- **Untranslated interface copy.** Three German strings shipped in an
+  English-only interface on `lang="en"`: the Supabase-not-configured warning in
+  `AuthShell`, `SUPABASE_CONFIG_ERROR` (surfaced across eight auth files) and the
+  fallback in `getErrorMessage`. Two of them only appear on an error path, so a
+  rendered-page check never sees them; the regression test therefore scans the
+  built bundle as well as the rendered pages.
+- **Consent banner covered the page footer.** The banner is `position: fixed`
+  with nothing reserving its space. It now measures itself with a
+  `ResizeObserver` and publishes `--consent-banner-height`, which the page uses
+  as bottom padding — measured rather than a guessed constant, because the text
+  wraps to different heights across viewport widths.
+- **Soft 404s from the SPA fallback.** A catch-all `/* /index.html 200` rewrite
+  serves every unknown URL as a success page. Crawlers treat that as a soft 404,
+  may index the error page, and broken links stay invisible in crawl reports.
+  `_redirects` is now generated from the route registry with one rule per known
+  route, so unknown paths reach the host's 404 handling. It is emitted at build
+  time alongside `robots.txt` and `sitemap.xml`, and cannot drift from the router.
 
 ### Known limitation
 

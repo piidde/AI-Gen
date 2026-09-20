@@ -6,7 +6,7 @@
 // is what keeps demo and preview deployments out of search results even if the
 // deployment is publicly reachable.
 
-import { indexableRoutes } from "./routes.ts";
+import { indexableRoutes, routeMeta } from "./routes.ts";
 
 function xmlEscape(value: string): string {
   return value
@@ -81,4 +81,30 @@ export function buildSitemapXml(options: {
   ]
     .filter((line) => line !== "")
     .join("\n");
+}
+
+/**
+ * SPA rewrite rules for static hosts, one per known route.
+ *
+ * A catch-all `/* /index.html 200` would serve every unknown URL as a success
+ * page. Crawlers call that a soft 404 and may index the error page, and it
+ * hides broken links from crawl reports. Enumerating the real routes lets a
+ * genuinely unknown path fall through to the host's 404 handling and return an
+ * actual 404 status, while every real route still deep-links.
+ */
+export function buildRedirects(): string {
+  const lines = [
+    "# Generated at build time from src/seo/routes.ts. Do not edit by hand.",
+    "# Redirects for static hosts that read this file (Cloudflare Pages, Netlify).",
+    "",
+    "# One rewrite per known route; see buildRedirects() for why this is not a",
+    "# catch-all. Dashboard children share a prefix rule.",
+    ...routeMeta
+      .filter((route) => !route.path.startsWith("/dashboard/"))
+      .map((route) => route.path.padEnd(36) + "/index.html".padEnd(20) + "200"),
+    "/dashboard/*".padEnd(36) + "/index.html".padEnd(20) + "200",
+    "",
+  ];
+
+  return lines.join("\n");
 }

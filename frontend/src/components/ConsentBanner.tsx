@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   analyticsConfigured,
@@ -15,12 +15,42 @@ import {
 // path that is harder to reach than accept is not valid consent under GDPR.
 export default function ConsentBanner() {
   const [visible, setVisible] = useState(false);
+  const bannerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (analyticsConfigured && readConsent() === null) {
       setVisible(true);
     }
   }, []);
+
+  // The banner is fixed, so the page must reserve the height it occupies or it
+  // covers the footer. Measure the outer box rather than assume: text wraps at
+  // different widths and the border must not overlap the final content pixel.
+  useLayoutEffect(() => {
+    const banner = bannerRef.current;
+    const root = document.documentElement;
+    const body = document.body;
+    if (!banner) {
+      root.style.removeProperty("--consent-banner-height");
+      body.removeAttribute("data-consent-banner-visible");
+      return;
+    }
+    body.dataset.consentBannerVisible = "true";
+    const setBannerHeight = () => {
+      root.style.setProperty(
+        "--consent-banner-height",
+        `${Math.ceil(banner.getBoundingClientRect().height)}px`,
+      );
+    };
+    const observer = new ResizeObserver(setBannerHeight);
+    setBannerHeight();
+    observer.observe(banner);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty("--consent-banner-height");
+      body.removeAttribute("data-consent-banner-visible");
+    };
+  }, [visible]);
 
   if (!visible) return null;
 
@@ -31,6 +61,7 @@ export default function ConsentBanner() {
 
   return (
     <div
+      ref={bannerRef}
       className="consent-banner"
       role="dialog"
       aria-labelledby="consent-title"

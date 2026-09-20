@@ -1,6 +1,6 @@
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
-import { buildRobotsTxt, buildSitemapXml } from "./src/seo/generate.ts";
+import { buildRedirects, buildRobotsTxt, buildSitemapXml } from "./src/seo/generate.ts";
 
 // Emits robots.txt and sitemap.xml from the route registry so the crawl surface
 // always matches the routes the app serves. Both honour VITE_SITE_INDEXABLE:
@@ -24,6 +24,11 @@ function seoFiles(env: Record<string, string>): Plugin {
         type: "asset",
         fileName: "sitemap.xml",
         source: buildSitemapXml({ origin, indexable, lastmod }),
+      });
+      this.emitFile({
+        type: "asset",
+        fileName: "_redirects",
+        source: buildRedirects(),
       });
     },
   };
