@@ -6,7 +6,7 @@
 // is what keeps demo and preview deployments out of search results even if the
 // deployment is publicly reachable.
 
-import { indexableRoutes, routeMeta } from "./routes.ts";
+import { indexableRoutes, routeMeta, publicRoutes } from "./routes.ts";
 
 function xmlEscape(value: string): string {
   return value
@@ -101,8 +101,8 @@ export function buildRedirects(): string {
     "# catch-all. Dashboard children share a prefix rule.",
     ...routeMeta
       .filter((route) => !route.path.startsWith("/dashboard/"))
-      .map((route) => route.path.padEnd(36) + "/index.html".padEnd(20) + "200"),
-    "/dashboard/*".padEnd(36) + "/index.html".padEnd(20) + "200",
+      .map((route) => route.path.padEnd(48) + (publicRoutes.some(page => page.path === route.path) ? (route.path === "/" ? "/index.html" : `${route.path}/index.html`) : "/spa.html").padEnd(60) + "200"),
+    "/dashboard/*".padEnd(36) + "/spa.html".padEnd(20) + "200",
     "",
   ];
 

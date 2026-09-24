@@ -1,8 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 
 const routes = [
-  ["/", "More room"],
-  ["/models", "Models & pricing"],
+  ["/", "Leading AI models."],
+  ["/models", "Great models."],
   ["/login", "Sign in to Takewing AI"],
   ["/signup", "Create your account"],
   ["/forgot-password", "Reset your password"],
@@ -23,7 +23,7 @@ async function signIn(page: Page, route: string) {
   await expect(page.locator(".dashboard-main")).toBeVisible();
 }
 
-test("wide layouts use the available screen space", async ({ page }, testInfo) => {
+test("wide homepage preserves its reviewed composition", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "Wide-screen regression");
   await page.setViewportSize({ width: 2550, height: 1340 });
   await page.goto("/");
@@ -32,8 +32,18 @@ test("wide layouts use the available screen space", async ({ page }, testInfo) =
   expect(home!.width).toBeLessThan(1600);
   expect(Math.abs(home!.x - (2550 - home!.x - home!.width))).toBeLessThan(20);
   await page.screenshot({ path: testInfo.outputPath("homepage-wide.png"), fullPage: true });
-  for (const [route] of routes.filter(([route]) => route.startsWith("/dashboard"))) {
+});
+
+test("wide dashboard routes use the available screen space", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "Wide-screen regression");
+  await page.setViewportSize({ width: 2550, height: 1340 });
+  await signIn(page, "/dashboard");
+  for (const route of [
+    "/dashboard", "/dashboard/models", "/dashboard/usage",
+    "/dashboard/billing", "/dashboard/api-keys", "/dashboard/settings",
+  ]) {
     await page.goto(route);
+    await expect(page.locator(".dashboard-main")).toBeVisible();
     const remainingSpace = await page.locator(".dashboard-main").evaluate(element =>
       document.documentElement.clientWidth - element.getBoundingClientRect().right,
     );
@@ -81,7 +91,7 @@ test("dashboard routes require an authenticated session", async ({ page }) => {
   );
 });
 
-test("navigation, history, missing pages and unusual topic names", async ({
+test("dashboard navigation and history", async ({
   page,
 }) => {
   await signIn(page, "/dashboard");
@@ -96,6 +106,9 @@ test("navigation, history, missing pages and unusual topic names", async ({
   await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
   await page.goBack();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Overview");
+});
+
+test("public missing pages and unusual topic names", async ({ page }) => {
   for (const path of [
     "/missing",
     "/information?topic=toString",
@@ -112,37 +125,37 @@ test("navigation, history, missing pages and unusual topic names", async ({
 test("catalogue filters, neutral detail links, modal Escape and focus return", async ({
   page,
 }) => {
-  await signIn(page, "/dashboard/models");
-  await page.getByLabel("Filter provider").selectOption("Gemini");
-  await page.getByLabel("Filter capability").selectOption("Image");
-  await expect(page.locator(".model-card")).toHaveCount(1);
-  const details = page.getByRole("button", { name: "View details" });
+  await page.goto("/models");
+  await page.getByLabel("Filter provider").click();
+  await page.getByRole("option", { name: "Google", exact: true }).click();
+  await page.getByLabel("Filter capability").click();
+  await page.getByRole("option", { name: "Image", exact: true }).click();
+  await expect(page.locator(".model-card")).toHaveCount(10);
+  const details = page.getByRole("button", { name: /View details/ }).first();
   await details.hover();
   expect(
     await details.evaluate((element) => getComputedStyle(element).color),
   ).toBe("rgb(221, 223, 226)");
   await details.click();
-  await expect(page.getByRole("dialog")).toContainText("Not confirmed");
+  await expect(page.getByRole("dialog")).toContainText("Availability not verified");
   await page.keyboard.press("Escape");
   await expect(details).toBeFocused();
   await page.getByRole("searchbox", { name: "Search models" }).fill("no match");
   await expect(
     page.getByRole("heading", { name: "No matching models" }),
   ).toBeVisible();
-  await page.getByLabel("Demo state").selectOption("error");
-  await expect(page.getByRole("alert")).toBeVisible();
-  await page.getByRole("button", { name: "Try again" }).click();
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await page.getByRole("searchbox", { name: "Search models" }).fill("");
+  await expect(page.locator(".model-card")).toHaveCount(10);
 });
 
 test("request filters combine, details are metadata only, and table scroll stays local", async ({
   page,
 }) => {
-  await signIn(page, "/dashboard/usage");
-  await page.getByLabel("Filter status").selectOption("Failed");
+  await signIn(page, "/dashboard/usage?period=all&model=A");
+  await page.getByLabel("Filter status").selectOption("failed");
   await expect(page.locator("tbody tr")).toHaveCount(1);
   await page.getByRole("button", { name: "Details for req_9c10" }).click();
-  await expect(page.getByRole("dialog")).toContainText("Illustrative error");
+  await expect(page.getByRole("dialog")).toContainText("Awaiting billing confirmation");
   await expect(page.getByRole("dialog")).toContainText(
     "No prompt or generated output",
   );
@@ -156,58 +169,28 @@ test("request filters combine, details are metadata only, and table scroll stays
   ).toBe(true);
 });
 
-test("sample key results retain modal focus and never create or revoke a credential", async ({
-  page,
-}) => {
-  const requests: string[] = [];
-  page.on("request", (request) => {
-    if (request.method() !== "GET") requests.push(request.url());
-  });
+test("sample key results retain modal focus and update only demo metadata", async ({ page }) => {
   await signIn(page, "/dashboard/api-keys");
-  const create = page.getByRole("button", {
-    name: "Create API key +",
-    exact: true,
-  });
+  const requests: string[] = [];
+  page.on("request", request => { if (request.method() !== "GET") requests.push(request.url()); });
+  const create = page.getByRole("button", { name: "Create API key +", exact: true });
   await create.click();
-  await page.getByLabel("Key name").fill("Example integration");
-  await page.getByRole("button", { name: "Preview creation" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Sample creation result" }),
-  ).toBeFocused();
-  await expect(page.getByRole("dialog")).toContainText(
-    "DEMO-ONLY-NOT-A-VALID-API-KEY",
-  );
-  await page.keyboard.press("Tab");
-  await expect(
-    page.getByRole("button", { name: "Close", exact: true }),
-  ).toBeFocused();
-  // Native modal dialogs make the background inert; browsers may still let Tab
-  // reach browser chrome, so DOM focus need not remain inside on every keypress.
-  expect(
-    await page
-      .getByRole("dialog")
-      .evaluate((element) => element.matches(":modal")),
-  ).toBe(true);
+  await page.getByLabel("Key name", { exact: true }).fill("Example integration");
+  await page.getByRole("button", { name: "Create demo key", exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText("DEMO-ONLY-NOT-A-VALID-API-KEY");
+  await expect(page.getByRole("dialog").getByRole("heading")).toBeFocused();
+  expect(await page.getByRole("dialog").evaluate(element => element.matches(":modal"))).toBe(true);
   await page.keyboard.press("Escape");
   await expect(create).toBeFocused();
   await expect(page.locator("tbody tr")).toHaveCount(3);
-  const revoke = page.getByRole("button", {
-    name: "Revoke Production",
-    exact: true,
-  });
-  await revoke.click();
-  await page.getByRole("button", { name: "Simulate revoke" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Revocation preview" }),
-  ).toBeFocused();
+  await page.getByRole("button", { name: "Revoke Production", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm demo revocation", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Sample key revoked", exact: true })).toBeFocused();
   await page.keyboard.press("Escape");
-  await expect(revoke).toBeFocused();
-  await expect(
-    page.locator("tbody .status", { hasText: "Active" }),
-  ).toHaveCount(2);
+  await expect(page.getByRole("heading", { name: "Your API keys", exact: true })).toBeFocused();
+  await expect(page.locator("tbody tr")).toHaveCount(2);
   expect(requests).toEqual([]);
 });
-
 test("account menu stays in the viewport and settings use the live profile", async ({
   page,
 }) => {
@@ -252,21 +235,21 @@ test("account menu stays in the viewport and settings use the live profile", asy
   );
   await page.getByRole("checkbox", { name: "Product updates" }).uncheck();
   await page.getByRole("button", { name: "Save preferences" }).click();
-  await expect(page.getByRole("status")).toContainText("local demo state");
+  await expect(page.getByRole("status")).toContainText("Mock preferences saved");
 });
 
 test("billing cannot accept payments and chart tabs expose updated data", async ({
   page,
 }) => {
   await signIn(page, "/dashboard/billing");
-  await page.getByRole("button", { name: "Add credits +" }).click();
+  await page.getByRole("button", { name: "Review $5 package", exact: true }).click();
   await expect(page.getByRole("dialog")).toContainText(
-    "cannot accept payments",
+    "No charge will be made",
   );
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Receipt ↗ for order_1028" }).click();
+  await page.getByRole("button", { name: "Details for demo-order-sample-1" }).click();
   await expect(page.getByRole("dialog")).toContainText(
-    "No document is generated",
+    "no real payment, refund or document",
   );
   await page.keyboard.press("Escape");
   await signIn(page, "/dashboard");
@@ -275,7 +258,7 @@ test("billing cannot accept payments and chart tabs expose updated data", async 
   await expect(
     page.getByRole("tab", { name: "Credits used", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("tabpanel")).toContainText("128.40");
+  await expect(page.getByRole("tabpanel")).toContainText(await page.getByTestId("overview-credits").innerText());
   await expect(
     page.getByRole("img", { name: /Sample daily credits used/ }),
   ).toBeVisible();

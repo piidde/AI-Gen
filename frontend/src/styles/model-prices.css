@@ -1,0 +1,22 @@
+.landing-prices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-bottom: 20px; }
+.landing-rate:only-child { grid-column: 1 / -1; }
+.landing-rate-label { display: block; color: var(--text); font-size: 16px; font-weight: 600; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.landing-price-label { display: block; font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+.landing-our-price { padding-top: 18px; }
+.landing-our-price .landing-price-label { color: var(--accent); }
+.landing-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin: 8px 0; }
+.landing-price strong { font-size: 40px; font-weight: 600; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+.landing-price > span, .price-approx { color: var(--muted); font-size: 12px; letter-spacing: 0; }
+.landing-official { margin: 20px 0 16px; padding: 16px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
+.landing-official .official-amount { display: inline-block; font-size: 26px; font-weight: 500; color: var(--text); text-decoration-color: var(--muted); text-decoration-thickness: 1px; margin-right: 8px; }
+.landing-unit { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.landing-image-official p { font-size: 16px; margin-bottom: 8px; }
+.landing-image-official a { font-size: 14px; }
+.landing-saving { display: inline-block; background: var(--accent); color: #101412; border-radius: 6px; padding: 9px 14px; font-size: 16px; font-weight: 600; margin-top: 4px; }
+
+.price-reference-basis { margin-top: 14px; font-size: 12px; color: var(--muted); }
+.price-reference-basis p { font-size: 12px; margin: 0 0 8px; overflow-wrap: anywhere; }
+.reference-card .landing-prices { margin-top: 20px; }
+@media(max-width:650px) { .landing-prices { gap: 12px; } .landing-price strong { font-size: 30px; } .landing-official { padding: 12px; } .landing-official .official-amount { font-size: 23px; } .landing-saving { font-size: 14px; padding: 8px 10px; } }
+
+.landing-official .discounted { text-decoration-line: line-through; }

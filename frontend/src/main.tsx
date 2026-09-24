@@ -1,5 +1,5 @@
 import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, hydrateRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import "@fontsource/geist/latin-400.css";
 import "@fontsource/geist/latin-500.css";
@@ -7,20 +7,24 @@ import "@fontsource/geist/latin-600.css";
 import "./styles/tokens.css";
 import "./styles/global.css";
 import "./styles/auth.css";
-import { AuthProvider } from "./auth/AuthProvider";
-import { initAnalytics } from "./seo/analytics";
-import App from "./App";
+import "./styles/help.css";
+import { initAnalytics, initFunnelMeasurement } from "./seo/analytics";
+import App from "./BrowserApp";
 
-// Establish Consent Mode defaults before any tag can load, so pre-consent
-// traffic is modelled rather than dropped. Loads nothing when no tag is set.
+// Establish denied defaults before any analytics tag can load. No optional
+// measurement is sent before consent; advertising stays disabled.
 initAnalytics();
+initFunnelMeasurement();
 
-createRoot(document.getElementById("root")!).render(
+const tree = (
   <StrictMode>
-    <BrowserRouter>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
+    {/* URL-backed controlled inputs need synchronous router state updates. */}
+    <BrowserRouter useTransitions={false}>
+      <App />
     </BrowserRouter>
-  </StrictMode>,
+  </StrictMode>
 );
+
+const root = document.getElementById("root")!;
+if (root.dataset.prerendered === "true") hydrateRoot(root, tree);
+else createRoot(root).render(tree);

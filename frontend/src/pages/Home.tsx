@@ -1,11 +1,17 @@
+import HomeDashboardPreview from "../components/HomeDashboardPreview";
 import { Link } from "react-router-dom";
-import Brand from "../components/Brand";
+import PublicHeader from "../components/PublicHeader";
+import PublicFooter from "../components/PublicFooter";
 import Icon from "../components/Icon";
-import UsageChart from "../components/UsageChart";
-import { models, requests, summary } from "../demo/fixtures";
+import HomeFlow from "../components/HomeFlow";
+import ImageDotField from "../components/ImageDotField";
+import ModelPrices from "../components/ModelPrices";
+import { catalogue, snapshot } from "../content/catalogue";
+import { familyPages } from "../content/modelFamilies";
 import openaiIcon from "../assets/openai.svg";
 import geminiIcon from "../assets/gemini.svg";
 import "../styles/home.css";
+import "../styles/home-refresh.css";
 
 function LiftArtwork() {
   return (
@@ -40,11 +46,23 @@ function LiftArtwork() {
         </g>
       </svg>
       <div className="home-caption">
-        A LITTLE LESS FRICTION. A LITTLE MORE LIFT.
+        IMAGE & TEXT. THROUGH ONE API.
       </div>
     </div>
   );
 }
+
+const selectedModels = [
+  { id: "gpt-image-2.5", name: "GPT Image 2.5" },
+  { id: "nano-banana-pro", name: "Nano Banana Pro" },
+  { id: "gpt-6-astra", name: "GPT-6 Astra" },
+  { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash" },
+].map(({ id, name }) => {
+  const model = catalogue.find(model => model.upstreamId === id);
+  if (!model) throw new Error(`Missing homepage reference: ${id}`);
+  return { ...model, name };
+});
+
 
 export default function Home() {
   return (
@@ -53,94 +71,50 @@ export default function Home() {
         Skip to content
       </a>
       <div className="home-preview">
-        Local demo · Fictional data · Accounts, payments and API access are not
-        connected
+        Preview · Explore the pricing and dashboard. Paid API access is not live yet.
       </div>
       <div className="home-wrap">
-        <header className="home-top">
-          <Brand />
-          <nav className="home-links" aria-label="Main navigation">
-            <Link to="/models">Models &amp; pricing</Link>
-            <Link to="/docs">Docs</Link>
-            <Link to="/support">Support</Link>
-          </nav>
-          <div className="home-links home-account-links">
-            <Link to="/login">Sign in</Link>
-            <Link className="button" to="/login?next=%2Fdashboard">
-              Explore demo
-            </Link>
-          </div>
-        </header>
+        <PublicHeader />
 
         <main id="main-content" tabIndex={-1}>
           <section className="home-hero" aria-labelledby="home-title">
             <div>
-              <div className="home-overline">AI access, within reach</div>
+              <div className="home-overline">AI APIs for developers</div>
               <h1 id="home-title">
-                More room
-                <br />
-                for your ideas.
+                Leading AI models.<br /><span>Lowest API prices.</span>
               </h1>
               <p>
-                Affordable AI API access for the things you're building. Keep
-                your workflow moving, with costs you can follow.
+                Image and text generation APIs, built to cut your AI costs. Compare published rates, connect your own apps, and pay as you go.
               </p>
               <div className="home-actions">
-                <Link className="button" to="/models">
-                  Explore models ↗
+                <Link className="button" to="/signup">
+                  Get started
                 </Link>
-                <Link className="button secondary" to="/docs">
-                  Read the quickstart
+                <Link className="button secondary" to="/models">
+                  Explore models &amp; pricing ↗
                 </Link>
               </div>
               <div className="home-small home-muted">
-                For independent builders and small teams.
+                Image + text APIs · Prepaid credits · No subscription
               </div>
             </div>
             <LiftArtwork />
           </section>
-
-          <div className="home-benefits home-rule">
-            <article>
-              <span className="home-num">01 / COST</span>
-              <h3>Make the economics work.</h3>
-              <p>
-                Find model pricing that fits your workflow, with billing units
-                clearly explained.
-              </p>
-            </article>
-            <article>
-              <span className="home-num">02 / CLARITY</span>
-              <h3>Know where to start.</h3>
-              <p>
-                A focused quickstart and one place for the documentation you
-                need.
-              </p>
-            </article>
-            <article>
-              <span className="home-num">03 / CONTROL</span>
-              <h3>See what you're using.</h3>
-              <p>
-                Manage API keys, inspect requests, and track your balance from
-                one dashboard.
-              </p>
-            </article>
-          </div>
 
           <section
             className="home-section home-rule"
             aria-labelledby="home-models-title"
           >
             <div className="home-sectionhead">
-              <h2 id="home-models-title">Choose with the costs in view.</h2>
+              <h2 id="home-models-title">Popular models. Clear API pricing.</h2>
               <p>
-                Compare model capabilities and billing units before you
-                integrate.
+                See the model, the price and the billing unit at a glance.
               </p>
             </div>
             <div className="home-models">
-              {models.slice(0, 3).map((model) => (
-                <article className="panel model-card" key={model.id}>
+              {selectedModels.map((model) => (
+                <article className={`panel model-card ${model.upstreamId === "gpt-image-2.5" ? "model-featured" : ""}`} key={model.upstreamId}>
+                  {model.upstreamId === "gpt-image-2.5" && <ImageDotField />}
                   <div className="provider-line">
                     <img
                       className="provider-icon"
@@ -152,31 +126,31 @@ export default function Home() {
                       decoding="async"
                     />
                     <span>{model.provider}</span>
-                    <span className="capability"><Icon name={model.capability === "Text" ? "text" : "image"} />{model.capability}</span>
+                    <span className="capability"><Icon name={model.modality === "text" ? "text" : "image"} />{model.modality === "text" ? "Text" : "Image"}</span>
                   </div>
                   <h3>{model.name}</h3>
-                  <p>{model.description}</p>
-                  <div className="billing-rows">
-                    <div className="bill-row"><span>{model.capability === "Text" ? "Input / 1M tokens" : "Per image"}</span><strong className="price">{model.rates[0]}</strong></div>
-                    {model.capability === "Text" && <div className="bill-row"><span>Output / 1M tokens</span><strong className="price">{model.rates[1]}</strong></div>}
-                  </div>
-                  <footer><span>Illustrative model · Fictional USD price</span></footer>
+                  <ModelPrices model={model} compact />
+                  <footer>
+                    <Link className="text-link" to={familyPages.some(page => page.family === model.family) ? "/models/" + familyPages.find(page => page.family === model.family)!.slug : `/models?q=${encodeURIComponent(model.upstreamId)}`}>Model details ↗</Link>
+                  </footer>
                 </article>
               ))}
             </div>
             <div className="home-sectionnote">
-              <p>Model availability, prices and billing units are unverified.</p>
+              <p>Preview rates in USD. Percentages compare published rates before rounding. Image examples use the stated model and settings, excluding extra usage; actual savings depend on your request. Price basis: {snapshot.checkedOn}. Image prices are per request.</p>
               <Link className="text-link home-small" to="/models">
                 View all models ↗
               </Link>
             </div>
           </section>
 
+          <HomeFlow />
+
           <section className="home-section home-product home-rule" aria-labelledby="home-dashboard-title">
             <div className="home-product-copy">
-              <div className="home-overline">A clearer overview</div>
-              <h2 id="home-dashboard-title">Your usage,<br />clearly in view.</h2>
-              <p>Keep your balance, request activity and API access together. See the details behind your usage, without losing the bigger picture.</p>
+              <div className="home-overline">Stay on top of your spend</div>
+              <h2 id="home-dashboard-title">Know what you spend.<br />See every request.</h2>
+              <p>Check your balance, track API costs and inspect individual charges in one dashboard.</p>
               <ul className="home-product-points">
                 <li><Icon name="wallet" />Balance and credits at a glance</li>
                 <li><Icon name="usage" />Usage over time, with request details</li>
@@ -184,75 +158,35 @@ export default function Home() {
               </ul>
               <Link className="text-link" to="/login?next=%2Fdashboard">Explore the dashboard demo ↗</Link>
             </div>
-            <div className="panel home-dashboard-preview" aria-label="Dashboard preview with fictional data">
-              <div className="home-preview-top"><span>Account / Overview</span><span>Demo · Fictional data</span></div>
-              <div className="home-preview-metrics">
-                <div><span>Available balance</span><strong>{summary.balance}<small> credits</small></strong></div>
-                <div><span>Total requests</span><strong>{summary.requests}</strong></div>
-              </div>
-              <UsageChart />
-              <div className="home-preview-requests">
-                <h3>Recent requests</h3>
-                {requests.slice(0, 2).map((request) => <div className="home-preview-request" key={request.id}><span>Sample model {request.model}</span><span className="status"><i className="dot" />{request.status}</span><span>{request.credits} credits</span></div>)}
-              </div>
-            </div>
+            <HomeDashboardPreview />
           </section>
-
-          <section
-            className="home-section home-rule"
-            aria-labelledby="home-start-title"
-          >
-            <div className="home-sectionhead">
-              <h2 id="home-start-title">From an idea to a first request.</h2>
-              <p>
-                Use Takewing AI through your existing tools and integrations.
-              </p>
-            </div>
-            <div className="home-steps">
-                <div className="home-step">
-                  <span className="home-num">01</span>
-                  <div>
-                    <h3>Choose a model.</h3>
-                    <p>Compare capabilities and pricing units for your workload.</p>
-                  </div>
-                </div>
-                <div className="home-step">
-                  <span className="home-num">02</span>
-                  <div>
-                    <h3>Connect your integration.</h3>
-                    <p>Use an API key in your own app or workflow. Generation stays in your tools.</p>
-                  </div>
-                </div>
-                <div className="home-step">
-                  <span className="home-num">03</span>
-                  <div>
-                    <h3>Track your usage.</h3>
-                    <p>Review requests and follow your balance from one dashboard.</p>
-                  </div>
-                </div>
+          <section className="home-section home-rule home-faq" aria-labelledby="home-faq-title">
+            <div className="home-sectionhead"><h2 id="home-faq-title">Before you start.</h2><p>Practical answers about cost and access.</p></div>
+            <details><summary>Can I generate images or text on this website?</summary><p>Generation is API-only. You use your own application or API client; this website manages your account, keys, billing and usage.</p></details>
+            <details><summary>How much can I save?</summary><p>Our cards show savings against the stated official price reference. For images, check the size and quality in the comparison note. Your total depends on the model, settings and any additional input or thinking usage.</p></details>
+            <details><summary>Are failed requests always refunded?</summary><p>Credits are restored for a failed request only when there is no upstream cost. A billed policy rejection stays charged. If a result is uncertain, inspect the request status before retrying.</p></details>
+            <details><summary>Do I need a subscription?</summary><p>No. Use prepaid credits across image and text models, with no monthly subscription. Credits never expire. Paid access is not live yet.</p></details>
+            <details><summary>Where can I check availability or get help?</summary><p>See <Link className="text-link" to="/status">service status</Link>, <Link className="text-link" to="/support">support guidance</Link> and the <Link className="text-link" to="/docs">documentation status</Link>. An unavailable status source does not mean the service is healthy.</p></details>
+          </section>
+          <section className="home-section home-guides" aria-labelledby="home-guides-title">
+            <div className="home-sectionhead"><h2 id="home-guides-title">A little clarity.<br />A better comparison.</h2><p>Know what goes into an image request or a million tokens.</p></div>
+            <div className="home-guide-grid">
+              <Link className="home-guide" to="/blog/understanding-image-model-rates"><div className="guide-art guide-image-art" aria-hidden="true"><span /><span /><span><Icon name="image" /></span><i>1 request</i></div><div><span className="home-overline">Image pricing</span><h3>What does an image cost? <span aria-hidden="true">↗</span></h3><p>Request prices, resolutions and quality, explained.</p></div></Link>
+              <Link className="home-guide" to="/blog/understanding-text-token-rates"><div className="guide-art guide-text-art" aria-hidden="true"><span>Input <i /></span><span>Output <i /></span><b>1M tokens</b></div><div><span className="home-overline">Text pricing</span><h3>Make sense of token rates. <span aria-hidden="true">↗</span></h3><p>Understand input, output and cached-token pricing.</p></div></Link>
             </div>
           </section>
           <section className="home-closing" aria-labelledby="home-closing-title">
-            <div className="home-overline">Make room for what’s next</div>
-            <h2 id="home-closing-title">Give your next idea<br />room to grow.</h2>
-            <p>Explore the models. Find a fit for what you’re building.</p>
+            <div className="home-overline">Build more. Spend less.</div>
+            <h2 id="home-closing-title">Your next idea.<br />Less overhead.</h2>
+            <p>Find your model. See your price. Build from there.</p>
             <div className="home-actions">
-              <Link className="button" to="/models">Explore models ↗</Link>
+              <Link className="button" to="/models">Explore models &amp; pricing ↗</Link>
               <Link className="text-link" to="/docs">Read the documentation ↗</Link>
             </div>
           </section>
         </main>
 
-        <footer className="home-foot">
-          <Brand />
-          <nav className="home-links" aria-label="Footer navigation">
-            <Link to="/support">Support</Link>
-            <Link to="/status">Service status</Link>
-            <Link to="/contact">Contact</Link>
-            <Link to="/privacy">Privacy</Link>
-            <Link to="/terms">Terms</Link>
-          </nav>
-        </footer>
+        <PublicFooter />
       </div>
     </div>
   );

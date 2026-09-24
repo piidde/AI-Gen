@@ -1,17 +1,17 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import type { User } from "@supabase/supabase-js";
-import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { supabase, SUPABASE_CONFIG_ERROR } from "../auth/supabase";
 import Button from "../components/Button";
+import BillingDetailsForm from "../components/BillingDetailsForm";
 import { DemoBar, DataState } from "../components/DemoState";
 import type { DemoState } from "../components/DemoState";
-import Dialog from "../components/Dialog";
+import AccountAccess from "../components/AccountAccess";
+import NotificationSettings from "../components/NotificationSettings";
 import { MetricIcon } from "../components/Icon";
 import PageHeading from "../components/PageHeading";
 import Tabs from "../components/Tabs";
-import { profile } from "../demo/fixtures";
 
 const sections = ["Profile", "Security", "Notifications"] as const;
 
@@ -34,13 +34,8 @@ export default function Settings() {
   const [state, setState] = useState<DemoState>("populated");
   const [tab, setTab] = useState<(typeof sections)[number]>("Profile");
   const [name, setName] = useState(() => getDisplayName(user));
-  const [productUpdates, setProductUpdates] = useState(profile.productUpdates);
-  const [documentationUpdates, setDocumentationUpdates] = useState(
-    profile.documentationUpdates,
-  );
   const [message, setMessage] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
-  const [security, setSecurity] = useState(false);
 
   useEffect(() => {
     setName(getDisplayName(user));
@@ -79,14 +74,6 @@ export default function Settings() {
     setMessage("Profile saved.");
   }
 
-  function saveNotifications(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setMessage(
-      state === "save-error"
-        ? "Simulated save failure. Your edits are still here."
-        : "Notification preferences remain local demo state and were not saved.",
-    );
-  }
   return (
     <>
       <DemoBar
@@ -127,6 +114,7 @@ export default function Settings() {
           tabIndex={0}
         >
           {tab === "Profile" && (
+            <>
             <form className="panel setting-section" onSubmit={saveProfile}>
               <h2>
                 <MetricIcon name="profile" />
@@ -151,7 +139,7 @@ export default function Settings() {
                   disabled={savingProfile}
                 />
                 <p id="name-hint">
-                  Use the name you’d like displayed in your account.
+                  Use the name you would like displayed in your account.
                 </p>
               </div>
               <div className="field">
@@ -180,121 +168,14 @@ export default function Settings() {
                 </span>
               </div>
             </form>
-          )}
-          {tab === "Security" && (
-            <>
-              <div className="panel setting-section">
-                <h2>
-                  <MetricIcon name="keys" />
-                  Account access
-                </h2>
-                <p>
-                  Keep sign-in details and recovery options under your control.
-                </p>
-                <div className="setting-row">
-                  <div>
-                    <h3>Sign-in method</h3>
-                    <p>
-                      Available controls depend on your account’s authentication
-                      method.
-                    </p>
-                  </div>
-                  <Button
-                    className="secondary"
-                    onClick={() => setSecurity(true)}
-                  >
-                    Review sign-in options
-                  </Button>
-                </div>
-                <div className="setting-row">
-                  <div>
-                    <h3>API access</h3>
-                    <p>
-                      Manage the keys used by your apps separately from account
-                      sign-in.
-                    </p>
-                  </div>
-                  <Link className="text-link" to="/dashboard/api-keys">
-                    Manage API keys ↗
-                  </Link>
-                </div>
-              </div>
-              <p className="review-note">
-                Authentication is connected through Supabase Auth. Password
-                changes, multifactor authentication and session controls are
-                not available in this first slice.
-              </p>
+            <BillingDetailsForm />
             </>
           )}
-          {tab === "Notifications" && (
-            <>
-              <form className="panel setting-section" onSubmit={saveNotifications}>
-                <h2>
-                  <MetricIcon name="bell" />
-                  Notification preferences
-                </h2>
-                <p>Choose which optional updates you’d like to receive.</p>
-                <label className="setting-row">
-                  <span>
-                    <strong>Product updates</strong>
-                    <span className="setting-description">
-                      News about features and improvements.
-                    </span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    aria-label="Product updates"
-                    checked={productUpdates}
-                    onChange={(event) => {
-                      setProductUpdates(event.target.checked);
-                      setMessage("");
-                    }}
-                  />
-                </label>
-                <label className="setting-row">
-                  <span>
-                    <strong>Documentation updates</strong>
-                    <span className="setting-description">
-                      Changes to guides and integration documentation.
-                    </span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    aria-label="Documentation updates"
-                    checked={documentationUpdates}
-                    onChange={(event) => {
-                      setDocumentationUpdates(event.target.checked);
-                      setMessage("");
-                    }}
-                  />
-                </label>
-                <div className="form-footer">
-                  <Button type="submit">Save preferences</Button>
-                  <span
-                    role="status"
-                    className={`save-status ${state === "save-error" ? "error" : ""}`}
-                  >
-                    {message}
-                  </span>
-                </div>
-              </form>
-              <p className="review-note">
-                Demo categories only. Notification types and delivery channels
-                are not finalized; these controls do not subscribe you to
-                anything.
-              </p>
-            </>
-          )}
+          {tab === "Security" && <AccountAccess failSave={state === "save-error"} />}
+          {tab === "Notifications" && <NotificationSettings failSave={state === "save-error"} />}
         </section>
       </DataState>
-      {security && (
-        <Dialog title="Sign-in controls" onClose={() => setSecurity(false)}>
-          <p>
-            The final controls will match the chosen authentication system. This
-            demo does not change passwords, sessions or recovery settings.
-          </p>
-        </Dialog>
-      )}
+
     </>
   );
 }

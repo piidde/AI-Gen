@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import AuthShell from "../components/AuthShell";
 import Button from "../components/Button";
 import { useAuth } from "../auth/AuthProvider";
@@ -12,6 +12,8 @@ export default function UpdatePassword() {
   const [searchParams] = useSearchParams();
   const next = getSafeNext(searchParams.get("next"));
   const { loading, session } = useAuth();
+  const { hash } = useLocation();
+  const invalidLink = searchParams.has("error") || new URLSearchParams(hash.slice(1)).has("error");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +22,7 @@ export default function UpdatePassword() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending || loading || !session || invalidLink) return;
     setError(null);
     setNotice(null);
     if (password.length < 8) {
@@ -56,7 +59,7 @@ export default function UpdatePassword() {
       title="Choose a new password"
       description="Set a new password for your Takewing AI account."
     >
-      {!loading && !session && (
+      {!loading && (!session || invalidLink) && (
         <p className="auth-warning" role="alert">
           This page needs a valid password-reset link. Request a new one if the link has expired.
         </p>
@@ -96,10 +99,13 @@ export default function UpdatePassword() {
             {notice}
           </p>
         )}
-        <Button className="auth-submit" type="submit" disabled={pending}>
+        <Button className="auth-submit" type="submit" disabled={pending || loading || !session || invalidLink}>
           {pending ? "Updating…" : "Update password"}
         </Button>
       </form>
+      <p className="auth-footer">
+        <Link to={`/forgot-password?next=${encodeURIComponent(next)}`}>Request a new reset link</Link>
+      </p>
       <p className="auth-footer">
         <Link to={`/login?next=${encodeURIComponent(next)}`}>Back to sign in</Link>
       </p>

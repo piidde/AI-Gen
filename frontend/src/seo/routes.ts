@@ -6,6 +6,10 @@
 // anything behind it. Those pages carry no unique public value and leak
 // account-flow URLs into results where users mistake them for the product.
 
+import { familyPages } from "../content/modelFamilies.ts";
+import { updates } from "../content/serviceStatus.ts";
+import { publishedBlogArticles } from "../content/blog.ts";
+
 export type RouteMeta = {
   /** Path as registered in the router. */
   path: string;
@@ -21,11 +25,16 @@ export type RouteMeta = {
 };
 
 export const routeMeta: RouteMeta[] = [
+  { path: "/blog", title: "Image and text cost guides", description: "Understand image request tariffs and text token components with dated reference guides.", indexable: true, changefreq: "monthly" },
+  ...publishedBlogArticles.map(article => ({ path: `/blog/${article.slug}`, title: article.title, description: article.summary, indexable: true, changefreq: "monthly" as const })),
+  { path: "/updates", title: "Updates", description: "Sample product announcements and the Takewing updates archive preview.", indexable: false },
+  ...updates.map(update => ({ path: `/updates/${update.slug}`, title: update.title, description: update.summary, indexable: false })),
+  ...familyPages.map(page => ({ path: `/models/${page.slug}`, title: `${page.family} models & pricing`, description: page.description, indexable: true, priority: 0.8, changefreq: "weekly" as const })),
   {
     path: "/",
-    title: "Affordable AI API access for independent builders",
+    title: "Leading AI models. Lower API prices.",
     description:
-      "Takewing AI gives independent builders and small teams affordable access to AI models through one API, with clear billing units and usage you can follow.",
+      "Image and text generation APIs built to cut your AI costs. Explore Takewing pricing, official rate references and the prepaid dashboard preview.",
     indexable: true,
     priority: 1.0,
     changefreq: "weekly",
@@ -43,7 +52,7 @@ export const routeMeta: RouteMeta[] = [
     path: "/docs",
     title: "Documentation and quickstart",
     description:
-      "Start here: quickstart examples, authentication and the API reference for calling Takewing AI models from your own application.",
+      "Documentation preparation status. Quickstart and API examples await a verified Takewing API contract.",
     indexable: true,
     priority: 0.9,
     changefreq: "weekly",
@@ -61,7 +70,7 @@ export const routeMeta: RouteMeta[] = [
     path: "/status",
     title: "Service status",
     description:
-      "Current operational status and incident history for the Takewing AI API.",
+      "Service status source availability, fictional incident previews and dated model reference notices.",
     indexable: true,
     priority: 0.5,
     changefreq: "daily",
@@ -78,7 +87,7 @@ export const routeMeta: RouteMeta[] = [
     path: "/privacy",
     title: "Privacy notice",
     description:
-      "How Takewing AI handles your account data, request metadata and cookies.",
+      "Review-stage data-handling information, publication gaps and revisitable cookie preferences.",
     indexable: true,
     priority: 0.3,
     changefreq: "yearly",
@@ -87,7 +96,7 @@ export const routeMeta: RouteMeta[] = [
     path: "/terms",
     title: "Terms of service",
     description:
-      "The terms that apply to using the Takewing AI API and prepaid credits.",
+      "Review-stage product policies for prepaid credits, conditional refunds and deletion; legal terms await publication.",
     indexable: true,
     priority: 0.3,
     changefreq: "yearly",
@@ -173,6 +182,9 @@ export const routeMeta: RouteMeta[] = [
 
 /** Routes that belong in the sitemap, in sitemap order. */
 export const indexableRoutes = routeMeta.filter((route) => route.indexable);
+
+export const spaPaths = ['/information', '/login', '/signup', '/forgot-password', '/update-password', '/auth/callback'];
+export const publicRoutes = routeMeta.filter(route => !route.path.startsWith('/dashboard') && !spaPaths.includes(route.path));
 
 /** Look up metadata for a pathname, ignoring a trailing slash. */
 export function findRouteMeta(pathname: string): RouteMeta | undefined {

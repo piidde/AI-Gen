@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" role="img">
+  <title>Image request rate evidence</title>
+  <rect width="960" height="420" rx="24" fill="#151719"/>
+  <circle cx="480" cy="205" r="108" fill="#1f2326" stroke="#57c99b" stroke-width="4"/>
+  <g fill="#f2f2f3" font-family="system-ui,sans-serif" font-size="24" text-anchor="middle">
+    <text x="480" y="197">Request</text><text x="480" y="229">rate</text>
+    <text x="155" y="95">Resolution</text><text x="805" y="95">Output count</text><text x="155" y="345">Settings</text><text x="805" y="345">Other inputs</text>
+  </g>
+  <g stroke="#4d5055" stroke-width="4"><path d="M230 110l160 58"/><path d="M730 110l-160 58"/><path d="M230 325l160-67"/><path d="M730 325l-160-67"/></g>
+</svg>

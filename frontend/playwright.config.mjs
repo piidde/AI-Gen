@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 export default defineConfig({
   testDir: "./tests",
+  testIgnore: "auth-fixture.spec.ts",
   outputDir: join(tmpdir(), "takewing-frontend-test-results"),
   reporter: "list",
   workers: 1,

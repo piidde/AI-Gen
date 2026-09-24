@@ -40,10 +40,14 @@ on environment configuration rather than on code changes.
   titles, descriptions, canonicals, robots directives and sitemap entries.
 - Account and dashboard routes are marked non-indexable permanently, independent
   of the deployment flag.
-- Analytics and advertising tag IDs are configuration. When unset, no
+- **Superseded for advertising by the accepted organic-only scope (2026-09-20):**
+  the original decision made analytics and advertising tag IDs configuration. When unset, no
   third-party script loads and no consent banner appears. When set, Consent Mode
   defaults are established before any tag loads, and the tag script is requested
   only after the visitor consents.
+- Current implementation accepts only the analytics identifier. Advertising IDs
+  are ignored and legacy advertising grants become denied. Cookie preferences are
+  revisitable and synchronized with the banner; deployment verification remains required.
 - Structured data describes the organization, the website and breadcrumbs only.
   No `Product` or `Offer` markup is emitted while prices remain unverified.
 
@@ -75,6 +79,12 @@ another page.
 - The consent banner occupies bottom screen space once a tag ID is configured.
 
 ## Known limitations
+
+S11 update (2026-09-20): ADR-005 is implemented locally. Public documents now carry
+route content and correct head directives before JavaScript; F-001 is resolved
+for artifacts, with deployed verification still required. Organic-only funnel
+preparation and current crawler guidance are recorded in `../ACQUISITION.md`.
+The older limitations below describe the pre-S11 state, not current build output.
 
 Update from the 2026-09-20 frontend review: public content prerendering is now
 accepted direction, with the specific mechanism/deployment still to be decided.

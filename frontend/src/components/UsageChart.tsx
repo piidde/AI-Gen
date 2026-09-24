@@ -2,11 +2,24 @@ import { useState } from "react";
 import { chartMetrics } from "../demo/fixtures";
 import Tabs from "./Tabs";
 
-export default function UsageChart() {
+export default function UsageChart({ daily, totals }: {
+  daily?: { day: string; requests: number; credits: string }[];
+  totals?: { requests: number; credits: string };
+}) {
   const [metric, setMetric] = useState<keyof typeof chartMetrics>("Requests");
-  const data = chartMetrics[metric];
+  const values = daily?.map(day => metric === "Requests" ? day.requests : Number(day.credits));
+  const observedMax = values ? Math.max(...values) || 1 : 1;
+  // Request counts use whole-number ticks across the three grid intervals.
+  const max = metric === 'Requests' ? Math.ceil(observedMax / 3) * 3 : observedMax;
+  const data = values && totals ? {
+    values, max, total: metric === "Requests" ? String(totals.requests) : totals.credits,
+    unit: metric === "Requests" ? "requests" : "credits used",
+    axis: [max, max * 2 / 3, max / 3, 0].map(value => value.toLocaleString("en-US", { maximumFractionDigits: 2 })),
+  } : chartMetrics[metric];
+  const labels = daily?.map(day => new Date(`${day.day}T12:00:00`).toLocaleDateString("en", { month: "short", day: "numeric" }))
+    ?? ["Sep 10", "Sep 11", "Sep 12", "Sep 13", "Sep 14", "Sep 15", "Sep 16"];
   const points = data.values.map((value, index) => [
-    index * 110,
+    index * 660 / Math.max(1, data.values.length - 1),
     180 - (value / data.max) * 180,
   ]);
   const line = points
@@ -31,19 +44,19 @@ export default function UsageChart() {
         </div>
         <div className="plot">
           <div className="axis" aria-hidden="true">
-            {data.axis.map((value) => (
-              <span key={value}>{value}</span>
+            {data.axis.map((value, index) => (
+              <span key={index}>{value}</span>
             ))}
           </div>
           <svg
             viewBox="0 0 660 180"
             preserveAspectRatio="none"
             role="img"
-            aria-label={`Sample daily ${metric.toLowerCase()}, September 10 to 16`}
+            aria-label={`Sample daily ${metric.toLowerCase()}, ${labels[0]} to ${labels.at(-1)}`}
           >
             <desc>
               {data.values
-                .map((value, index) => `September ${index + 10}: ${value}`)
+                .map((value, index) => `${labels[index]}: ${daily && metric === "Credits used" ? daily[index]!.credits : value}`)
                 .join("; ")}
             </desc>
             <defs>
@@ -74,21 +87,21 @@ export default function UsageChart() {
                 fill="#57C99B"
               >
                 <title>
-                  Sep {index + 10}: {data.values[index]} {metric.toLowerCase()}
+                  {`${labels[index]}: ${daily && metric === "Credits used" ? daily[index]!.credits : data.values[index]} ${metric.toLowerCase()}`}
                 </title>
               </circle>
             ))}
           </svg>
         </div>
         <div className="dates" aria-hidden="true">
-          {["Sep 10", "11", "12", "13", "14", "15", "16"].map((day) => (
+          {labels.filter((_, index) => index === 0 || index === labels.length - 1 || index % Math.ceil(labels.length / 7) === 0).map((day) => (
             <span key={day}>{day}</span>
           ))}
         </div>
         <div className="legend">
           <i className="dot" />
           <span>{metric === "Requests" ? "All requests" : metric}</span>
-          <span>Daily totals · UTC</span>
+          <span>Daily totals · {daily ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC"}</span>
         </div>
       </div>
     </section>

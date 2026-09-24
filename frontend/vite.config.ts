@@ -1,4 +1,8 @@
 import { defineConfig, loadEnv, type Plugin } from "vite";
+import { prerenderSite } from "./scripts/prerender.mjs";
+import { resolve } from "node:path";
+import { readFile } from "node:fs/promises";
+import { publicRoutes, spaPaths } from "./src/seo/routes.ts";
 import react from "@vitejs/plugin-react";
 import { buildRedirects, buildRobotsTxt, buildSitemapXml } from "./src/seo/generate.ts";
 
@@ -50,11 +54,35 @@ function vendorChunk(moduleId: string): string | undefined {
   return undefined;
 }
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, isPreview }) => {
   const env = loadEnv(mode, process.cwd(), "VITE_");
+  let outputDirectory = "";
+  let building = false;
 
   return {
-    plugins: [react(), seoFiles(env)],
+    appType: isPreview ? 'mpa' : 'spa',
+    plugins: [react(), seoFiles(env), {
+      name: 'takewing-public-prerender',
+      configResolved(config) { outputDirectory = resolve(config.root, config.build.outDir); building = config.command === 'build'; },
+      async closeBundle() { if (building) await prerenderSite(outputDirectory, mode); },
+      configurePreviewServer(server) {
+        server.middlewares.use(async (request, response, next) => {
+          const url = new URL(request.url ?? '/', 'http://localhost');
+          const path = url.pathname.replace(/\/$/, '') || '/';
+          const page = publicRoutes.find(route => route.path === path);
+          if (page) request.url = (path === '/' ? '/index.html' : `${path}/index.html`) + url.search;
+          else if (spaPaths.includes(path) || path === '/dashboard' || path.startsWith('/dashboard/')) request.url = '/spa.html' + url.search;
+          else if (!path.startsWith('/assets/') && !['/index.html','/spa.html','/404.html','/favicon.svg','/og-image.png','/site.webmanifest','/robots.txt','/sitemap.xml','/_redirects','/_headers'].includes(path)) {
+            response.statusCode = 404;
+            response.setHeader('Content-Type', 'text/html; charset=utf-8');
+            try { response.end(await readFile(resolve(outputDirectory, '404.html'))); }
+            catch (error) { next(error); }
+            return;
+          }
+          next();
+        });
+      },
+    } as Plugin],
     build: {
       // Smaller assets inline as data URIs; anything larger stays a cacheable
       // file with a content hash, which is better for repeat visits.

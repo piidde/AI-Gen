@@ -1,0 +1,55 @@
+import { test, expect } from "@playwright/test";
+
+test("status previews distinguish stale, unavailable and resolved evidence across model cards", async ({ page }, info) => {
+  await page.goto("/status");
+  await expect(page.getByRole("region", { name: "Overall status" })).toContainText("Current service health is unknown");
+  await expect(page.locator(".incident-record")).toHaveCount(0);
+  const scenario = page.getByLabel("Demo status scenario");
+  await scenario.focus();
+  await scenario.selectOption("incident");
+  await expect(page).toHaveURL(/statusPreview=incident/);
+  await expect(scenario).toBeFocused();
+  await expect(page.locator(".incident-record")).toContainText("gpt-image-2");
+  await expect(page.locator(".incident-record")).toContainText("No resolution recorded");
+  await expect(page.locator(".incident-record time").first()).toContainText(await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone));
+  await page.screenshot({ path: info.outputPath("status-incident.png"), fullPage: true });
+  await page.getByRole("link", { name: "Browse model references" }).click();
+  const card = page.locator('[data-model-id="gpt-image-2"]');
+  await expect(card).toContainText("Sample service disruption");
+  await card.getByRole("link", { name: /incident|status/i }).click();
+  await expect(page).toHaveURL(/statusPreview=incident/);
+  await scenario.selectOption("stale");
+  await expect(page.getByRole("region", { name: "Overall status" })).toContainText("Status source is stale");
+  await expect(page.locator(".incident-record")).toContainText("current state unknown");
+  await page.reload();
+  await expect(scenario).toHaveValue("stale");
+  await scenario.selectOption("resolved");
+  await expect(page.locator(".incident-record")).toContainText("Resolved sample");
+  await expect(page.locator(".incident-record")).not.toContainText("No resolution recorded");
+  await scenario.selectOption("loading");
+  await expect(page.getByRole("region", { name: "Overall status" })).toContainText("Current service health is unknown");
+  await expect(page.locator(".incident-record")).toHaveCount(0);
+  await page.goBack();
+  await expect(scenario).toHaveValue("resolved");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("sample updates have ordered dates, deep links and noindex without incident confusion", async ({ page }, info) => {
+  await page.goto("/updates");
+  const dates = await page.locator(".updates-list time").evaluateAll(nodes => nodes.map(node => node.getAttribute("datetime")));
+  expect(dates).toEqual([...dates].sort().reverse());
+  await expect(page.locator("main")).toContainText("fictional editorial content");
+  await page.locator(".updates-list h2 a").first().click();
+  await expect(page).toHaveURL(/\/updates\/sample-catalogue-reference$/);
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  await expect(page.locator("main")).toContainText("not production news");
+  await page.reload();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Sample announcement: exploring model references");
+  await page.getByRole("link", { name: "All updates" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Updates");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: info.outputPath("updates.png"), fullPage: true });
+  await page.goto("/updates/unknown");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Update not found");
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+});

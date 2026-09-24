@@ -25,10 +25,10 @@ export const isIndexable = envFlag(import.meta.env.VITE_SITE_INDEXABLE);
 
 export const siteName = "Takewing AI";
 
-export const siteTagline = "Affordable AI API access for independent builders";
+export const siteTagline = "Leading AI models. Lower API prices.";
 
 export const siteDescription =
-  "Takewing AI gives independent builders and small teams affordable access to AI models through one API, with clear billing units and usage you can follow.";
+  "Image and text generation APIs built to cut your AI costs. Explore Takewing pricing, official rate references and the prepaid dashboard preview.";
 
 /** Locale advertised to crawlers and social scrapers. */
 export const siteLocale = "en_US";

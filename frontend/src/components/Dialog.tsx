@@ -6,14 +6,18 @@ export default function Dialog({
   title,
   children,
   onClose,
+  fallbackFocus,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
+  fallbackFocus?: () => HTMLElement | null;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const previousTitle = useRef(title);
+  const currentFallback = useRef(fallbackFocus);
+  currentFallback.current = fallbackFocus;
   useEffect(() => {
     const dialog = ref.current!;
     const opener = document.activeElement;
@@ -21,6 +25,8 @@ export default function Dialog({
     return () => {
       dialog.close();
       if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+      // A completed step can disable/remove its opener (e.g. pending checkout).
+      if (document.activeElement !== opener) currentFallback.current?.()?.focus();
     };
   }, []);
   useEffect(() => {

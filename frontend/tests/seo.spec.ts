@@ -5,7 +5,7 @@ import { test, expect, type Page } from "@playwright/test";
 // directive exposes account screens, and a tag that loads before consent is a
 // compliance problem rather than a bug. Failures here are not cosmetic.
 
-const PUBLIC_ROUTES = ["/", "/models", "/docs", "/support", "/status", "/contact", "/privacy", "/terms"];
+const PUBLIC_ROUTES = ["/", "/models", "/docs", "/support", "/status", "/contact", "/privacy", "/terms", "/blog", "/blog/understanding-text-token-rates", "/blog/understanding-image-model-rates"];
 const PRIVATE_ROUTES = ["/login", "/signup", "/forgot-password", "/update-password"];
 
 function head(page: Page) {

@@ -3,11 +3,12 @@ import { Link } from "react-router-dom";
 import {
   analyticsConfigured,
   readConsent,
+  subscribeConsent,
   updateConsent,
 } from "../seo/analytics";
 
-// Consent gate for analytics and advertising tags. The service targets EU
-// customers, so these tags may not load before the user agrees. The banner
+// Consent gate for optional analytics. The service targets EU customers,
+// so analytics may not load before the user agrees. The banner
 // renders only when a tag is actually configured — local, preview and demo
 // builds set no tag IDs and therefore show nothing and track nothing.
 //
@@ -18,9 +19,19 @@ export default function ConsentBanner() {
   const bannerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (analyticsConfigured && readConsent() === null) {
-      setVisible(true);
-    }
+    const sync = () => {
+      const show = analyticsConfigured && readConsent() === null;
+      if (!show && bannerRef.current?.contains(document.activeElement)) {
+        const heading = document.querySelector("h1");
+        if (heading instanceof HTMLElement) {
+          heading.tabIndex = -1;
+          heading.focus({ preventScroll: true });
+        }
+      }
+      setVisible(show);
+    };
+    sync();
+    return subscribeConsent(sync);
   }, []);
 
   // The banner is fixed, so the page must reserve the height it occupies or it
@@ -55,8 +66,7 @@ export default function ConsentBanner() {
   if (!visible) return null;
 
   function decide(granted: boolean) {
-    updateConsent({ analytics: granted, ads: granted });
-    setVisible(false);
+    updateConsent({ analytics: granted, ads: false });
   }
 
   return (
@@ -71,8 +81,8 @@ export default function ConsentBanner() {
         <div>
           <h2 id="consent-title">Cookies and measurement</h2>
           <p id="consent-description">
-            We use analytics and advertising cookies to understand how the site
-            is used and to measure our campaigns. They load only if you agree.
+            We use optional analytics to understand how the site is used.
+            Analytics loads only if you agree. Advertising stays off.
             Essential cookies needed to sign in are always active.{" "}
             <Link className="text-link" to="/privacy">
               Privacy information

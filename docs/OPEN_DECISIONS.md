@@ -163,9 +163,34 @@ Coordinate currencies/packages with OD-003 and units with OD-009.
 **DECIDED:** pricing and final charges are server-authoritative.
 See [BILLING.md](BILLING.md).
 
+S02.1's [model evidence register](MODEL_PRICING.md) now covers the complete
+29-entry image/text reference inventory. A1–A8 remain investigations, including
+unresolved official mappings, preview retirement conflicts and contradictory
+CL/VIP refund evidence. B01/B02 remain open; documented listing/identity checks
+do not approve launch support, comparisons or pricing. S02.2 has rechecked the
+29 tariffs and seven USD packages, confirming the 66,600 credits/USD reference.
+Official rates include context/expiry/cache conditions; unresolved aliases and
+per-request image comparisons remain unavailable. S02.3 now provides a typed
+reference inventory and exact display arithmetic with comparison gates. The
+[Stage 2 review](STAGE2_REVIEW.md) records the frontend owner's 2026-09-20
+acceptance of historical savings exclusions, versioned coverage and every model
+disposition. **DECIDED:** our price must never exceed the equivalent official
+price; a negative comparison is a pricing/evidence error, not a normal offer.
+S02.4/S02.5 are complete with backend/billing validation explicitly deferred to
+B02/S12. Commercial margin, ceiling enforcement and settlement remain open.
+No source gap or partner review is resolved by frontend approval.
+
 ## OD-015 Search visibility activation and rendering strategy
 
-Status: **OPEN**. Suggested owner: Samuel.
+Status: **DECIDED** for the frontend rendering approach; **OPEN** for activation
+and hosting verification. Suggested coordination owner: Samuel.
+
+The frontend owner accepted [ADR-005](decisions/ADR-005-public-build-time-prerendering.md):
+Vite production server build plus React static prerendering for public paths and a
+separate noindex private SPA shell. An eight-route component probe succeeded with
+homepage SVG title warnings (F-011). This settles S01.5's frontend choice, not
+production verification or partner approval. Samuel/hosting coordination remains
+under B09/S13; S11 implements the design. No indexing flag or deployment has changed.
 **DECIDED:** indexing is opt-in and off by default; see
 [ADR-004](decisions/ADR-004-seo-and-measurement.md).
 
@@ -177,7 +202,8 @@ rendered.
   decision in OD-004. It must not be enabled while the catalogue shows fictional
   prices: an "unverified" label on the page does not travel into a search snippet.
 - **DECIDED:** prerender public acquisition/content pages with content and metadata
-  in the initial HTML; implementation mechanism and hosting integration remain open.
+  in the initial HTML using the Vite/React build-time approach in ADR-005. Hosting
+  integration remains open.
   **INVESTIGATION:** initial HTML currently has unconditional noindex that runtime
   JS removes. Fix and verify production/preview behavior before launch; a flag
   change alone is not yet proven sufficient. See the plan's issue F-001.
@@ -215,3 +241,23 @@ OD-014 (pricing). See [FRONTEND.md](FRONTEND.md) for the launch checklist.
 - Git inspection found no commits and a configured `origin/main` tracking branch
   reported as gone during bootstrap inspection. This is a historical observation;
   verify current Git/remote state before collaboration work.
+
+
+## 2026-09-21: upstream purchasing basis confirmed
+
+**DECIDED (owner):** always use the GrsAI USD150 package for upstream acquisition. The currently verified package includes19,980,000 total credits, giving133,200 credits/USD. Acquisition cost is model credits /133,200 USD, half the base-package reference cost. This supersedes treating the bulk package as merely hypothetical. Recheck package terms if they change.
+
+**OPEN (product/billing owners):** customer selling prices and margin. Package choice alone does not authorize replacing customer prices with acquisition cost. The existing66,600-credit reference remains unchanged until selling prices are agreed. Any future savings claim must use the actual selling price and matching official settings.
+
+
+## 2026-09-21: provisional selling-price markup
+
+**DECIDED (owner, for now):**20% markup above acquisition cost using the USD150 package. Formula: model credits /133,200 *1.20 USD (equivalently credits /111,000 USD). This is markup, not20% gross margin; gross margin before fees and other costs is1/6. Supersedes the open markup choice in the preceding package decision. Implementation and production enforcement remain pending.
+
+This does not establish universal savings: Sunburst2400 credits gives acquisition0.018018... USD and proposed retail0.0216216... USD, above the official1024-square Medium output example0.01317 and below the4K High output example0.10008. Comparisons must retain explicit settings and exclusions; no blanket positive percentage is authorized by this commercial choice.
+
+
+**DECIDED (2026-09-21, H-043):** apply approved credits/111,000 USD selling-price formula to frontend preview cards and detailed rates. Static Save up to badges use best listed image preset with its official reference settings visible. This supersedes H-042 pending frontend implementation; backend enforcement remains open.
+
+
+H-044: A6 published mapping resolved from July1 announcement plus Chinese catalogue: Fast and2Lite both reference gemini-3.1-flash-lite-image,1K. Runtime routing still unverified. A1 bareGPT2.5 and A8 Gemini3Pro exact served ID remain open; detailed source findings in MODEL_PRICING.md.

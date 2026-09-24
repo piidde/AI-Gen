@@ -4,6 +4,8 @@ import { useAuth } from "../auth/AuthProvider";
 import Brand from "./Brand";
 import Icon from "./Icon";
 import type { IconName } from "./Icon";
+import IncidentNotice from "./IncidentNotice";
+import PublicFooter from "./PublicFooter";
 
 const navigation: { path: string; label: string; icon: IconName }[] = [
   { path: "/dashboard", label: "Overview", icon: "overview" },
@@ -108,6 +110,8 @@ export default function DashboardLayout() {
           <nav className="dashboard-nav" aria-label="Resources">
             <Link to="/docs">Documentation ↗</Link>
             <Link to="/support">Help &amp; support ↗</Link>
+            <Link to="/status">Service status ↗</Link>
+            <Link to="/updates">Updates ↗</Link>
           </nav>
           <div className="account-menu" ref={accountMenuRef}>
             <button
@@ -190,10 +194,12 @@ export default function DashboardLayout() {
         </div>
       </aside>
       <main id="main-content" className="dashboard-main" tabIndex={-1}>
+        <IncidentNotice />
         <Outlet />
         <footer className="page-footer">
           Illustrative dashboard data only. Payments, API access and usage connections are not live.
         </footer>
+        <PublicFooter />
       </main>
     </>
   );

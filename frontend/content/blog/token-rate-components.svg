@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" role="img">
+  <title>Token rate components</title>
+  <rect width="960" height="420" rx="24" fill="#151719"/>
+  <g fill="#1f2326" stroke="#4d5055" stroke-width="2">
+    <rect x="55" y="75" width="230" height="112" rx="16"/><rect x="365" y="75" width="230" height="112" rx="16"/><rect x="675" y="75" width="230" height="112" rx="16"/>
+    <rect x="285" y="285" width="390" height="86" rx="16"/>
+  </g>
+  <g fill="#f2f2f3" font-family="system-ui,sans-serif" font-size="26" text-anchor="middle">
+    <text x="170" y="132">Input tokens</text><text x="480" y="132">Output tokens</text><text x="790" y="132">Cache reads</text><text x="480" y="338">Workload estimate</text>
+  </g>
+  <g stroke="#57c99b" stroke-width="5" fill="none"><path d="M170 187v38l235 60"/><path d="M480 187v98"/><path d="M790 187v38l-235 60"/></g>
+</svg>

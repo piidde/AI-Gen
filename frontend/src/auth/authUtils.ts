@@ -4,7 +4,8 @@ export function getSafeNext(value: string | null): string {
     value.startsWith("/") &&
     !value.startsWith("//") &&
     !value.includes("\\") &&
-    !value.includes("\0")
+    // URL parsers can strip tabs/newlines and change the destination's meaning.
+    !/[\u0000-\u001f\u007f]/.test(value)
   ) {
     return value;
   }

@@ -73,29 +73,22 @@ function breadcrumbs(pathname: string): Record<string, unknown> | undefined {
  * Write the JSON-LD graph for a route. Emits nothing on non-indexable
  * deployments or pages, so demo data never reaches a structured-data parser.
  */
-export function applyStructuredData(pathname: string): void {
+export function structuredData(pathname: string): string | null {
   const meta = findRouteMeta(pathname);
-  const existing = document.getElementById(ELEMENT_ID);
-
-  if (!isIndexable || !meta?.indexable) {
-    existing?.remove();
-    return;
-  }
-
+  if (!isIndexable || !meta?.indexable) return null;
   const graph: Record<string, unknown>[] = [organization(), website()];
   const crumbs = breadcrumbs(pathname);
-  if (crumbs) {
-    graph.push(crumbs);
-  }
+  if (crumbs) graph.push(crumbs);
+  return JSON.stringify({ '@context': 'https://schema.org', '@graph': graph }).replace(/</g, '\\u003c');
+}
 
-  const script =
-    existing instanceof HTMLScriptElement
-      ? existing
-      : document.createElement("script");
+export function applyStructuredData(pathname: string): void {
+  const existing = document.getElementById(ELEMENT_ID);
+  const json = structuredData(pathname);
+  if (!json) { existing?.remove(); return; }
+  const script = existing instanceof HTMLScriptElement ? existing : document.createElement('script');
   script.id = ELEMENT_ID;
-  script.type = "application/ld+json";
-  script.textContent = JSON.stringify({ "@context": "https://schema.org", "@graph": graph });
-  if (!script.isConnected) {
-    document.head.appendChild(script);
-  }
+  script.type = 'application/ld+json';
+  script.textContent = json;
+  if (!script.isConnected) document.head.appendChild(script);
 }

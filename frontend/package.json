@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "npm run build && playwright test"
+    "test": "npm run build && playwright test",
+    "test:auth": "npm run typecheck && node scripts/test-auth.mjs"
   },
   "dependencies": {
     "@fontsource/geist": "5.3.0",

@@ -1,0 +1,25 @@
+.reference-card footer .catalogue-status-slot { display: contents; }
+
+.catalogue-collection.catalogue-has-status .reference-card footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(36px, auto);
+  align-items: start;
+  gap: 8px;
+}
+
+.catalogue-collection.catalogue-has-status .reference-card footer button { justify-self: start; }
+
+.catalogue-collection.catalogue-has-status .reference-card footer .catalogue-status-slot {
+  display: block;
+  min-height: 36px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.catalogue-collection .reference-card .catalogue-status-slot .availability-label {
+  font-size: 12px;
+  line-height: inherit;
+}
+
+.catalogue-collection .catalogue-status-slot .model-status-notice { margin: 0; }

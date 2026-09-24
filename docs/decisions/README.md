@@ -14,6 +14,10 @@ Accepted records:
 - [ADR-004: Opt-in search indexing with consent-gated measurement](ADR-004-seo-and-measurement.md) —
   SEO and analytics infrastructure that stays inactive until a deployment opts in.
 
+- [ADR-005: Build-time prerendering for public routes](ADR-005-public-build-time-prerendering.md)
+  — accepted frontend approach; implementation and hosting verification remain
+  follow-up work. No partner acceptance or deployment is implied.
+
 Track unresolved choices and evidence in [OPEN_DECISIONS.md](../OPEN_DECISIONS.md).
 An assumption or investigation is not an accepted ADR. When the team explicitly
 decides, update the owning guide and decision-register entry, then add a numbered

@@ -63,35 +63,24 @@ function setLink(rel: string, href: string): void {
  * no registered metadata, such as the not-found page.
  */
 export function applyRouteHead(pathname: string, fallbackTitle?: string): void {
+  const head = routeHead(pathname, fallbackTitle);
+  document.title = head.title;
+  setLink('canonical', head.canonical);
+  for (const [key, value] of Object.entries(head.names)) setMeta('name', key, value);
+  for (const [key, value] of Object.entries(head.properties)) setMeta('property', key, value);
+}
+
+/** Pure metadata shared by static documents and browser navigation. */
+export function routeHead(pathname: string, fallbackTitle?: string) {
   const meta = findRouteMeta(pathname);
-  const title = meta
-    ? formatTitle(meta)
-    : `${fallbackTitle ?? "Page not found"} · ${siteName}`;
-  const description = meta?.description ?? "";
-
-  document.title = title;
-  if (description) {
-    setMeta("name", "description", description);
-  }
-  setMeta("name", "robots", robotsDirective(meta));
-
-  // Canonical always points at the registered path, never the visited URL, so
-  // tracking parameters (?utm_source=…) never fragment a page's ranking signals.
-  const canonical = absoluteUrl(meta?.path ?? pathname);
-  setLink("canonical", canonical);
-
-  setMeta("property", "og:title", title);
-  setMeta("property", "og:description", description);
-  setMeta("property", "og:url", canonical);
-  setMeta("property", "og:type", "website");
-  setMeta("property", "og:site_name", siteName);
-  setMeta("property", "og:locale", siteLocale);
-  setMeta("property", "og:image", socialImage);
-  setMeta("property", "og:image:width", "1200");
-  setMeta("property", "og:image:height", "630");
-
-  setMeta("name", "twitter:card", "summary_large_image");
-  setMeta("name", "twitter:title", title);
-  setMeta("name", "twitter:description", description);
-  setMeta("name", "twitter:image", socialImage);
+  const title = meta ? formatTitle(meta) : `${fallbackTitle ?? 'Page not found'} · ${siteName}`;
+  const description = meta?.description ?? 'This page could not be found.';
+  const canonical = absoluteUrl(meta?.path ?? '/404');
+  return { title, canonical,
+    names: { description, robots: robotsDirective(meta), 'twitter:card': 'summary_large_image',
+      'twitter:title': title, 'twitter:description': description, 'twitter:image': socialImage },
+    properties: { 'og:title': title, 'og:description': description, 'og:url': canonical,
+      'og:type': 'website', 'og:site_name': siteName, 'og:locale': siteLocale, 'og:image': socialImage,
+      'og:image:width': '1200', 'og:image:height': '630' },
+  };
 }

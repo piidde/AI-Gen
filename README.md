@@ -10,6 +10,9 @@ React frontend in `frontend/`. The seven reviewed screens run with explicit
 fictional demo data, and the initial Supabase Auth browser flow supports Google,
 configuration-gated Discord, email/password, confirmation, password reset and
 logout. Backend features and service integrations are not implemented.
+The frontend build prerenders public reference pages and emits a separate private
+SPA shell. Indexing remains off; see [acquisition operations](docs/ACQUISITION.md)
+for crawler, content ownership, measurement and deployment gates.
 Supabase/PostgreSQL, Stripe, and
 Cloudflare remain the documented directions for later slices.
 
@@ -89,8 +92,9 @@ one route registry, but stay inactive until a deployment sets
 `VITE_SITE_INDEXABLE=true`. Leave it off while the catalogue shows fictional
 prices. Before launch, also resolve the initial-HTML noindex risk and public
 prerendering work tracked in the implementation plan; the flag alone has not been
-verified sufficient. Analytics and advertising tags are likewise inert until their IDs are
-configured, and never load before the visitor consents. See
+verified sufficient. Analytics stays inert until its ID is configured and the
+visitor consents. Advertising is disabled for the organic-only launch, including
+legacy advertising IDs and saved grants. See
 [ADR-004](docs/decisions/ADR-004-seo-and-measurement.md) for the decision and
 [frontend scope](docs/FRONTEND.md) for the launch checklist and limitations.
 

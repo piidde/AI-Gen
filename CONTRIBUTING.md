@@ -39,6 +39,20 @@ traces/results go to the OS temporary directory, not the repository. The fronten
 test script builds first. No root test, format or lint script exists. Run relevant
 checks and report skipped or blocked checks without claiming success.
 
+For auth/session and shared dashboard interaction changes, also run
+`npm --prefix frontend run test:auth`. This builds to a unique OS temporary
+directory with a fictional Supabase endpoint/key and disabled indexing/tracking,
+then runs desktop/mobile Playwright on port 4174. Responses are intercepted;
+unexpected external requests fail the fixture. It exercises the actual browser
+auth client/guards, not production server authorization or email delivery. No real
+credentials are required and the normal `frontend/dist` is not replaced. Builds,
+screenshots and traces stay in OS temp. Do not deploy these fixture artifacts.
+
+For account notification-policy changes, also run `node --experimental-strip-types
+--test --test-isolation=none frontend/tests/accountSettings.node.ts` (one command).
+These pure model tests cover initial/crossing alerts, exact thresholds, rearming and
+unverified-email assumptions; they do not verify a production email scheduler.
+
 When behavior is implemented, prioritize billing, credits, auth, API keys,
 permissions, idempotency, webhooks, request accounting, adapters, pricing, and
 concurrency. Use unit tests for deterministic logic, integration tests at database,
@@ -57,3 +71,36 @@ Do not make undocumented manual production schema changes.
 Never commit secrets; use empty names in `.env.example` and follow
 [SECURITY.md](docs/SECURITY.md). Prefer payment test mode and separate development,
 preview/staging, and production credentials.
+
+For public consent controls or analytics-gate changes, run
+`node scripts/test-consent.mjs` from `frontend/`. It builds a separate OS-temp fixture
+with fictional measurement identifiers and intercepts all external browser requests.
+Local Chrome and port 4175 are required. It verifies banner/preferences agreement,
+reload persistence, rejection and denied storage without sending tracking data. It
+leaves the ordinary dist and authenticated fixture untouched.
+
+## Repository blog
+
+Public rendering checks: `node scripts/test-prerender.mjs` from `frontend/`
+builds isolated closed/indexable test fixtures and verifies no-JavaScript content,
+metadata, private shells, missing-page status, assets and hydration. Port 4176 and
+local Chrome are required; the normal dist and deployment settings are untouched.
+Run `node --test --test-isolation=none frontend/tests/prerender.node.mjs` for
+template assembly guards and `node --experimental-strip-types --test
+--test-isolation=none frontend/tests/funnel.node.ts` for outcome-consumer tests.
+Only deploy artifacts from a successful complete build. Local preview routing
+models the intended static behavior; it does not certify a production host.
+
+Edit typed article records under `frontend/content/blog/`; follow
+`frontend/src/content/blog.ts` validation and reuse catalogue blocks for prices.
+Do not paste arbitrary HTML or duplicate numeric rates into prose. Keep drafts
+marked as drafts; pages and the SEO registry use only the validated non-draft
+collection. Run the frontend suite after content/route changes, including the blog
+data and browser checks. Confirm source claims, dates, attribution, related links,
+image descriptions and mobile tables. Copyable checklists are not tested API code.
+
+Technical review is distinct from publication approval. Before launch, assign an
+ongoing human owner for each guide, refresh its sources and secure publication
+review under B08/B12/S13. Current owner assignments remain open; do not infer a
+partner's acceptance from a role proposal. Drafts must never receive public routes
+or sitemap entries, and preview builds remain closed to indexing.
