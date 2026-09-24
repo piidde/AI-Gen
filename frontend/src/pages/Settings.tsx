@@ -5,15 +5,14 @@ import { useAuth } from "../auth/AuthProvider";
 import { supabase, SUPABASE_CONFIG_ERROR } from "../auth/supabase";
 import Button from "../components/Button";
 import BillingDetailsForm from "../components/BillingDetailsForm";
-import { DemoBar, DataState } from "../components/DemoState";
-import type { DemoState } from "../components/DemoState";
 import AccountAccess from "../components/AccountAccess";
 import NotificationSettings from "../components/NotificationSettings";
 import { MetricIcon } from "../components/Icon";
 import PageHeading from "../components/PageHeading";
 import Tabs from "../components/Tabs";
+import "../styles/settings.css";
 
-const sections = ["Profile", "Security", "Notifications"] as const;
+const sections = ["Profile", "Security", "Notifications", "Billing"] as const;
 
 function readMetadataString(user: User | null, key: string): string {
   const value = user?.user_metadata?.[key];
@@ -31,22 +30,40 @@ function getDisplayName(user: User | null): string {
 
 export default function Settings() {
   const { user } = useAuth();
-  const [state, setState] = useState<DemoState>("populated");
+  const [childDirty, setChildDirty] = useState(false);
   const [tab, setTab] = useState<(typeof sections)[number]>("Profile");
   const [name, setName] = useState(() => getDisplayName(user));
   const [message, setMessage] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
+  const [savedName, setSavedName] = useState(() => getDisplayName(user));
+  const profileDirty = name.trim() !== savedName;
+  const dirty = tab === "Profile" ? profileDirty : childDirty;
+  const confirmDiscard = () => !dirty || window.confirm("Discard your unsaved changes?");
+
+  useEffect(() => {
+    if (!dirty) return;
+    const unload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    const leave = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
+      if (!(link instanceof HTMLAnchorElement) || link.target === "_blank" || link.hasAttribute("download")) return;
+      const url = new URL(link.href);
+      if (url.pathname === location.pathname && url.search === location.search) return;
+      if (!window.confirm("Discard your unsaved changes?")) { event.preventDefault(); event.stopPropagation(); }
+    };
+    window.addEventListener("beforeunload", unload);
+    document.addEventListener("click", leave, true);
+    return () => { window.removeEventListener("beforeunload", unload); document.removeEventListener("click", leave, true); };
+  }, [dirty]);
 
   useEffect(() => {
     setName(getDisplayName(user));
+    setSavedName(getDisplayName(user));
   }, [user]);
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (state === "save-error") {
-      setMessage("Simulated save failure. Your edits are still here.");
-      return;
-    }
+    if (savingProfile || !profileDirty) return;
 
     const displayName = name.trim();
     if (!displayName) {
@@ -71,35 +88,24 @@ export default function Settings() {
     }
 
     setName(displayName);
+    setSavedName(displayName);
     setMessage("Profile saved.");
   }
 
   return (
     <>
-      <DemoBar
-        state={state}
-        settings
-        liveAccount
-        onChange={(value) => {
-          setState(value);
-          setMessage("");
-        }}
-      />
       <PageHeading
         title="Account settings"
         description="Manage your profile, account access and notification preferences."
       />
-      <DataState
-        state={state}
-        title="Account settings"
-        emptyTitle="No settings"
-        onRetry={() => setState("populated")}
-      >
         <Tabs
           label="Account settings"
           options={sections}
           value={tab}
           onChange={(value) => {
+            if (value === tab || !confirmDiscard()) return;
+            setName(savedName);
+            setChildDirty(false);
             setTab(value);
             setMessage("");
           }}
@@ -157,24 +163,25 @@ export default function Settings() {
                 </p>
               </div>
               <div className="form-footer">
-                <Button type="submit" disabled={savingProfile}>
+                <Button type="submit" disabled={savingProfile || !profileDirty}>
                   {savingProfile ? "Saving..." : "Save changes"}
                 </Button>
                 <span
                   role="status"
-                  className={`save-status ${state === "save-error" ? "error" : ""}`}
+                  className="save-status"
                 >
                   {message}
                 </span>
               </div>
             </form>
-            <BillingDetailsForm />
+
             </>
           )}
-          {tab === "Security" && <AccountAccess failSave={state === "save-error"} />}
-          {tab === "Notifications" && <NotificationSettings failSave={state === "save-error"} />}
+          {tab === "Security" && <AccountAccess />}
+          {tab === "Notifications" && <NotificationSettings onDirtyChange={setChildDirty} />}
+          {tab === "Billing" && <BillingDetailsForm onDirtyChange={setChildDirty} />}
         </section>
-      </DataState>
+
 
     </>
   );

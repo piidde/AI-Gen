@@ -118,8 +118,9 @@ See [MODEL_PRICING.md](MODEL_PRICING.md) for sources and limits.
 ### Stage 4 mock purchase and history implementation
 
 Billing consumes all seven dated reference packages from `content/catalogue.ts`.
-Cards show exact USD amounts, base/bonus/total credits and non-expiry; selected
-package review repeats the USD total before demo checkout. EUR selection uses the
+Cards lead with total credits and exact USD prices, with included bonus amounts
+and percentage badges. Base credits remain in the selected package review alongside
+the USD total and full bonus breakdown before demo checkout. EUR selection uses the
 shared unavailable-estimate fallback until B11 supplies a fresh quote. These are
 reference previews, not published offers; B02 revalidation is still required.
 

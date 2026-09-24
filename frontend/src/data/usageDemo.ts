@@ -3,7 +3,7 @@ import { requests as legacyRequests } from "../demo/fixtures";
 import { localDayRange } from "../lib/formatting";
 
 export type UsageFilters = {
-  period: "today" | "7d" | "30d" | "6m" | "all" | "custom";
+  period: "today" | "7d" | "30d" | "6m" | "1y" | "all" | "custom";
   model: string; key: string; status: string; search: string; page: number; start: string; end: string;
 };
 
@@ -16,7 +16,7 @@ export function readUsageFilters(params: URLSearchParams, _now = new Date()): Us
   const page = Number(params.get("page") ?? "1");
   const status = params.get("status") ?? "all";
   return {
-    period: ["today", "7d", "30d", "6m", "all", "custom"].includes(period) ? period as UsageFilters["period"] : "30d",
+    period: ["today", "7d", "30d", "6m", "1y", "all", "custom"].includes(period) ? period as UsageFilters["period"] : "30d",
     model: params.get("model") || "all", key: params.get("key") || "all",
     status: ["all", "completed", "failed", "pending", "unknown"].includes(status) ? status : "all",
     search: params.get("search") ?? "", page: Number.isSafeInteger(page) && page > 0 ? page : 1,
@@ -34,6 +34,12 @@ export function usagePeriod(filters: UsageFilters, now = new Date()): { start: s
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   if (filters.period === "7d") start.setDate(start.getDate() - 6);
   if (filters.period === "30d") start.setDate(start.getDate() - 29);
+  if (filters.period === "1y") {
+    const originalDay = start.getDate();
+    start.setDate(1);
+    start.setFullYear(start.getFullYear() - 1);
+    start.setDate(Math.min(originalDay, new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate()));
+  }
   if (filters.period === "6m") {
     const originalDay = start.getDate();
     start.setDate(1);
@@ -134,7 +140,61 @@ const generated: UsageRequest[] = Array.from({ length: 32 }, (_, index) => {
   };
 });
 
-export const usageRequests: UsageRequest[] = [...generated, ...legacyRequests.map((request): UsageRequest => ({
+// Fictional account activity for dashboard preview only. Dates follow the local
+// calendar so presets and charts stay populated regardless of when preview runs.
+const previewModels = [
+  { id: "gpt-6-astra", name: "GPT-6 Astra", credits: 320, image: false },
+  { id: "gpt-5.6-terra", name: "GPT-5.6 Terra", credits: 82, image: false },
+  { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash", credits: 31, image: false },
+  { id: "gpt-image-2.5", name: "GPT Image 2.5", credits: 600, image: true },
+  { id: "gpt-image-2", name: "GPT Image 2", credits: 600, image: true },
+  { id: "nano-banana-2", name: "Nano Banana 2", credits: 1200, image: true },
+  { id: "gpt-5.6-sol", name: "GPT-5.6 Sol", credits: 145, image: false },
+  { id: "nano-banana-2-lite", name: "Nano Banana 2 Lite", credits: 440, image: true },
+  { id: "nano-banana-pro", name: "Nano Banana Pro", credits: 1800, image: true },
+] as const;
+
+const activity: UsageRequest[] = Array.from({ length: 421 }, (_, age) => {
+  const date = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() - age);
+  const weekday = date.getDay();
+  const seasonal = Math.floor((420 - age) / 70);
+  const count = Math.max(4, 7 + seasonal + (weekday === 0 || weekday === 6 ? -3 : 3) + ((age * 17) % 7) - (age % 29 === 0 ? 4 : 0));
+  return Array.from({ length: count }, (_, index): UsageRequest => {
+    const sequence = age * 37 + index;
+    const model = previewModels[(sequence * 11 + Math.floor(age / 5)) % previewModels.length]!;
+    const started = new Date(date);
+    // Keep today's rows before the current instant, including shortly after midnight.
+    const minute = age === 0 ? Math.max(0, Math.floor((anchor.getTime() - date.getTime()) / 60000) - index - 1)
+      : 7 * 60 + ((index * 61 + age * 13) % (15 * 60));
+    started.setMinutes(minute);
+    const failed = sequence % 41 === 7;
+    const refunded = sequence % 67 === 13;
+    const pending = age === 0 && index === 0;
+    const unknown = age === 0 && index === 1;
+    const outcome = pending ? "pending" : unknown ? "unknown" : failed || refunded ? "failed" : "completed";
+    const credits = String(model.credits + (model.image ? sequence % 3 * Math.floor(model.credits / 5) : sequence % 7 * 9));
+    const durationMs = model.image ? 8500 + sequence % 9000 : 650 + sequence % 1700;
+    return {
+      id: `req_demo_activity_${String(age).padStart(3, "0")}_${String(index).padStart(2, "0")}`,
+      startedAt: started.toISOString(), completedAt: pending || unknown ? null : new Date(started.getTime() + durationMs).toISOString(),
+      modelId: model.id, modelName: model.name, keyId: index % 9 === 0 ? "key-internal" : "key-production",
+      keyName: index % 9 === 0 ? "Internal" : "Production", outcome,
+      durationMs: pending || unknown ? null : durationMs,
+      inputTokens: model.image ? null : 420 + sequence % 1700,
+      outputTokens: model.image ? null : 110 + sequence % 580,
+      cachedInputTokens: model.image ? null : sequence % 4 === 0 ? 96 : 0,
+      imageCount: model.image && !pending && !unknown ? 1 : null,
+      billing: pending ? { status: "pending", reason: "Awaiting fictional settlement" }
+        : unknown ? { status: "unknown", reason: "Fictional settlement unavailable" }
+        : refunded ? { status: "refunded", chargedCredits: credits, refundedCredits: credits, rateVersion: "demo-activity-v1" }
+        : { status: "charged", credits, rateVersion: "demo-activity-v1" },
+      error: failed ? { code: "POLICY_REJECTED", message: "Request rejected by policy." }
+        : refunded ? { code: "GENERATION_FAILED", message: "Generation failed." } : null,
+    };
+  });
+}).flat();
+
+export const usageRequests: UsageRequest[] = [...activity, ...generated, ...legacyRequests.map((request): UsageRequest => ({
   id: request.id, startedAt: `2026-09-16T${request.time}Z`, completedAt: null,
   modelId: request.model, modelName: `Sample model ${request.model}`, keyId: request.key === "Production" ? "key-production" : "key-internal",
   keyName: request.key, outcome: request.status === "Completed" ? "completed" : "failed", durationMs: null,

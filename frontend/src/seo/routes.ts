@@ -156,7 +156,7 @@ export const routeMeta: RouteMeta[] = [
   },
   {
     path: "/dashboard/usage",
-    title: "Usage & requests",
+    title: "Requests",
     description: "Your request log with status, model, time and cost.",
     indexable: false,
   },

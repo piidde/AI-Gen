@@ -805,3 +805,44 @@ Availability no longer changes footer divider alignment: collections with notice
 The missing-footer report was caused by the controlled browser preview viewport, not a page container: a fixed 1440px inner viewport exceeded the native 1249px browser content area. Footer ancestors had visible overflow and no maximum height. Preview viewport corrected to 2560x1249; a final bottom screenshot and bounds check show the entire CTA/footer inside the visible content area. Future visual checks should use isolated browser sessions and must not leave a larger emulated viewport on the user's review tab.
 
 Validation: typecheck/build passed; all 40 targeted catalogue, alignment, published pricing, homepage and prerender checks passed. Alignment geometry verified at 2560/1440/390 widths. Preview remains open at the page bottom for footer review. No commit, push or deployment.
+
+### Overview review - 2026-09-24
+
+The approved Overview now uses four compact summary cards (current balance, period credits, period requests, all-time savings) and a shared custom period filter. Historical comparison coverage stays explicit; the long comparison disclosure and recent-request table are removed. A top-four model ranking by exact net settled credits occupies the right column above announcements; percentages use the whole selected period, including models outside the top four. This approved compact ranking supersedes the earlier exclusion of model spending widgets for Overview only. Usage remains the detailed request destination.
+
+The chart has a monotone emerald curve, gradient fill and exact daily pointer/touch/keyboard inspection. Arrow keys, Home/End and Escape control the active point. A compact preview-state disclosure retains empty/error checks. Dashboard top padding separates the service-status notice from the viewport edge; the old illustrative-data footer is removed, retaining the standard public footer. No backend integration or real savings claim is added.
+
+### Overview preview polish - 2026-09-24
+
+The Overview header now contains only the page title and branded period filter. Removed refresh timestamps, demo-account label and scenario/debug controls from the customer view; ordinary load failure still offers retry. Available periods are 7 days, 30 days, 6 months, 1 year and all time, preserved in the URL and Usage detail link. Longer ranges display monthly totals, including partial boundary months, and short ranges daily totals.
+
+Shared synthetic activity now spans 421 local calendar days with varied weekday/weekend demand, current catalogue identities, meaningful credit values and preserved historical failure/refund cases. It remains fictional, with explicitly fictional historical savings evidence. Top models and chart totals use the same settled records as Usage. No live wallet or billing mutation was introduced.
+
+On desktop the chart stretches to the combined right-column height. The fixed sidebar account band measures the actual footer height plus main bottom padding so divider borders meet at the bottom, even when footer links wrap. Mobile retains stacked navigation/content and a bounded chart height.
+
+### Requests history review - 2026-09-24
+
+The dashboard page is named Requests; its existing /dashboard/usage URL is preserved. Overview owns usage analytics. Requests removes duplicate spending charts/stat blocks and customer-visible history/export simulation controls, retaining branded period/model/key/status filters, request-ID search, custom local date ranges, URL history and pagination.
+
+The default table shows Model, net Credits used, readable Duration, Status, local Date and time, and View details. Execution labels are In progress/Succeeded/Failed/Unknown; unsettled credits remain Pending/Unavailable, never zero, and refunds are indicated separately. IDs, key names, exact model IDs, token/image counts, billing explanations, errors and support-copy controls remain in Details. The timezone appears once above the table. Export CSV and pagination share an aligned bottom row; exports include every matching record, with cancellation/focus and filter-change safeguards preserved. Homepage table illustration retains its existing composition.
+
+### Shared dashboard dropdown standard - 2026-09-24
+
+DECIDED: Every dashboard dropdown uses the existing FilterSelect component and emerald brand styling, including filters, currency, account type and modal/preview selections. New equivalent controls must use this shared component; do not introduce native select styling page by page. Converted remaining Billing, API keys and Settings controls and shared billing/signup forms. FilterSelect supports native disabled button semantics, stable control IDs and bounds menus within dialogs. Public Status and unused legacy RequestTable are outside the active dashboard route tree.
+
+
+### Billing visual review (2026-09-24, H-066)
+
+The Billing page removes its top scenario toolbar and redundant fixed-model-rate panel. Credit packages use a responsive three-column grid led by total credits, with a distinct USD price and emerald bonus percentage/included-credit detail. Exact reference package values remain unchanged; EUR without a supplied fresh quote still falls back to USD. Payment history uses text-labelled, subtle status colors and local timestamps. Billing details remain directly editable in the shared Billing/Settings form, without a save-scenario selector or a separate trailing Settings action.
+
+Only page presentation changes: checkout/order dialogs retain explicitly labelled mock transitions and no-real-payment disclosures until B03/S12 is connected. Profile saves remain session-only and say so on confirmation; reload/sign-out clears them. Removing top debug controls does not turn preview wallet/history into live financial data.
+
+
+H-067 (2026-09-24): API keys no longer shows the Local Demo/scenario toolbar. The first-key empty state now follows the actual in-memory key list; status filtering, show-once samples, revocation and explicit mock-operation dialogs remain unchanged.
+
+H-067 follow-up: API keys actions now read View requests (same key-filtered Requests URL). Created, last-used and revoked timestamps keep local date/time with one timezone label above the table, associated through aria-describedby. Other pages retain their existing timestamp format.
+
+
+### Settings review (2026-09-24, H-068)
+
+Settings separates Profile, Security, Notifications and Billing. Top and per-operation scenario selectors are removed. Notifications use checkbox switches, show the credit threshold only while low-balance alerts are enabled, and retain a concise disconnected-delivery/session-only notice. Security has a separate danger zone; credential/deletion previews remain explicitly nonfunctional. Profile, billing and notification Save actions require edits. Settings warns before discarding drafts through tab changes and normal page links, with beforeunload warnings for reload/close; native SPA back/forward traversal is not blocked by this scoped guard. The shared Billing form also disables unchanged saves. Auth, alert-delivery and real deletion gates are unchanged.

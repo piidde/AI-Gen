@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Button from "./Button";
+import FilterSelect from "./FilterSelect";
 
 export type DemoState = "populated" | "empty" | "error" | "save-error";
 export function DemoBar({
@@ -20,21 +21,21 @@ export function DemoBar({
           ? "LOCAL DEMO · FICTIONAL DATA · AUTHENTICATED PROFILE"
           : "LOCAL DEMO · FICTIONAL DATA · NO LIVE ACCOUNT"}
       </span>
-      <label>
-        Demo state{" "}
-        <select
+      <div className="demo-state-control">
+        <span>Demo state{" "}</span>
+        <FilterSelect
+          label="Demo state"
           value={state}
-          onChange={(event) => onChange(event.target.value as DemoState)}
-        >
-          <option value="populated">Populated</option>
-          {settings ? (
-            <option value="save-error">Save error simulation</option>
-          ) : (
-            <option value="empty">Empty</option>
-          )}
-          <option value="error">Load error</option>
-        </select>
-      </label>
+          onChange={(value) => onChange(value as DemoState)}
+          options={[
+            { value: "populated", label: "Populated" },
+            settings
+              ? { value: "save-error", label: "Save error simulation" }
+              : { value: "empty", label: "Empty" },
+            { value: "error", label: "Load error" },
+          ]}
+        />
+      </div>
     </div>
   );
 }

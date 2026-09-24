@@ -55,6 +55,27 @@ test("all-time history includes an older-than-one-year request outside six month
   expect(filterUsage(usageRequests, filters("period=6m"), current)).not.toContainEqual(old);
 });
 
+test("shared preview history spans a year with varied daily volume and catalogue model names", () => {
+  const current = new Date();
+  const preview = usageRequests.filter(request => request.id.startsWith("req_demo_activity_"));
+  const days = new Set(preview.map(request => request.startedAt.slice(0, 10)));
+  const dailyCounts = new Map<string, number>();
+  for (const request of preview) {
+    const date = request.startedAt.slice(0, 10);
+    dailyCounts.set(date, (dailyCounts.get(date) ?? 0) + 1);
+  }
+  expect(days.size).toBeGreaterThan(365);
+  expect(new Set(dailyCounts.values()).size).toBeGreaterThan(5);
+  expect(preview.some(request => request.modelId === "gpt-image-2" && request.modelName === "GPT Image 2")).toBe(true);
+  expect(preview.some(request => request.modelId === "gpt-5.6-terra" && request.modelName === "GPT-5.6 Terra")).toBe(true);
+  for (const [id, name] of [["gpt-6-astra", "GPT-6 Astra"], ["gemini-3.8-flash", "Gemini 3.8 Flash"], ["gpt-image-2.5", "GPT Image 2.5"], ["nano-banana-pro", "Nano Banana Pro"]]) {
+    expect(preview.some(request => request.modelId === id && request.modelName === name)).toBe(true);
+  }
+  expect(preview.filter(request => request.billing.status === "charged").some(request => Number(request.billing.status === "charged" ? request.billing.credits : 0) >= 400)).toBe(true);
+  expect(filterUsage(preview, filters("period=1y"), current).length).toBeLessThan(preview.length);
+  expect(filterUsage(preview, filters("period=7d"), current).length).toBeGreaterThan(0);
+});
+
 test("CSV and support copies use allowlists and normalized errors without raw payloads", () => {
   const request = { ...row({ status: "unknown", reason: "secret billing payload" }), modelName: " \t=HYPERLINK(\"evil\")", error: { code: "unexpected-secret-code", message: "secret upstream prompt" }, prompt: "private input", secret: "credential" };
   const csv = usageCsv([request, ...usageRequests]);
@@ -80,6 +101,8 @@ test("presets use inclusive local calendar dates and clamp six-month end dates",
   expect(usagePeriod(filters("period=30d"), date)).toEqual(expected(7, 22));
   expect(usagePeriod(filters("period=6m"), date)).toEqual(expected(2, 20));
   expect(usagePeriod(filters("period=6m"), new Date(2026, 7, 31, 12))).toEqual({ start: new Date(2026, 1, 28).toISOString(), endExclusive: new Date(2026, 8, 1).toISOString() });
+  expect(usagePeriod(filters("period=1y"), new Date(2025, 1, 28, 12))).toEqual({ start: new Date(2024, 1, 28).toISOString(), endExclusive: new Date(2025, 2, 1).toISOString() });
+  expect(usagePeriod(filters("period=1y"), new Date(2024, 1, 29, 12))?.start).toBe(new Date(2023, 1, 28).toISOString());
 });
 
 test("local-day filtering observes the actual DST day length", () => {

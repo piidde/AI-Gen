@@ -1,12 +1,13 @@
 import type { Decimal, Instant } from "../data/viewModels";
 
-export function formatLocalTime(instant: Instant | null): string {
+export function formatLocalTime(instant: Instant | null, includeTimezone = true): string {
   if (instant === null) return "Unavailable";
   const date = new Date(instant);
   if (!Number.isFinite(date.getTime()) || !/(Z|[+-]\d{2}:\d{2})$/.test(instant)) {
     throw new Error("Expected an absolute timestamp");
   }
   const formatter = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "medium" });
+  if (!includeTimezone) return formatter.format(date);
   return `${formatter.format(date)} · ${formatter.resolvedOptions().timeZone}`;
 }
 

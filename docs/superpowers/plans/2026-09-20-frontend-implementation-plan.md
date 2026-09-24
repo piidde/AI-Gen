@@ -29,13 +29,13 @@ compatible prerender/content mechanism during S01 and record the decision.
 | --- | --- |
 | Last updated | 2026-09-24 |
 | Overall status | IN_PROGRESS overall; S01-S11 DONE for local/mock boundaries |
-| Working branch | `feat/frontend-mvp-foundation` |
+| Working branch | `main` after authorized H-069 integration; source `feat/frontend-mvp-foundation` retained |
 | Inspected code baseline | `67a8386` — frontend plan naming; baseline verified in H-004 |
-| Current implementation step | H-060 catalogue refinements complete; Gemini3Pro investigation paused by owner |
-| Next action | Owner dashboard visual review, starting with Overview; S12.1 backend contracts/readiness when partners are ready. |
-| Latest completed work | H-060 readable price hierarchy, aligned availability notices and corrected browser preview sizing |
-| Delivery | Owner authorized committing and pushing the accumulated frontend checkpoint (H-061) |
-| Latest verification | H-060: build/typecheck; all 40 targeted checks passed; footer visibility and card geometry verified |
+| Current implementation step | H-069 dashboard review checkpoint; owner authorized commit, push and main merge |
+| Next action | Owner Settings visual review; S12.1 backend contracts/readiness when partners are ready. |
+| Latest completed work | H-068 Settings tabs, notifications and draft warnings refined |
+| Delivery | H-069 integrates H-062 through H-068 into main; see git history for checkpoint commit |
+| Latest verification | H-069: root/frontend builds and typechecks; 202 frontend checks passed (14 expected skips); H-068 auth 76 passed (2 expected skips) |
 | Global blocker | None for mock-first frontend work; verified API examples and real publication remain gated under B07/B08/S12/S13. |
 | Do not forget | Equal image/text acquisition; credits never expire; F-001 fixed in local artifacts only; preserve partner authentication; B09/B12/S12/S13 gates remain |
 
@@ -1950,3 +1950,68 @@ Validation: typecheck/build passed; all 40 targeted catalogue, alignment, publis
 Owner finished the current homepage/public catalogue review and requested commit/push, followed by dashboard preview and a short review checklist. Checkpoint includes accumulated S01-S11 frontend work, shared components, tests and documentation on feat/frontend-mvp-foundation. No deployment or merge requested. Dashboard review starts with Overview, then Usage, Billing, API keys, Models and Settings; include empty/error previews. Authentication and display-name saving use the existing real auth integration; payment, usage, keys and extended account workflows retain their documented mock boundaries.
 
 Fresh validation before checkpoint: frontend typecheck/build passed; main suite 192 passed and 14 skipped; isolated authenticated desktop/mobile fixture 73 passed and one skipped. Staged whitespace check passed. Backend and launch gates remain unchanged.
+
+### H-062 - 2026-09-24 - Overview visual hierarchy (DONE)
+
+Owner approved four compact summary cards, a shared branded period filter, emerald all-time savings, smoothed exact-value chart interaction, top four models by net settled credits above announcements, and removal of recent requests and redundant introduction/footer labels. This explicitly supersedes R13 recent-request placement and the earlier exclusion of a model spending breakdown for this compact Overview ranking only.
+
+Plan: update Overview and dedicated styles; correct zero top padding on dashboard status notice; implement chart interactions without overshoot and exact model aggregation with focused regression checks; update affected auth checks and run typecheck/build plus relevant data/browser tests; rebuild isolated fictional-account preview and review desktop/mobile. Preserve period URL state, historical savings qualifications, refresh/empty/error flows and all backend gates. No new commit or push requested.
+
+
+H-062 validation: typecheck and production/isolated builds passed; 8 authenticated desktop/mobile Overview checks and 32 homepage/data checks passed. Desktop/mobile screenshots reviewed without document overflow. Initial fixture run was blocked by the existing preview server on 4174; stopped that owned preview before testing and restarted against the verified new fixture afterward. Updated two stale test assumptions: distinct chart/page status regions, and scroll-to-top before measuring the notice after keyboard chart interaction. Preserved savings qualification and refresh recovery behavior. No commit/push.
+
+### H-063 - 2026-09-24 - Realistic dashboard preview and cleaner Overview (DONE)
+
+Owner requested varied believable preview records, 7d/30d/6m/1y/all Overview periods, removal of developer scenario controls, a simplified header, a chart matching the right column height, and sidebar/footer divider alignment at the bottom. Plan: share deterministic synthetic activity between Usage/Overview; extend period filtering and monthly long-range buckets while preserving exact settled-credit aggregation; remove visible debug controls; stretch desktop chart; preserve fixed sidebar and measure footer dimensions for matching bottom bands if CSS alone cannot handle wrapping; verify period consistency and responsive bottom geometry. Existing backend/real-data gates unchanged. No commit/push requested.
+
+
+H-063 validation: typecheck and production/isolated builds passed. Main desktop/mobile suite 202 passed, 14 expected skips. Auth suite 67 passed, one expected skip, two stale 37-record CSV assertions failed after expanding the dataset; updated them to reconcile exported row count to the displayed all-time request total, and both reruns passed. New desktop geometry check passed at 2560/1440/900/721px across Overview and API keys; its mobile variant is intentionally skipped. Verified chart/right-column bottom alignment and sidebar/footer border alignment within 1px, with no overflow. Desktop and isolated mobile screenshots reviewed. Refreshed fictional-account preview remains at http://127.0.0.1:4174/dashboard with a 2560x1249 review viewport. No commit/push.
+
+H-063 follow-up: owner requested rounding the savings figure. Overview now formats the supplied comparison amount as USD to two decimal places; underlying comparison calculations stay unchanged. Typecheck and isolated preview build passed; refreshed browser displays $10.81. No commit/push.
+
+### H-064 - 2026-09-24 - Requests history redesign (DONE)
+
+Owner approved renaming Usage & requests to Requests, removing duplicated analytics and demo controls, and a six-column history table: Model, Credits used, Duration, Status, local Time, View details. Full IDs, API key, token/image counts, billing breakdown and safe support copy remain in Details. Unknown execution and unsettled billing remain distinct from failure/zero. Plan: reuse branded filters with URL/history/custom dates; align pagination and all-matching CSV export; preserve cancel/focus and error handling without customer-facing simulation controls; validate table/modal contracts, filters, exports and responsive layout. Existing /dashboard/usage URLs remain valid to preserve links. No commit/push requested.
+
+
+H-064 validation: typecheck and production/isolated builds passed. Public/shared route, SEO and homepage checks: 39 passed, 13 expected skips. Full authenticated desktop/mobile suite: 68 passed, two expected skips, four stale cross-page assertions failed; made the Request log region selector exact and moved revoked-key label assertion into Details, then all four affected reruns passed. Requests filters, date validation, empty matches, six columns, technical details, credit states, CSV scope, focus and cancellation checks passed. Desktop/mobile screenshots reviewed with no document overflow; mobile table scroll stays local and custom menus stay inside the viewport. Preview left at /dashboard/usage without sign-in. No commit/push.
+`nH-064 preview download follow-up: controlled browser used GUID-named download artifacts despite the application supplying takewing-demo-usage.csv. Configured its current browser context with Browser.setDownloadBehavior allow and the user Downloads folder. A fresh export saved takewing-demo-usage.csv (148454 bytes) there. Future recreated review contexts need the same normal-filename download setup; this is browser-session configuration, not an application export-code defect. The automation artifact collector may report an error because it expects GUID storage, while the normal Downloads file succeeds.
+
+### H-065 - 2026-09-24 - Dashboard-wide dropdown consistency (DONE)
+
+Owner explicitly requested a complete audit of every dashboard filter/dropdown and consistent use of the previously approved emerald custom component, without repeated page-specific reminders. DECIDED: FilterSelect is the shared dashboard standard, including currency, form selections and modal/preview selectors. Plan: migrate remaining native selects on Billing, API keys, Settings and shared forms; retain labels, values, keyboard behavior and disabled states; verify all affected flows and inspect responsive popup placement. Public Status and an unused legacy RequestTable are outside dashboard runtime scope. Future dashboard select controls must reuse this component. No commit/push requested.
+
+
+H-065 validation: frontend typecheck and production/isolated preview builds passed. Shared catalogue/dropdown/homepage checks: 26 passed. Full authenticated desktop/mobile suite: 72 passed, two expected desktop-only skips. Added route-level native-select audit and modal disabled/Escape assertions. Desktop billing menu and mobile API-key dialog screenshots reviewed; menus fit inside dialog/viewport with no document overflow. Worker sandbox builds initially hit Windows spawn EPERM; main elevated integrated builds passed. Refreshed preview remains available without sign-in. No commit/push.
+
+
+### H-066 - 2026-09-24 - Billing hierarchy and direct editing (DONE)
+
+Owner requested removal of top demo controls and redundant balance messaging, clearer credit packages with emerald bonus badges, subtle payment status colors, and integrated billing-details editing. Plan: retain exact package data and mock payment safety boundaries; use responsive three-column cards led by total credits and price; remove the top scenario selector and redundant Settings action; simplify the existing shared inline profile form; verify billing transitions and shared profile behavior on desktop/mobile, then refresh the isolated preview. No commit/push requested.
+
+
+H-066 validation: production and isolated preview builds/typecheck passed; 8 existing billing-data checks and 72 authenticated desktop/mobile checks passed, with two expected desktop-only skips. Existing mock payment/reconciliation, cancellation, account isolation and shared Billing/Settings profile behavior remain covered. Desktop and mobile screenshots reviewed with no page overflow; status colors verified. A fixture build initially ran from the repository root and failed to resolve the frontend entry; rerunning from frontend succeeded. Final copy/spacing refinement rebuilt and preview refreshed at /dashboard/billing. No commit/push.
+
+
+### H-067 - 2026-09-24 - API keys demo toolbar removal
+
+Owner approved Billing and requested removing Local Demo from API keys plus recommendations. Removed the page toolbar and its unused scenario state; actual empty key lists retain first-key guidance. Kept operation dialogs explicit about nonfunctional samples and preserved key lifecycle behavior. Suggested matching the View requests wording and moving the repeated timezone into one table-level label; the owner subsequently approved both (implemented below). No commit/push.
+
+H-067 validation: typecheck and production/fixture builds passed; four targeted desktop/mobile lifecycle and failure/cancellation checks passed. Preview refreshed on API keys.
+
+H-067 approved follow-up: renamed key actions to View requests, retained their key-filtered URLs, and moved the local timezone to one accessible table-level label. Dates and times remain in the user browser timezone; other consumers retain full timezone strings. Production/fixture builds and typecheck passed.
+Follow-up validation: four desktop/mobile key lifecycle and request-link checks passed; preview refreshed. No commit/push.
+
+
+### H-068 - 2026-09-24 - Settings cleanup (DONE)
+
+Owner approved removing demo controls, separating Billing from Profile, simpler notification toggles and conditional threshold, dirty-only saves with unsaved-change warnings, and a restrained Security danger zone. Plan: keep existing live display-name integration and explicit mock boundaries; simplify child forms; use tab/link discard confirmations and browser reload/close warnings; update existing behavioral tests, run builds and inspect responsive tabs. Native SPA browser-history traversal is outside the scoped link/tab guard (BrowserRouter has no data-router blocker); no history interception or router migration. No commit/push requested.
+
+H-068 validation: production/fixture builds and typecheck passed; full auth suite 76 passed with two expected desktop-only skips; five alert-policy tests passed. New tests cover tab/link discard confirmation, threshold visibility and disabled unchanged saves; actual intercepted auth rejection, cancellation, account isolation and Billing/Settings sharing remain covered. Desktop/mobile screenshots inspected without page overflow. Final mobile toggle sizing/alignment adjusted and rebuilt. Preview refreshed; no commit/push.
+
+
+### H-069 - 2026-09-24 - Authorized dashboard checkpoint and main integration
+
+Owner requested committing and pushing all current changes, checking out main and merging. Scope includes reviewed Overview data/layout, Requests history, shared dashboard dropdowns, Billing packages and direct editing, API-key cleanup, Settings cleanup and associated documentation/tests. Fetched origin before integration; origin/main is an ancestor of the feature branch, so integration can fast-forward without conflict resolution. Preserve the feature branch. Backend/payment/security production gates and the documented browser-history draft-warning limitation remain unchanged.
+
+H-069 validation: root typecheck/build and frontend build passed; full frontend suite 202 passed with 14 expected skips. The preceding authenticated suite passed 76 with two expected skips, plus five alert-policy tests. Staged whitespace check passed. Integration uses the identical tested tree because main can fast-forward; no deployment, credential change or production backend gate closure.

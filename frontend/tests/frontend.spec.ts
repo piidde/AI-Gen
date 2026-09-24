@@ -152,7 +152,8 @@ test("request filters combine, details are metadata only, and table scroll stays
   page,
 }) => {
   await signIn(page, "/dashboard/usage?period=all&model=A");
-  await page.getByLabel("Filter status").selectOption("failed");
+  await page.getByRole("combobox", { name: "Filter status" }).click();
+  await page.getByRole("option", { name: "Failed", exact: true }).click();
   await expect(page.locator("tbody tr")).toHaveCount(1);
   await page.getByRole("button", { name: "Details for req_9c10" }).click();
   await expect(page.getByRole("dialog")).toContainText("Awaiting billing confirmation");
@@ -160,7 +161,8 @@ test("request filters combine, details are metadata only, and table scroll stays
     "No prompt or generated output",
   );
   await page.keyboard.press("Escape");
-  await page.getByLabel("Filter model").selectOption("B");
+  await page.getByRole("combobox", { name: "Filter model" }).click();
+  await page.getByRole("option", { name: "Sample model B", exact: true }).click();
   await expect(page.locator("tbody")).toContainText("No requests match");
   expect(
     await page.evaluate(
@@ -210,16 +212,11 @@ test("account menu stays in the viewport and settings use the live profile", asy
   await expect(page).toHaveURL(/\/dashboard\/settings$/);
   await expect(page.getByLabel("Email address")).toHaveValue(e2eEmail!);
   const originalName = await page.getByLabel("Display name").inputValue();
+  await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
   await page.getByLabel("Display name").fill("Edited demo");
-  await page.getByLabel("Demo state").selectOption("save-error");
-  await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByRole("status")).toContainText(
-    "Simulated save failure",
-  );
-  await expect(page.getByLabel("Display name")).toHaveValue("Edited demo");
-  await page.getByLabel("Demo state").selectOption("populated");
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByRole("status")).toContainText("Profile saved.");
+  await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
   await page.reload();
   await expect(page.getByLabel("Display name")).toHaveValue("Edited demo");
   await page.getByLabel("Display name").fill(originalName);
@@ -228,14 +225,15 @@ test("account menu stays in the viewport and settings use the live profile", asy
   await page.getByRole("tab", { name: "Profile", exact: true }).focus();
   await page.keyboard.press("End");
   await expect(
-    page.getByRole("tab", { name: "Notifications", exact: true }),
+    page.getByRole("tab", { name: "Billing", exact: true }),
   ).toBeFocused();
   await expect(page.getByRole("tabpanel")).toHaveAccessibleName(
-    "Notifications",
+    "Billing",
   );
-  await page.getByRole("checkbox", { name: "Product updates" }).uncheck();
+  await page.getByRole("tab", { name: "Notifications", exact: true }).click();
+  await page.getByRole("checkbox", { name: "Product updates" }).check();
   await page.getByRole("button", { name: "Save preferences" }).click();
-  await expect(page.getByRole("status")).toContainText("Mock preferences saved");
+  await expect(page.getByRole("status")).toContainText(/saved/i);
 });
 
 test("billing cannot accept payments and chart tabs expose updated data", async ({

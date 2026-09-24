@@ -8,7 +8,11 @@ export default function FilterSelect({
   value,
   options,
   onChange,
+  disabled = false,
+  id: controlId,
 }: {
+  disabled?: boolean;
+  id?: string;
   label: string;
   value: string;
   options: readonly FilterOption[];
@@ -24,10 +28,14 @@ export default function FilterSelect({
   const selected = Math.max(0, options.findIndex(option => option.value === value));
 
   function show(next = selected) {
+    if (disabled || trigger.current?.matches(":disabled")) return;
     const bounds = trigger.current?.getBoundingClientRect();
     if (bounds) {
-      const below = window.innerHeight - bounds.bottom;
-      const above = bounds.top;
+      const dialogBounds = root.current?.closest("dialog")?.getBoundingClientRect();
+      const lowerEdge = dialogBounds ? Math.min(window.innerHeight, dialogBounds.bottom - 16) : window.innerHeight;
+      const upperEdge = dialogBounds ? Math.max(0, dialogBounds.top + 16) : 0;
+      const below = lowerEdge - bounds.bottom;
+      const above = bounds.top - upperEdge;
       const openAbove = below < 180 && above > below;
       setPlacement({ above: openAbove, height: Math.min(280, Math.max(56, (openAbove ? above : below) - 16)) });
     }
@@ -36,12 +44,15 @@ export default function FilterSelect({
   }
 
   function choose(index: number) {
+    if (disabled || trigger.current?.matches(":disabled")) return;
     const option = options[index];
     if (!option) return;
     setOpen(false);
     if (option.value !== value) onChange(option.value);
     trigger.current?.focus();
   }
+
+  useEffect(() => { if (disabled) setOpen(false); }, [disabled]);
 
   useEffect(() => {
     if (!open) return;
@@ -62,6 +73,8 @@ export default function FilterSelect({
     }}>
       <button
         ref={trigger}
+        id={controlId}
+        disabled={disabled}
         type="button"
         className="filter-select-trigger"
         role="combobox"

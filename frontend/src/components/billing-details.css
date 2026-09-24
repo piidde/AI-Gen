@@ -1,0 +1,35 @@
+.billing-details-header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 20px;
+}
+
+.billing-details-header h2 {
+  margin-bottom: 8px;
+}
+
+.billing-details-header p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.billing-details .billing-details-actions {
+  align-items: center;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  justify-content: space-between;
+  margin-top: 24px;
+  padding-top: 20px;
+}
+
+.billing-details-actions p {
+  flex: 1 1 260px;
+  margin: 0;
+}
+
+.billing-details-message {
+  margin: 12px 0 0;
+}

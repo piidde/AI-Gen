@@ -1,23 +1,71 @@
 import type { UsageRequest } from "./viewModels";
-import { filterUsage, readUsageFilters, usageDaily, usageTotals } from "./usageDemo";
+import { filterUsage, readUsageFilters, usageDaily, usagePeriod, usageRequests, usageTotals } from "./usageDemo";
 import { addAmounts, decimalAmount, formatAmount, type ExactAmount } from "../lib/pricing";
 
-export function overviewSummary(requests: UsageRequest[], period: "7d" | "30d", now: Date) {
+export type OverviewPeriod = "7d" | "30d" | "6m" | "1y" | "all";
+
+export function overviewSummary(requests: UsageRequest[], period: OverviewPeriod, now: Date) {
   const filtered = filterUsage(requests, readUsageFilters(new URLSearchParams({ period })), now);
-  const byDay = new Map(usageDaily(filtered).map(row => [row.day, row]));
-  const days = period === "7d" ? 7 : 30;
-  const daily = Array.from({ length: days }, (_, index) => {
-    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - days + index + 1);
-    const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    return byDay.get(day) ?? { day, requests: 0, credits: "0" };
-  });
+  const totals = usageTotals(filtered);
+  const settledTotal = decimalAmount(totals.credits);
+  const models = new Map<string, UsageRequest[]>();
+  for (const request of filtered) {
+    const rows = models.get(request.modelId) ?? [];
+    rows.push(request);
+    models.set(request.modelId, rows);
+  }
+  const topModels: TopModel[] = settledTotal.numerator > 0n ? [...models].map(([modelId, rows]) => ({
+    modelId, modelName: rows[0]!.modelName, credits: usageTotals(rows).credits,
+  })).filter(model => decimalAmount(model.credits).numerator > 0n).sort((a, b) => {
+    const left = decimalAmount(a.credits);
+    const right = decimalAmount(b.credits);
+    const difference = right.numerator * left.denominator - left.numerator * right.denominator;
+    return difference > 0n ? 1 : difference < 0n ? -1 : a.modelId.localeCompare(b.modelId);
+  }).slice(0, 4).map(model => {
+    const amount = decimalAmount(model.credits);
+    const numerator = amount.numerator * settledTotal.denominator * 1000n;
+    const denominator = amount.denominator * settledTotal.numerator;
+    return { ...model, percent: Number((numerator * 2n + denominator) / (denominator * 2n)) / 10 };
+  }) : [];
+  const dateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  const monthly = period === "6m" || period === "1y" || period === "all";
+  let daily: { day: string; credits: string; requests: number }[];
+  if (monthly) {
+    const groups = new Map<string, UsageRequest[]>();
+    for (const request of filtered) {
+      const date = new Date(request.startedAt);
+      const key = dateKey(new Date(date.getFullYear(), date.getMonth(), 1));
+      groups.set(key, [...(groups.get(key) ?? []), request]);
+    }
+    const range = usagePeriod(readUsageFilters(new URLSearchParams({ period })), now);
+    const first = range ? new Date(range.start) : filtered.reduce<Date | null>((oldest, request) => {
+      const date = new Date(request.startedAt);
+      return oldest === null || date < oldest ? date : oldest;
+    }, null) ?? now;
+    const months = (now.getFullYear() - first.getFullYear()) * 12 + now.getMonth() - first.getMonth() + 1;
+    daily = Array.from({ length: months }, (_, index) => {
+      const key = dateKey(new Date(first.getFullYear(), first.getMonth() + index, 1));
+      const rows = groups.get(key) ?? [];
+      return { day: key, requests: rows.length, credits: usageTotals(rows).credits };
+    });
+  } else {
+    const byDay = new Map(usageDaily(filtered).map(row => [row.day, row]));
+    const days = period === "7d" ? 7 : 30;
+    daily = Array.from({ length: days }, (_, index) => {
+      const day = dateKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - days + index + 1));
+      return byDay.get(day) ?? { day, requests: 0, credits: "0" };
+    });
+  }
   return {
-    totals: { ...usageTotals(filtered), failed: filtered.filter(row => row.outcome === "failed").length,
+    totals: { ...totals, failed: filtered.filter(row => row.outcome === "failed").length,
       pending: filtered.filter(row => row.outcome === "pending").length, unknown: filtered.filter(row => row.outcome === "unknown").length },
+    topModels,
     daily,
     recent: filterUsage(requests, readUsageFilters(new URLSearchParams({ period: "all" })), now).slice(0, 5),
   };
 }
+
+export type TopModel = { modelId: string; modelName: string; credits: string; percent: number };
 
 // Fictional historical evidence, not production prices or a management API DTO.
 // A live Overview must receive a server-produced summary over complete history.
@@ -78,6 +126,19 @@ export const demoComparisons: HistoricalComparison[] = [
     usage: { inputTokens: null, outputTokens: null, cachedInputTokens: null, imageCount: 1 },
     options: "Fictional historical Standard 1024-square image; no input images or extras", chargedCredits: "0.024", takewingRateVersion: "demo-v1",
     official: { status: "equivalent", version: "fictional-image-standard-v0", standardUsd: "0.010" }, conversion: { version: "fictional-conversion-v0", creditsPerUsd: "66600" } },
+  // These historical examples are deliberately fictional. They exercise the
+  // comparison contract without asserting current official or selling prices.
+  ...usageRequests.filter(request => request.id.startsWith("req_demo_activity_") && request.outcome === "completed" && request.billing.status === "charged" && Number(request.id.slice(-2)) % 4 === 0).map((request): HistoricalComparison => {
+    if (request.billing.status !== "charged") throw new Error("Expected fictional charged request");
+    return {
+      requestId: request.id, modelId: request.modelId, modelName: request.modelName,
+      usage: { inputTokens: request.inputTokens, outputTokens: request.outputTokens, cachedInputTokens: request.cachedInputTokens, imageCount: request.imageCount },
+      options: request.imageCount === null ? "Fictional historical Standard text usage; no extra components" : "Fictional historical Standard one-image output; no input images or extras",
+      chargedCredits: request.billing.credits, takewingRateVersion: request.billing.rateVersion,
+      official: { status: "equivalent", version: "fictional-activity-standard-v1", standardUsd: (Number(request.billing.credits) / 40000).toFixed(6) },
+      conversion: { version: "fictional-activity-conversion-v1", creditsPerUsd: "66600" },
+    };
+  }),
 ];
 
 export function savingsForRequests(requests: UsageRequest[], comparisons: HistoricalComparison[] = demoComparisons): SavingsResult {
@@ -86,6 +147,7 @@ export function savingsForRequests(requests: UsageRequest[], comparisons: Histor
   const chargeAmounts: ExactAmount[] = [];
   const exclusionReasons: SavingsExclusions = { failed: 0, refunded: 0, unsettled: 0, free: 0, missingUsage: 0, missingHistory: 0, nonEquivalent: 0, comparisonError: 0 };
   const conversionRates = new Set<string>();
+  const comparisonByRequest = new Map(comparisons.map(record => [record.requestId, record]));
   let error: string | null = null;
   for (const request of requests) {
     // First matching reason wins, so exclusions remain mutually exclusive.
@@ -97,7 +159,7 @@ export function savingsForRequests(requests: UsageRequest[], comparisons: Histor
     const charged = decimalAmount(request.billing.credits);
     if (charged.numerator < 0n) { exclusionReasons.comparisonError++; error = "Invalid historical charge. Reconciliation required."; continue; }
     if (charged.numerator === 0n) { exclusionReasons.free++; continue; }
-    const record = comparisons.find(record => record.requestId === request.id);
+    const record = comparisonByRequest.get(request.id);
     if (!record || !record.conversion.version || record.takewingRateVersion !== request.billing.rateVersion || record.chargedCredits !== request.billing.credits) { exclusionReasons.missingHistory++; continue; }
     if (record.official.status !== "equivalent" || !record.official.version || !record.options || record.modelId !== request.modelId) { exclusionReasons.nonEquivalent++; continue; }
     const fields = ["inputTokens", "outputTokens", "cachedInputTokens", "imageCount"] as const;

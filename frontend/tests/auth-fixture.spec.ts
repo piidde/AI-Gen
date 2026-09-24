@@ -1,92 +1,97 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 import { getSafeNext } from "../src/auth/authUtils";
 
 const email = "fixture@example.com";
 
-test("overview shares periods, recent requests and all-time savings", async ({ page }, testInfo) => {
+async function selectDropdown(scope: Page | Locator, label: string, option: string) {
+  await scope.getByRole("combobox", { name: label, exact: true }).click();
+  await scope.getByRole("option", { name: option, exact: true }).click();
+}
+
+test("overview shares periods, top models and all-time savings", async ({ page }, testInfo) => {
   await signIn(page, "/dashboard");
-  await expect(page.getByLabel("Overview period")).toHaveValue("7d");
+  await expect(page.getByRole("combobox", { name: "Overview period" })).toContainText("7 days");
   await expect(page.getByTestId("overview-balance")).toContainText("333,000");
-  await expect(page.locator("tbody tr")).toHaveCount(5);
+  await expect(page.locator("tbody tr")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Top models by credits" })).toBeVisible();
   const savings = page.getByRole("region", { name: "All-time savings" });
-  await expect(savings).toContainText("You've saved $");
+  await expect(savings).toContainText("You saved");
   await expect(savings).toContainText("excluded");
   const saved = await savings.innerText();
   const before = Number(await page.getByTestId("overview-requests").innerText());
-  await page.getByLabel("Overview period").selectOption("30d");
+  await page.getByRole("combobox", { name: "Overview period" }).click();
+  await page.getByRole("option", { name: "30 days" }).click();
   await expect(page.getByTestId("overview-requests")).not.toHaveText(String(before));
   await expect(savings).toHaveText(saved, { useInnerText: true });
   await page.getByRole("tab", { name: "Requests", exact: true }).focus();
   await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("tabpanel")).toContainText(await page.getByTestId("overview-credits").innerText());
   await expect(page.getByRole("link", { name: "All updates" })).toBeVisible();
+  const chart = page.getByRole("img", { name: /Sample daily/ });
+  await chart.focus();
+  await chart.press("Home");
+  await expect(page.locator(".usage-chart__tooltip")).toBeVisible();
+  await expect(page.locator(".usage-chart__tooltip")).toContainText("credits used");
+  await chart.press("End");
+  await expect(page.locator(".usage-chart__active-point")).toHaveCount(1);
+  await chart.press("Escape");
+  await expect(page.locator(".usage-chart__tooltip")).toHaveCount(0);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const notice = await page.getByRole("complementary", { name: "Service status notice" }).boundingBox();
+  expect(notice!.y).toBeGreaterThan(0);
   const requests = await page.getByTestId("overview-requests").innerText();
-  const credits = await page.getByTestId("overview-credits").innerText();
   await page.screenshot({ path: testInfo.outputPath("overview.png"), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.getByRole("link", { name: "View all requests" }).click();
-  await page.getByLabel("Usage period").selectOption("30d");
-  await expect(page.getByTestId("usage-totals").locator("strong").nth(0)).toHaveText(requests);
-  await expect(page.getByTestId("usage-totals").locator("strong").nth(1)).toHaveText(credits);
+  await page.getByRole("link", { name: /View usage details/ }).click();
+  await expect(page.getByRole("combobox", { name: "Request period" })).toContainText("30 days");
+  await expect(page.getByTestId("request-count")).toHaveText(requests);
 });
 
-test("overview refresh retains known data and supports independent unavailable and empty states", async ({ page }) => {
+test("overview longer periods preserve URL state, monthly totals and a clean header", async ({ page }) => {
   await signIn(page, "/dashboard");
-  const balance = page.getByTestId("overview-balance");
-  await expect(balance).toContainText("333,000");
-  await page.getByLabel("Overview preview").selectOption("refresh-error");
-  await page.getByRole("button", { name: "Refresh overview", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("previous");
-  await expect(balance).toContainText("333,000");
-  await expect(page.locator("tbody tr")).toHaveCount(5);
-  await page.getByLabel("Overview preview").selectOption("savings-unavailable");
-  await page.getByRole("button", { name: "Refresh overview", exact: true }).click();
-  await expect(page.getByRole("region", { name: "All-time savings" })).toContainText("unavailable");
-  await expect(balance).toContainText("333,000");
-  await page.getByLabel("Overview preview").selectOption("wallet-error");
-  await page.getByRole("button", { name: "Refresh overview", exact: true }).click();
-  await expect(balance).toHaveText("Unavailable");
-  await expect(page.locator("tbody tr")).toHaveCount(5);
-  await page.getByLabel("Overview preview").selectOption("empty");
-  await page.getByRole("button", { name: "Refresh overview", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Make your first API request" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Create an API key" })).toBeVisible();
-  await expect(page.getByRole("img", { name: /Sample daily/ })).toHaveCount(0);
-  await expect(page.getByRole("region", { name: "All-time savings" })).toContainText("No request history");
-  await page.getByRole("link", { name: "Create an API key" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("API keys");
+  await expect(page.getByText("Choose a fictional scenario", { exact: false })).toHaveCount(0);
+  await expect(page.getByLabel("Overview preview")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Refresh overview" })).toHaveCount(0);
+  const shortTotal = Number(await page.getByTestId("overview-requests").innerText());
+  for (const [label, value] of [["6 months", "6m"], ["1 year", "1y"], ["All time", "all"]]) {
+    await page.getByRole("combobox", { name: "Overview period" }).click();
+    await page.getByRole("option", { name: label, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp("period=" + value));
+    await expect(page.getByRole("img", { name: /Sample monthly/ })).toBeVisible();
+    expect(Number(await page.getByTestId("overview-requests").innerText())).toBeGreaterThan(shortTotal);
+  }
+  await page.reload();
+  await expect(page.getByRole("combobox", { name: "Overview period" })).toContainText("All time");
+  await expect(page.getByRole("region", { name: "Top models by credits used" }).locator("li")).toHaveCount(4);
+  await page.getByRole("link", { name: /View usage details/ }).click();
+  await expect(page.getByRole("combobox", { name: "Request period" })).toContainText("All time");
 });
 
-test("overview loading refresh can be superseded without losing the snapshot", async ({ page }) => {
-  await signIn(page, "/dashboard?period=30d");
-  await expect(page.getByTestId("overview-balance")).toContainText("333,000");
-  const stamp = page.locator(".overview-refresh time");
-  const original = await stamp.getAttribute("datetime");
-  await page.getByLabel("Overview preview").selectOption("loading");
-  await page.getByRole("button", { name: "Refresh overview", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("previous snapshot");
-  await expect(stamp).toHaveAttribute("datetime", original!);
-  await expect(page.locator("tbody tr")).toHaveCount(5);
-  await page.getByLabel("Overview preview").selectOption("success");
-  await page.getByRole("button", { name: "Refresh overview", exact: true }).click();
-  await expect(page.getByRole("status")).toHaveCount(0);
-  await expect(stamp).not.toHaveAttribute("datetime", original!);
-  await expect(page.getByLabel("Overview period")).toHaveValue("30d");
-});
-
-test("overview qualifies incomplete history separately from comparison exclusions", async ({ page }) => {
+test("dashboard bottom dividers and Overview columns align across desktop widths", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "Desktop fixed sidebar geometry");
   await signIn(page, "/dashboard");
-  await page.getByLabel("Overview preview").selectOption("partial-history");
-  await page.getByRole("button", { name: "Refresh overview", exact: true }).click();
-  const savings = page.getByRole("region", { name: "Savings for available history" });
-  await expect(savings).toContainText("History is incomplete");
-  await expect(savings).toContainText("Coverage starts");
-  await savings.getByText("How this comparison works", { exact: true }).click();
-  await expect(savings).toContainText("Excluded by reason");
-  await expect(savings).toContainText("Revision");
-  await expect(savings).toContainText("Basis version");
-  await expect(page.getByRole("heading", { name: "All-time savings", exact: true })).toHaveCount(0);
+  for (const width of [2560, 1440, 900, 721]) {
+    await page.setViewportSize({ width, height: 1000 });
+    for (const route of ["/dashboard", "/dashboard/api-keys"]) {
+      await page.goto(route);
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      if (route === "/dashboard") await expect(page.locator(".overview-chart-card")).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
+      await expect.poll(async () => page.evaluate(() => {
+        window.scrollTo(0, document.documentElement.scrollHeight);
+        const account = document.querySelector(".sidebar .account-menu")!.getBoundingClientRect();
+        const footer = document.querySelector(".dashboard-main .public-footer")!.getBoundingClientRect();
+        return Math.abs(account.top - footer.top);
+      })).toBeLessThan(1);
+      if (route === "/dashboard" && width >= 1440) {
+        const gap = await page.evaluate(() => Math.abs(document.querySelector(".overview-chart-card")!.getBoundingClientRect().bottom - document.querySelector(".overview-side")!.getBoundingClientRect().bottom));
+        expect(gap).toBeLessThan(1);
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    }
+  }
 });
+
 const user = {
   id: "00000000-0000-4000-8000-000000000001", aud: "authenticated",
   role: "authenticated", email, created_at: "2026-09-20T00:00:00Z",
@@ -117,7 +122,7 @@ test("account settings save notification drafts and preview safe access changes"
   await page.getByRole("checkbox", { name: /^Low-balance email alerts/ }).check();
   await page.getByLabel("Credit alert threshold", { exact: true }).fill("400000");
   await page.getByRole("button", { name: "Save preferences" }).click();
-  await expect(page.getByRole("status")).toContainText("demo");
+  await expect(page.getByRole("status")).toContainText("saved for this session");
   await page.screenshot({ path: testInfo.outputPath("account-notifications.png"), fullPage: true });
   await page.getByRole("tab", { name: "Security", exact: true }).click();
   await page.getByRole("button", { name: "Change email", exact: true }).click();
@@ -144,29 +149,67 @@ test("account settings save notification drafts and preview safe access changes"
   await expect(page.locator(".dashboard-main")).toBeVisible();
 });
 
-test("account preferences retain rejected edits, cancel pending saves and isolate sessions", async ({ page }) => {
+test("settings keeps unsaved edits when navigation is dismissed and discards them on acceptance", async ({ page }) => {
+  await signIn(page, "/dashboard/settings");
+  const displayName = page.getByLabel("Display name");
+  const originalName = await displayName.inputValue();
+  await displayName.fill("Unsent profile edit");
+  page.once("dialog", async dialog => {
+    expect(dialog.message()).toBe("Discard your unsaved changes?");
+    await dialog.dismiss();
+  });
+  await page.getByRole("tab", { name: "Security", exact: true }).click();
+  await expect(displayName).toHaveValue("Unsent profile edit");
+  await expect(page.getByRole("tab", { name: "Profile", exact: true })).toHaveAttribute("aria-selected", "true");
+  page.once("dialog", dialog => dialog.accept());
+  await page.getByRole("tab", { name: "Security", exact: true }).click();
+  await page.getByRole("tab", { name: "Profile", exact: true }).click();
+  await expect(displayName).toHaveValue(originalName);
+
+  await page.getByRole("tab", { name: "Notifications", exact: true }).click();
+  await page.getByRole("checkbox", { name: /^Product updates/ }).check();
+  page.once("dialog", async dialog => {
+    expect(dialog.message()).toBe("Discard your unsaved changes?");
+    await dialog.dismiss();
+  });
+  await page.getByRole("link", { name: "Overview", exact: true }).click();
+  await expect(page).toHaveURL(/\/dashboard\/settings$/);
+  await expect(page.getByRole("checkbox", { name: /^Product updates/ })).toBeChecked();
+  page.once("dialog", dialog => dialog.accept());
+  await page.getByRole("link", { name: "Overview", exact: true }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+});
+
+test("notification threshold is conditional and unchanged preferences cannot be saved", async ({ page }) => {
   await signIn(page, "/dashboard/settings");
   await page.getByRole("tab", { name: "Notifications", exact: true }).click();
+  const save = page.getByRole("button", { name: "Save preferences" });
+  const threshold = page.getByLabel("Credit alert threshold", { exact: true });
+  await expect(threshold).toHaveCount(0);
+  await expect(save).toBeDisabled();
+  await page.getByRole("checkbox", { name: /^Low-balance/ }).check();
+  await expect(threshold).toHaveValue("100000");
+  await threshold.fill("400000");
+  await expect(save).toBeEnabled();
+  await save.click();
+  await expect(save).toBeDisabled();
+  await page.getByRole("checkbox", { name: /^Low-balance/ }).uncheck();
+  await expect(threshold).toHaveCount(0);
+  await expect(save).toBeEnabled();
+});
+
+test("account preferences persist within one session and isolate signed-in accounts", async ({ page }) => {
+  await signIn(page, "/dashboard/settings");
+  await page.getByRole("tab", { name: "Notifications", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Save preferences" })).toBeDisabled();
+  await expect(page.getByLabel("Credit alert threshold", { exact: true })).toHaveCount(0);
   await page.getByRole("checkbox", { name: /^Low-balance/ }).check();
   await page.getByLabel("Credit alert threshold", { exact: true }).fill("400000");
-  await page.getByLabel("Demo state").selectOption("save-error");
   await page.getByRole("button", { name: "Save preferences" }).click();
-  await expect(page.getByRole("status")).toContainText("failure");
-  await expect(page.getByLabel("Credit alert threshold", { exact: true })).toHaveValue("400000");
-  await page.getByLabel("Demo state").selectOption("populated");
-  await page.getByRole("button", { name: "Save preferences" }).click();
-  await expect(page.getByRole("status")).toContainText("Mock preferences saved");
+  await expect(page.getByRole("status")).toContainText("saved");
+  await expect(page.getByRole("button", { name: "Save preferences" })).toBeDisabled();
   await page.getByRole("link", { name: "Billing", exact: true }).click();
-  await page.getByRole("link", { name: "Edit billing details in Settings" }).click();
-  await page.getByRole("tab", { name: "Notifications", exact: true }).click();
-  await expect(page.getByLabel("Credit alert threshold", { exact: true })).toHaveValue("400000");
-  await page.getByLabel("Credit alert threshold", { exact: true }).fill("500000");
-  await page.getByLabel("Preference save preview").selectOption("loading");
-  await page.getByRole("button", { name: "Save preferences" }).click();
-  await expect(page.getByLabel("Credit alert threshold", { exact: true })).toBeDisabled();
-  await page.getByRole("button", { name: "Cancel save" }).click();
-  await expect(page.getByLabel("Credit alert threshold", { exact: true })).toHaveValue("500000");
-  await page.getByRole("tab", { name: "Profile", exact: true }).click();
+  await page.getByRole("link", { name: "Settings", exact: true }).click();
   await page.getByRole("tab", { name: "Notifications", exact: true }).click();
   await expect(page.getByLabel("Credit alert threshold", { exact: true })).toHaveValue("400000");
   await page.locator(".account-trigger").click();
@@ -176,66 +219,49 @@ test("account preferences retain rejected edits, cancel pending saves and isolat
   await page.route("**/auth/v1/user", route => route.fulfill({ json: second }));
   await signIn(page, "/dashboard/settings");
   await page.getByRole("tab", { name: "Notifications", exact: true }).click();
-  await expect(page.getByLabel("Credit alert threshold", { exact: true })).toHaveValue("100000");
+  await expect(page.getByLabel("Credit alert threshold", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("checkbox", { name: /^Low-balance/ })).not.toBeChecked();
   await expect(page.getByText("Not verified — low-balance alerts are paused")).toBeVisible();
   await page.getByRole("tab", { name: "Security", exact: true }).click();
   await expect(page.getByRole("button", { name: "Change password", exact: true })).toHaveCount(0);
-  await expect(page.getByText(/Your credentials are managed by your sign-in provider/)).toBeVisible();
-  await page.getByRole("tab", { name: "Profile", exact: true }).click();
+  await expect(page.getByText(/Your sign-in provider manages your password/)).toBeVisible();
+  await page.getByRole("tab", { name: "Billing", exact: true }).click();
   await expect(page.getByRole("form", { name: "Billing details" })).toBeVisible();
 });
 
 test("account notification cancellation restores keyboard focus", async ({ page }) => {
   await signIn(page, "/dashboard/settings");
   await page.getByRole("tab", { name: "Notifications", exact: true }).click();
-  await page.getByLabel("Preference save preview").selectOption("loading");
+  await page.getByRole("checkbox", { name: /^Product updates/ }).check();
   await page.getByRole("button", { name: "Save preferences" }).click();
   await page.getByRole("button", { name: "Cancel save" }).focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("button", { name: "Save preferences" })).toBeFocused();
-  await page.getByLabel("Preference save preview").selectOption("success");
-  for (const outcome of ["populated", "save-error"]) {
-    await page.getByLabel("Demo state").selectOption(outcome);
-    await page.getByRole("button", { name: "Save preferences" }).click();
-    await page.getByRole("button", { name: "Cancel save" }).focus();
-    await expect(page.getByRole("button", { name: "Cancel save" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Save preferences" })).toBeFocused();
-  }
-  await page.getByLabel("Demo state").selectOption("populated");
+  await expect(page.getByRole("checkbox", { name: /^Product updates/ })).toBeChecked();
   await page.getByRole("button", { name: "Save preferences" }).click();
   await page.getByRole("tab", { name: "Notifications", exact: true }).focus();
   await expect(page.getByRole("button", { name: "Cancel save" })).toHaveCount(0);
   await expect(page.getByRole("tab", { name: "Notifications", exact: true })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Save preferences" })).toBeDisabled();
 });
 
-test("account access failures and cancellation never mutate the real account", async ({ page }) => {
+test("account access cancellation never mutates the real account", async ({ page }) => {
   await signIn(page, "/dashboard/settings");
   const mutations: string[] = [];
   page.on("request", request => { if (!['GET', 'HEAD'].includes(request.method())) mutations.push(new URL(request.url()).pathname); });
   await page.getByRole("tab", { name: "Security", exact: true }).click();
   await page.getByRole("button", { name: "Change email", exact: true }).click();
   await page.getByLabel("New email address").fill("failed@example.com");
-  await page.getByLabel("Account operation preview").selectOption("error");
   await page.getByRole("button", { name: "Request mock email change" }).click();
-  await expect(page.getByRole("dialog").getByRole("alert")).toContainText("retained");
-  await expect(page.getByLabel("New email address")).toHaveValue("failed@example.com");
-  await page.getByLabel("Account operation preview").selectOption("success");
-  await page.getByRole("button", { name: "Request mock email change" }).click();
+  await expect(page.getByRole("button", { name: /Pending/ })).toBeDisabled();
   await page.keyboard.press("Escape");
   await page.waitForTimeout(600);
   await expect(page.getByText(/Mock pending verification:/)).toHaveCount(0);
   await page.getByRole("button", { name: "Preview account deletion" }).click();
   await expect(page.getByRole("button", { name: "Continue with simulated identity" })).toBeDisabled();
   await page.getByRole("checkbox", { name: "Simulate confirmed identity" }).check();
-  await page.getByLabel("Account operation preview").selectOption("error");
   await page.getByRole("button", { name: "Continue with simulated identity" }).click();
-  await expect(page.getByRole("dialog").getByRole("alert")).toContainText("identity confirmation failed");
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Preview account deletion" })).toBeFocused();
-  await page.getByRole("button", { name: "Preview account deletion" }).click();
-  await page.getByRole("checkbox", { name: "Simulate confirmed identity" }).check();
-  await page.getByRole("button", { name: "Continue with simulated identity" }).click();
+  await expect(page.getByRole("dialog")).toContainText("Identity confirmation simulated");
   await page.getByRole("checkbox", { name: "I understand credit forfeiture and API-access termination" }).check();
   await page.getByRole("button", { name: "Confirm mock deletion" }).click();
   await page.keyboard.press("Escape");
@@ -279,7 +305,7 @@ test("account signup details are optional samples and do not leak into real auth
   });
   await page.goto("/signup?next=%2Fdashboard%2Fusage%3Fperiod%3D7d");
   await page.getByText("Optional billing details", { exact: true }).click();
-  await page.getByLabel("Account type (optional)").selectOption("business");
+  await selectDropdown(page, "Account type (optional)", "Business");
   await page.getByLabel("Company", { exact: true }).fill("Sample signup company");
   await page.getByLabel("VAT ID", { exact: true }).fill("SAMPLE-VAT");
   expect(await page.locator(".signup-billing [required]").count()).toBe(0);
@@ -322,10 +348,13 @@ test("account expired auth links offer safe recovery and preserve reset destinat
 
 test("billing reviews packages, survives pending reload and credits only explicit demo confirmation", async ({ page }, testInfo) => {
   await signIn(page, "/dashboard/billing?payment=success");
+  await expect(page.getByRole("combobox", { name: "Demo state" })).toHaveCount(0);
   await expect(page.getByTestId("demo-balance")).toHaveText("333,000 credits");
   await expect(page.locator(".package-card")).toHaveCount(7);
+  await expect(page.locator(".package-card").first()).toContainText("Base credits");
+  await expect(page.locator(".package-card").first()).toContainText("Total credits");
   await page.screenshot({ path: testInfo.outputPath("billing-packages.png"), fullPage: true });
-  await page.getByLabel("Billing display currency").selectOption("EUR");
+  await selectDropdown(page, "Billing display currency", "EUR");
   await expect(page.locator(".package-card").first()).toContainText("EUR estimate unavailable");
   const choose = page.getByRole("button", { name: "Review $10 package", exact: true });
   await choose.click();
@@ -346,7 +375,7 @@ test("billing reviews packages, survives pending reload and credits only explici
   await expect(page.getByRole("button", { name: "Review $5 package", exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "Review pending order" }).click();
   await expect(dialog).toContainText("Do not pay again");
-  await dialog.getByLabel("Simulated provider outcome").selectOption("paid");
+  await selectDropdown(dialog, "Simulated provider outcome", "Confirmed and credited (demo)");
   await dialog.getByRole("button", { name: "Apply demo outcome" }).click();
   await expect(dialog).toContainText("Simulated confirmation");
   await expect(page.getByTestId("demo-balance")).toHaveText("1,065,600 credits");
@@ -362,41 +391,38 @@ test("billing explains captured failure, refund and document failures without re
   await page.getByRole("button", { name: "Review $5 package", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "Continue demo checkout" }).click();
-  await dialog.getByLabel("Simulated provider outcome").selectOption("refund-pending");
+  await selectDropdown(dialog, "Simulated provider outcome", "Captured, unfulfilled · refund pending");
   await dialog.getByRole("button", { name: "Apply demo outcome" }).click();
   await expect(dialog).toContainText("Captured funds, credits not delivered");
   await expect(dialog).toContainText("Do not pay again");
-  await dialog.getByLabel("Simulated provider outcome").selectOption("refunded");
+  await selectDropdown(dialog, "Simulated provider outcome", "Captured funds refunded");
   await dialog.getByRole("button", { name: "Apply demo outcome" }).click();
   await expect(dialog).toContainText("Sample refund completed");
   await expect(page.getByTestId("demo-balance")).toHaveText("333,000 credits");
-  await dialog.getByLabel("Document response preview").selectOption("denied");
+  await selectDropdown(dialog, "Document response preview", "Access denied");
   await dialog.getByRole("button", { name: "Request receipt" }).click();
   await expect(dialog.getByRole("alert")).toContainText("Access denied");
-  await dialog.getByLabel("Document response preview").selectOption("error");
+  await selectDropdown(dialog, "Document response preview", "Download failed");
   await dialog.getByRole("button", { name: "Request invoice" }).click();
   await expect(dialog.getByRole("alert")).toContainText("could not be retrieved");
-  await dialog.getByLabel("Document response preview").selectOption("unavailable");
+  await selectDropdown(dialog, "Document response preview", "Current availability");
   await dialog.getByRole("button", { name: "Request invoice" }).click();
   await expect(dialog).toContainText("No authentic document exists");
   await expect(dialog.locator("time").first()).toContainText(/UTC|Europe|America|Asia/);
   await expect(dialog.getByRole("link", { name: "Payment support" })).toHaveAttribute("href", "/support");
 });
 
-test("billing details preserve failed edits and share successful saves with Settings", async ({ page }) => {
+test("billing details are directly editable and share session saves with Settings", async ({ page }) => {
   await signIn(page, "/dashboard/billing");
   const form = page.getByRole("form", { name: "Billing details" });
+  await expect(form.getByRole("combobox", { name: "Billing save preview" })).toHaveCount(0);
   await form.getByLabel("Company", { exact: true }).fill("Example studio");
-  await form.getByLabel("Billing save preview").selectOption("error");
   await form.getByRole("button", { name: "Save billing details" }).click();
   await expect(form.getByRole("button", { name: "Saving billing details…" })).toBeDisabled();
   await expect(form.getByLabel("Company", { exact: true })).toBeDisabled();
-  await expect(form.getByRole("alert")).toContainText("Your edits are still here");
-  await expect(form.getByLabel("Company", { exact: true })).toHaveValue("Example studio");
-  await form.getByLabel("Billing save preview").selectOption("success");
-  await form.getByRole("button", { name: "Save billing details" }).click();
   await expect(form.getByRole("status")).toContainText("saved for this demo session");
-  await page.getByRole("link", { name: "Edit billing details in Settings" }).click();
+  await page.getByRole("link", { name: "Settings", exact: true }).click();
+  await page.getByRole("tab", { name: "Billing", exact: true }).click();
   await expect(page.getByRole("form", { name: "Billing details" }).getByLabel("Company", { exact: true })).toHaveValue("Example studio");
   await page.getByRole("link", { name: "Billing", exact: true }).click();
   await page.getByRole("button", { name: "Details for demo-order-sample-1" }).click();
@@ -405,10 +431,8 @@ test("billing details preserve failed edits and share successful saves with Sett
   await expect(page.getByRole("form", { name: "Billing details" }).getByLabel("Company", { exact: true })).toHaveValue("Example studio");
 });
 
-test("billing aborts closed checkout, keeps first-use packages and reports copy denial", async ({ page }) => {
+test("billing aborts closed checkout and reports copy denial", async ({ page }) => {
   await signIn(page, "/dashboard/billing");
-  await page.getByLabel("Demo state").selectOption("empty");
-  await expect(page.getByRole("heading", { name: "No payment history yet" })).toBeVisible();
   await page.getByRole("button", { name: "Review $5 package", exact: true }).click();
   await page.getByRole("button", { name: "Continue demo checkout" }).click();
   await page.keyboard.press("Escape");
@@ -416,17 +440,13 @@ test("billing aborts closed checkout, keeps first-use packages and reports copy 
   await page.getByRole("button", { name: "Continue demo checkout" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toContainText("Do not pay again");
-  await dialog.getByLabel("Simulated provider outcome").selectOption("failed");
+  await selectDropdown(dialog, "Simulated provider outcome", "Failed before capture");
   await dialog.getByRole("button", { name: "Apply demo outcome" }).click();
   await expect(dialog).toContainText("No funds captured, no cash refund required");
   await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: () => Promise.reject(new Error("denied")) } }));
   await dialog.getByRole("button", { name: "Copy safe order details" }).click();
   await expect(dialog).toContainText("Could not copy");
   await page.keyboard.press("Escape");
-  await expect(page.locator("tbody tr")).toHaveCount(5);
-  await page.getByLabel("Demo state").selectOption("error");
-  await expect(page.getByRole("alert")).toContainText("couldn’t be loaded");
-  await page.getByRole("button", { name: "Try again" }).click();
   await expect(page.locator("tbody tr")).toHaveCount(5);
 });
 
@@ -452,7 +472,8 @@ test("billing cancels a departing profile save and isolates another signed-in ac
   const company = page.getByRole("form", { name: "Billing details" }).getByLabel("Company", { exact: true });
   await company.fill("Cancelled edit");
   await page.getByRole("button", { name: "Save billing details" }).click();
-  await page.getByRole("link", { name: "Edit billing details in Settings" }).click();
+  await page.getByRole("link", { name: "Settings", exact: true }).click();
+  await page.getByRole("tab", { name: "Billing", exact: true }).click();
   await expect(company).toHaveValue("");
   await company.fill("First account only");
   await page.getByRole("button", { name: "Save billing details" }).click();
@@ -521,24 +542,19 @@ test("login keeps edits and prevents repeat submission while a failure is pendin
   await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeEnabled();
 });
 
-test("settings retains failed edits and keyboard tabs; dialogs and tables fit", async ({ page }) => {
+test("settings keyboard tabs and usage dialogs fit the viewport", async ({ page }) => {
   await signIn(page, "/dashboard/settings");
-  await page.getByLabel("Display name").fill("Retained edit");
-  await page.getByLabel("Demo state").selectOption("save-error");
-  await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByRole("status")).toContainText("Simulated save failure");
-  await expect(page.getByLabel("Display name")).toHaveValue("Retained edit");
   await page.getByRole("tab", { name: "Profile", exact: true }).focus();
   await page.keyboard.press("End");
-  await expect(page.getByRole("tab", { name: "Notifications", exact: true })).toBeFocused();
+  await expect(page.getByRole("tab", { name: "Billing", exact: true })).toBeFocused();
   await page.keyboard.press("Home");
-  await expect(page.getByLabel("Display name")).toHaveValue("Retained edit");
+  await expect(page.getByRole("tab", { name: "Profile", exact: true })).toBeFocused();
   await page.goto("/dashboard/usage");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  const table = page.getByRole("region", { name: /Request/ });
+  const table = page.getByRole("region", { name: "Request log table" });
   await table.focus();
   await expect(table).toBeFocused();
-  const details = page.getByRole("button", { name: "Details for req_demo_001" });
+  const details = page.getByRole("button", { name: /Details for req_/ }).first();
   await details.click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
@@ -597,8 +613,9 @@ test("all dashboard routes use the wide viewport", async ({ page }, testInfo) =>
     await page.goto(route);
     const main = page.locator(".dashboard-main");
     await expect(main).toBeVisible();
+    await expect(main.locator("select")).toHaveCount(0);
     if (route === "/dashboard") {
-      await expect(page.locator("tbody tr")).toHaveCount(5);
+      await expect(page.locator(".overview-metrics > *")).toHaveCount(4);
       await page.screenshot({ path: testInfo.outputPath("overview-wide.png"), fullPage: true });
     }
     expect(await main.evaluate(el => Math.abs(document.documentElement.clientWidth - el.getBoundingClientRect().right))).toBeLessThan(2);
@@ -630,37 +647,43 @@ test("public and authenticated catalogue use identical reference rates and filte
 test("legacy request history stays readable after catalogue replacement", async ({ page }) => {
   await signIn(page, '/dashboard/usage?period=all');
   await expect(page.locator('tbody tr')).toHaveCount(10);
-  await page.getByLabel('Filter model').selectOption('A');
+  await page.getByRole('combobox', { name: 'Filter model' }).click();
+  await page.getByRole('option', { name: 'Sample model A', exact: true }).click();
   await expect(page.locator('tbody tr')).toHaveCount(3);
   await page.getByRole('button', { name: 'Details for req_8f21' }).click();
   await expect(page.getByRole('dialog')).toContainText('Sample model A');
   await expect(page.getByRole('dialog')).toContainText('req_8f21');
 });
 
-test("usage composes URL filters, paginates and exports all matching records", async ({ page }, testInfo) => {
+test("requests compose URL filters, paginate and export all matching records", async ({ page }, testInfo) => {
   await signIn(page, '/dashboard/usage?period=all');
-  await expect(page.getByLabel('Usage period')).toHaveValue('all');
+  await expect(page.getByRole('combobox', { name: 'Request period' })).toContainText('All time');
   await expect(page.locator('tbody tr')).toHaveCount(10);
   await page.getByRole('button', { name: 'Next page' }).click();
   await expect(page).toHaveURL(/page=2/);
   await page.reload();
   await expect(page.getByText(/Page 2 of/)).toBeVisible();
-  await page.getByLabel('Filter key').selectOption('key-revoked');
+  await page.getByRole('combobox', { name: 'Filter key' }).click();
+  await page.getByRole('option', { name: 'Old integration (revoked)' }).click();
   await expect(page).not.toHaveURL(/page=2/);
-  await page.getByLabel('Filter status').selectOption('failed');
+  await page.getByRole('combobox', { name: 'Filter status' }).click();
+  await page.getByRole('option', { name: 'Failed', exact: true }).click();
   await page.getByLabel('Search request ID').fill('req_demo');
   await expect(page.getByLabel('Search request ID')).toHaveValue('req_demo');
   await expect(page).toHaveURL(/search=req_demo/);
   await page.goBack();
-  await expect(page.getByLabel('Filter status')).toHaveValue('all');
+  await expect(page.getByRole('combobox', { name: 'Filter status' })).toContainText('All statuses');
   await page.goto('/dashboard/usage?period=all');
+  await expect(page.getByTestId('request-count')).toBeVisible();
+  const expectedExportRows = Number(await page.getByTestId('request-count').innerText());
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export CSV', exact: true }).click();
   const download = await downloadPromise;
   const stream = await download.createReadStream();
   let csv = '';
   for await (const chunk of stream!) csv += chunk.toString();
-  expect(csv.split('\r\n').filter(Boolean)).toHaveLength(38);
+  expect(csv.split('\r\n').filter(Boolean)).toHaveLength(expectedExportRows + 1);
+  expect(expectedExportRows).toBeGreaterThan(5000);
   for (let id = 1; id <= 32; id++) expect(csv).toContain(`"req_demo_${String(id).padStart(3, '0')}"`);
   for (const id of ['req_8f21', 'req_3b74', 'req_9c10', 'req_4e62', 'req_1d83']) expect(csv).toContain(`"${id}"`);
   await expect(page.getByRole('status').filter({ hasText: /Exported/ })).toBeVisible();
@@ -668,23 +691,14 @@ test("usage composes URL filters, paginates and exports all matching records", a
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test("usage separates unavailable history from zero and cancels failed exports", async ({ page }) => {
+test("requests validate custom dates and show empty filter results", async ({ page }) => {
   await signIn(page, '/dashboard/usage?period=all');
-  await page.getByLabel('History response preview').selectOption('loading');
-  await expect(page.getByText('Loading request history...')).toBeVisible();
-  await expect(page.getByTestId('usage-totals')).toHaveCount(0);
-  await page.getByLabel('History response preview').selectOption('error');
-  await expect(page.getByRole('alert')).toContainText('could not be loaded');
-  await page.getByRole('button', { name: 'Reload history' }).click();
-  await expect(page.locator('tbody tr')).toHaveCount(10);
-  await page.getByLabel('Export response preview').selectOption('loading');
-  await page.getByRole('button', { name: 'Export CSV', exact: true }).click();
-  await page.getByRole('button', { name: 'Cancel export' }).click();
-  await expect(page.getByText('Export cancelled.')).toBeVisible();
-  await page.getByLabel('Export response preview').selectOption('error');
-  await page.getByRole('button', { name: 'Export CSV', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('Export failed');
-  await page.getByLabel('Usage period').selectOption('custom');
+  await expect(page.getByRole('heading', { name: 'Requests', level: 1 })).toBeVisible();
+  await expect(page.getByLabel('History response preview')).toHaveCount(0);
+  await expect(page.getByLabel('Export response preview')).toHaveCount(0);
+  await expect(page.getByTestId('request-count')).toBeVisible();
+  await page.getByRole('combobox', { name: 'Request period' }).click();
+  await page.getByRole('option', { name: 'Custom dates' }).click();
   await page.getByLabel('Start date').fill('2026-09-22');
   await page.getByLabel('End date').fill('2026-09-20');
   await expect(page.getByRole('alert').filter({ hasText: /valid date range/ })).toBeVisible();
@@ -692,7 +706,27 @@ test("usage separates unavailable history from zero and cancels failed exports",
   await page.getByLabel('Start date').fill('2000-01-01');
   await page.getByLabel('End date').fill('2000-01-02');
   await expect(page.getByText('No requests match these filters.')).toBeVisible();
-  await expect(page.getByTestId('usage-totals')).toContainText('0');
+  await expect(page.getByTestId('request-count')).toHaveText('0');
+  await expect(page.getByRole('button', { name: 'Export CSV', exact: true })).toBeEnabled();
+});
+
+test("request table shows six summary columns and keeps identifiers in details", async ({ page }) => {
+  await signIn(page, '/dashboard/usage?period=all&search=req_demo_003');
+  const table = page.getByRole('region', { name: 'Request log table' }).getByRole('table');
+  await expect(table.getByRole('columnheader')).toHaveText([
+    'Model', 'Credits used', 'Duration', 'Status', 'Date and time', 'Details',
+  ]);
+  await expect(table.getByRole('row')).toHaveCount(2);
+  const row = table.getByRole('row').nth(1);
+  await expect(row.getByRole('cell')).toHaveCount(6);
+  await expect(row).not.toContainText('req_demo_003');
+  await expect(row).not.toContainText('Production');
+  await row.getByRole('button', { name: 'Details for req_demo_003' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Request details' });
+  await expect(dialog.locator('dl')).toContainText('Request IDreq_demo_003');
+  await expect(dialog.locator('dl')).toContainText('API keyProduction');
+  await page.keyboard.press('Escape');
+  await expect(row.getByRole('button', { name: 'Details for req_demo_003' })).toBeFocused();
 });
 
 test("usage details distinguish charged failures, refunds, tokens and safe support copy", async ({ page }, testInfo) => {
@@ -739,9 +773,9 @@ test("usage details distinguish charged failures, refunds, tokens and safe suppo
   await expect(dialog.locator('dl')).toContainText('Input tokensNot applicable / unavailable');
 });
 
-test("usage filters preserve focus and scroll, synchronize totals and chart, and cancel stale export", async ({ page }) => {
+test("request filters preserve focus and scroll, and cancel stale export", async ({ page }) => {
   await signIn(page, '/dashboard/usage?period=all&page=garbage&status=bad');
-  await expect(page.getByLabel('Filter status')).toHaveValue('all');
+  await expect(page.getByRole('combobox', { name: 'Filter status' })).toContainText('All statuses');
   await expect(page.getByText(/Page 1 of/)).toBeVisible();
   const search = page.getByLabel('Search request ID');
   await search.evaluate(el => (el as HTMLElement).focus({ preventScroll: true }));
@@ -754,31 +788,33 @@ test("usage filters preserve focus and scroll, synchronize totals and chart, and
   await expect(search).toHaveValue('req_demo_003');
   await expect(search).toBeFocused();
   expect(await page.evaluate(() => scrollY)).toBe(before);
-  await expect(page.getByTestId('usage-totals')).toContainText('Settled net credits0.012');
-  await expect(page.getByRole('region', { name: 'Spending over time' })).toContainText('0.012 credits');
+  await expect(page.getByTestId('request-count')).toHaveText('1');
   const downloads: string[] = [];
   page.on('download', download => downloads.push(download.suggestedFilename()));
-  await page.getByLabel('Export response preview').selectOption('loading');
   await page.getByRole('button', { name: 'Export CSV', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Cancel export' })).toBeVisible();
   await search.fill('req_demo_004');
   await expect(page.getByRole('button', { name: 'Cancel export' })).toHaveCount(0);
-  await expect(page.getByTestId('usage-totals')).toContainText('Settled net credits0');
+  await expect(page.getByTestId('request-count')).toHaveText('1');
+  await page.waitForTimeout(500);
   expect(downloads).toEqual([]);
-  await page.getByLabel('History response preview').selectOption('empty');
-  await expect(page.getByText('No requests yet.')).toBeVisible();
-  await expect(page.getByTestId('usage-totals')).toContainText('Matching requests0');
+  await search.fill('no_such_request');
+  await expect(page.getByTestId('request-count')).toHaveText('0');
+  await expect(page.getByText('No requests match these filters.')).toBeVisible();
 });
 
-test("usage export returns keyboard focus after terminal success and failure", async ({ page }) => {
+test("request export returns keyboard focus after completion and cancellation", async ({ page }) => {
   await signIn(page, '/dashboard/usage?period=all');
   const button = page.getByRole('button', { name: 'Export CSV', exact: true });
-  for (const outcome of ['success', 'error']) {
-    await page.getByLabel('Export response preview').selectOption(outcome);
-    await button.click();
-    await page.getByRole('button', { name: 'Cancel export' }).focus();
-    await expect(button).toBeEnabled();
-    await expect(button).toBeFocused();
-  }
+  await button.click();
+  await page.getByRole('button', { name: 'Cancel export' }).focus();
+  await expect(button).toBeEnabled();
+  await expect(button).toBeFocused();
+  await button.click();
+  await page.getByRole('button', { name: 'Cancel export' }).focus();
+  await page.getByRole('button', { name: 'Cancel export' }).click();
+  await expect(button).toBeFocused();
+  await expect(page.getByRole('status').filter({ hasText: 'Export cancelled.' })).toBeVisible();
   await button.click();
   const search = page.getByLabel('Search request ID');
   await search.focus();
@@ -788,7 +824,9 @@ test("usage export returns keyboard focus after terminal success and failure", a
 
 test("key lifecycle shows a sample once and preserves revoked history", async ({ page }, testInfo) => {
   await signIn(page, "/dashboard/api-keys");
-  await expect(page.getByLabel("Key status", { exact: true })).toHaveValue("active");
+  await expect(page.getByRole("combobox", { name: "Demo state" })).toHaveCount(0);
+  await expect(page.locator(".demo-bar")).toHaveCount(0);
+  await expect(page.getByRole("combobox", { name: "Key status", exact: true })).toContainText("Active");
   await expect(page.locator("tbody tr")).toHaveCount(2);
   await page.getByRole("button", { name: "Create API key +", exact: true }).click();
   await page.getByLabel("Key name", { exact: true }).fill("Test integration");
@@ -803,11 +841,13 @@ test("key lifecycle shows a sample once and preserves revoked history", async ({
   await expect(page.locator("body")).not.toContainText("DEMO-ONLY-NOT-A-VALID-API-KEY");
   const row = page.locator("tbody tr", { hasText: "Test integration" });
   await expect(row).toContainText("Never used");
-  await expect(row.locator("time").first()).toContainText(/UTC|Europe|America|Asia/);
-  await row.getByRole("link", { name: /usage/i }).click();
+  const timezone = await page.evaluate(() => new Intl.DateTimeFormat().resolvedOptions().timeZone);
+  await expect(page.locator("#key-timezone")).toHaveText(`Times shown in ${timezone}`);
+  await expect(row.locator("time").first()).not.toContainText(timezone);
+  await row.getByRole("link", { name: /View requests/i }).click();
   await expect(page).toHaveURL(/key=/);
-  await expect(page.getByRole("combobox", { name: "Usage period", exact: true })).toHaveValue("all");
-  await expect(page.getByRole("combobox", { name: "Filter key", exact: true }).locator("option:checked")).toHaveText("Test integration");
+  await expect(page.getByRole("combobox", { name: "Request period", exact: true })).toContainText("All time");
+  await expect(page.getByRole("combobox", { name: "Filter key", exact: true })).toContainText("Test integration");
   await expect(page.getByText("No requests match these filters.", { exact: true })).toBeVisible();
   await page.goBack();
   await expect(row).toBeVisible();
@@ -817,7 +857,7 @@ test("key lifecycle shows a sample once and preserves revoked history", async ({
   await page.keyboard.press("Escape");
   await expect(page.getByRole("heading", { name: "Your API keys", exact: true })).toBeFocused();
   await expect(row).toHaveCount(0);
-  await page.getByLabel("Key status", { exact: true }).selectOption("revoked");
+  await selectDropdown(page, "Key status", "Revoked");
   await expect(row).toContainText(/revoked/i);
   await expect(row.getByRole("button", { name: /revoke/i })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -835,21 +875,28 @@ test("key failures retain edits and pending cancellation leaves metadata unchang
   await page.getByRole("button", { name: "Create API key +", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await page.getByLabel("Key name", { exact: true }).fill("Retained name");
-  await page.getByLabel("Key operation preview").selectOption("error");
+  await selectDropdown(dialog, "Key operation preview", "Operation error");
   await dialog.getByRole("button", { name: "Create demo key", exact: true }).click();
   await expect(dialog.getByRole("alert")).toBeVisible();
   await expect(page.getByLabel("Key name", { exact: true })).toHaveValue("Retained name");
-  await page.getByLabel("Key operation preview").selectOption("loading");
+  const preview = dialog.getByRole("combobox", { name: "Key operation preview" });
+  await preview.click();
+  await expect(preview).toHaveAttribute("aria-expanded", "true");
+  await preview.press("Escape");
+  await expect(preview).toHaveAttribute("aria-expanded", "false");
+  await expect(dialog).toBeVisible();
+  await selectDropdown(dialog, "Key operation preview", "Keep pending");
   await dialog.getByRole("button", { name: "Create demo key", exact: true }).click();
   await expect(dialog.getByLabel("Key name", { exact: true })).toBeDisabled();
+  await expect(preview).toBeDisabled();
   await page.keyboard.press("Escape");
   await expect(page.locator("tbody tr")).toHaveCount(2);
   const revoke = page.getByRole("button", { name: "Revoke Production", exact: true });
   await revoke.click();
-  await page.getByLabel("Key operation preview").selectOption("error");
+  await selectDropdown(dialog, "Key operation preview", "Operation error");
   await dialog.getByRole("button", { name: "Confirm demo revocation", exact: true }).click();
   await expect(dialog.getByRole("alert")).toBeVisible();
-  await page.getByLabel("Key operation preview").selectOption("loading");
+  await selectDropdown(dialog, "Key operation preview", "Keep pending");
   await dialog.getByRole("button", { name: "Confirm demo revocation", exact: true }).click();
   await page.keyboard.press("Escape");
   await expect(revoke).toBeFocused();
@@ -883,10 +930,12 @@ test("key sample copy denial, navigation and reload cannot reveal an old sample"
 
 test("key metadata is isolated after sign-out and revoked usage retains historical labels", async ({ page }) => {
   await signIn(page, "/dashboard/api-keys");
-  await page.getByLabel("Key status", { exact: true }).selectOption("revoked");
-  await page.locator("tbody tr", { hasText: "Old integration" }).getByRole("link", { name: /usage/i }).click();
-  await expect(page.getByRole("combobox", { name: "Filter key", exact: true })).toHaveValue("key-revoked");
-  await expect(page.locator("tbody")).toContainText("Old integration (revoked)");
+  await selectDropdown(page, "Key status", "Revoked");
+  await page.locator("tbody tr", { hasText: "Old integration" }).getByRole("link", { name: /View requests/i }).click();
+  await expect(page.getByRole("combobox", { name: "Filter key", exact: true })).toContainText("Old integration (revoked)");
+  await page.getByRole("button", { name: /Details for req_/ }).first().click();
+  await expect(page.getByRole("dialog").locator("dl")).toContainText("API keyOld integration (revoked)");
+  await page.keyboard.press("Escape");
   await page.goBack();
   await page.getByRole("button", { name: "Create API key +", exact: true }).click();
   await page.getByLabel("Key name", { exact: true }).fill("First account only");
@@ -910,7 +959,7 @@ test("key creation copies only by request and a departing operation is cancelled
   const create = page.getByRole("button", { name: "Create API key +", exact: true });
   await create.click();
   await page.getByLabel("Key name", { exact: true }).fill("Cancel navigation");
-  await page.getByLabel("Key operation preview").selectOption("loading");
+  await selectDropdown(page.getByRole("dialog"), "Key operation preview", "Keep pending");
   await page.getByRole("button", { name: "Create demo key", exact: true }).click();
   await page.locator('a[href="/dashboard/usage"]').first().evaluate((link: HTMLAnchorElement) => link.click());
   await page.goBack();

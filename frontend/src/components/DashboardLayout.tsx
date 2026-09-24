@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import Brand from "./Brand";
@@ -6,11 +6,12 @@ import Icon from "./Icon";
 import type { IconName } from "./Icon";
 import IncidentNotice from "./IncidentNotice";
 import PublicFooter from "./PublicFooter";
+import "../styles/dashboard-layout.css";
 
 const navigation: { path: string; label: string; icon: IconName }[] = [
   { path: "/dashboard", label: "Overview", icon: "overview" },
   { path: "/dashboard/models", label: "Models", icon: "models" },
-  { path: "/dashboard/usage", label: "Usage & requests", icon: "usage" },
+  { path: "/dashboard/usage", label: "Requests", icon: "usage" },
   { path: "/dashboard/billing", label: "Billing", icon: "billing" },
   { path: "/dashboard/api-keys", label: "API keys", icon: "keys" },
   { path: "/dashboard/settings", label: "Settings", icon: "settings" },
@@ -28,6 +29,9 @@ export default function DashboardLayout() {
   const [avatarFailed, setAvatarFailed] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const accountTriggerRef = useRef<HTMLButtonElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const mainRef = useRef<HTMLElement>(null);
+  const footerRef = useRef<HTMLDivElement>(null);
   const email = user?.email ?? "Signed-in account";
   const displayName =
     readMetadataString(user?.user_metadata?.full_name) ??
@@ -72,6 +76,26 @@ export default function DashboardLayout() {
     };
   }, [accountMenuOpen]);
 
+  useLayoutEffect(() => {
+    const sidebar = sidebarRef.current;
+    const main = mainRef.current;
+    const footer = footerRef.current?.querySelector("footer");
+    if (!sidebar || !main || !footer) return;
+
+    const syncFooterBand = () => {
+      const height = footer.getBoundingClientRect().height;
+      const bottomPadding = parseFloat(getComputedStyle(main).paddingBottom);
+      sidebar.style.setProperty(
+        "--dashboard-footer-band-height",
+        `${height + bottomPadding}px`,
+      );
+    };
+    const observer = new ResizeObserver(syncFooterBand);
+    observer.observe(footer);
+    syncFooterBand();
+    return () => observer.disconnect();
+  }, []);
+
   async function handleSignOut() {
     setSignOutError(null);
     try {
@@ -89,7 +113,7 @@ export default function DashboardLayout() {
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
-      <aside className="sidebar">
+      <aside className="sidebar" ref={sidebarRef}>
         <div className="sidebar-scroll">
           <Brand />
           <div className="nav-label">YOUR ACCOUNT</div>
@@ -193,13 +217,12 @@ export default function DashboardLayout() {
           )}
         </div>
       </aside>
-      <main id="main-content" className="dashboard-main" tabIndex={-1}>
+      <main id="main-content" className="dashboard-main" tabIndex={-1} ref={mainRef}>
         <IncidentNotice />
         <Outlet />
-        <footer className="page-footer">
-          Illustrative dashboard data only. Payments, API access and usage connections are not live.
-        </footer>
-        <PublicFooter />
+        <div className="dashboard-footer" ref={footerRef}>
+          <PublicFooter />
+        </div>
       </main>
     </>
   );

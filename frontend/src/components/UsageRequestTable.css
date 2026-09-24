@@ -1,0 +1,81 @@
+.requests-log table {
+  min-width: 800px;
+}
+
+.requests-log th {
+  color: #c3c9c6;
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.requests-log td {
+  height: 64px;
+  color: #e2e7e3;
+}
+
+.requests-log .request-model {
+  font-weight: 600;
+  color: #f2f5f2;
+}
+
+.requests-log .request-credits {
+  font-variant-numeric: tabular-nums;
+}
+
+.request-refunded {
+  display: block;
+  margin-top: 3px;
+  color: #9ebdad;
+  font-size: 12px;
+}
+
+.request-status {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #3e5549;
+  border-radius: 999px;
+  padding: 4px 9px;
+  color: #b7dcc3;
+  background: #1c3025;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.request-status-pending {
+  border-color: #62553c;
+  color: #e1d0a8;
+  background: #30291c;
+}
+
+.request-status-failed {
+  border-color: #684345;
+  color: #e7b6b7;
+  background: #352426;
+}
+
+.request-status-unknown {
+  border-color: #51555b;
+  color: #c3c8cc;
+  background: #282b2e;
+}
+
+.request-details {
+  border: 0;
+  background: transparent;
+  color: #bcebd0;
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.request-details:hover {
+  text-decoration: underline;
+}
+
+.request-details:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 2px;
+}

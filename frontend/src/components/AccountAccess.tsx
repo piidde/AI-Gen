@@ -10,13 +10,12 @@ import Dialog from './Dialog';
 
 type Action = 'email' | 'password' | 'identity' | 'delete' | 'done';
 
-export default function AccountAccess({ failSave = false }: { failSave?: boolean }) {
+export default function AccountAccess() {
   const { user } = useAuth();
   const { pendingEmail, setPendingEmail } = useAccountDemo();
   const { data } = useBillingDemo();
   const balance = BigInt(data.balance).toLocaleString('en-US');
   const [action, setAction] = useState<Action | null>(null);
-  const [scenario, setScenario] = useState<'success' | 'error' | 'loading'>('success');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
@@ -26,16 +25,13 @@ export default function AccountAccess({ failSave = false }: { failSave?: boolean
   const [error, setError] = useState('');
   const operation = useRef<AbortController | null>(null);
   useEffect(() => () => operation.current?.abort(), []);
-  useEffect(() => {
-    operation.current?.abort(); operation.current = null; setPending(false);
-  }, [failSave]);
   const passwordAccount = user ? hasPasswordIdentity(user) : false;
 
   function close() {
     operation.current?.abort(); operation.current = null;
     setAction(null); setEmail(''); setPassword(''); setConfirmation(''); setConfirmed(false); setPending(false); setError('');
   }
-  function open(next: Action) { close(); setMessage(''); setScenario('success'); setAction(next); }
+  function open(next: Action) { close(); setMessage(''); setAction(next); }
 
   async function submit() {
     if (operation.current || !action || action === 'done') return;
@@ -45,9 +41,8 @@ export default function AccountAccess({ failSave = false }: { failSave?: boolean
     if ((action === 'identity' || action === 'delete') && !confirmed) return;
     const controller = new AbortController(); operation.current = controller; setPending(true);
     try {
-      await waitForDemo({ scenario, signal: controller.signal, delayMs: 500 });
+      await waitForDemo({ signal: controller.signal, delayMs: 500 });
       if (controller.signal.aborted) return;
-      if (scenario === 'error' || failSave) throw new Error(action === 'identity' ? 'Simulated identity confirmation failed. Your account is unchanged. Try again or cancel.' : 'Simulated operation failed. Your edits are retained; no account change was made.');
       if (action === 'identity') { setConfirmed(false); setAction('delete'); }
       else {
         if (action === 'email') { setPendingEmail(email.trim()); setMessage('Mock email change pending verification. No email was sent; your sign-in email is unchanged.'); }
@@ -68,22 +63,19 @@ export default function AccountAccess({ failSave = false }: { failSave?: boolean
   return <>
     <div className="panel setting-section">
       <h2>Account access</h2>
-      <p>MOCK account changes. These previews do not contact Supabase, send email or change credentials. Display-name editing remains live.</p>
+      <p>Email and password changes are previews. They do not change your sign-in details or send email.</p>
       <div className="setting-row"><div><h3>Sign-in email</h3><p>{user?.email || 'No email available'}</p>
         {pendingEmail && <p role="status">Mock pending verification: {pendingEmail}. Current email remains {user?.email}.</p>}</div>
         <Button className="secondary" onClick={() => open('email')}>Change email</Button></div>
-      <div className="setting-row"><div><h3>Password</h3><p>{passwordAccount ? 'Preview a password change using sample text only.' : 'Your credentials are managed by your sign-in provider. Change your password with that provider; this page does not link login methods.'}</p></div>
+      <div className="setting-row"><div><h3>Password</h3><p>{passwordAccount ? 'Use sample text to preview a change.' : 'Your sign-in provider manages your password.'}</p></div>
         {passwordAccount && <Button className="secondary" onClick={() => open('password')}>Change password</Button>}</div>
-      <div className="setting-row"><div><h3>API access</h3><p>Manage keys separately from account sign-in.</p></div><Link className="text-link" to="/dashboard/api-keys">Manage API keys ↗</Link></div>
+      <div className="setting-row"><div><h3>API keys</h3><p>Manage your API access.</p></div><Link className="text-link" to="/dashboard/api-keys">Manage API keys ↗</Link></div>
     </div>
-    <div className="panel setting-section"><h2>Delete account</h2><p>Remaining demo balance: <strong>{balance} credits</strong>. Credits never expire while your account remains open. Deletion would forfeit remaining credits and terminate API access.</p>
-      <p>Live deletion requires verified identity and resolution of pending operations and retention requirements. This simulation never deletes or signs out your real account.</p>
+    <div className="panel setting-section settings-danger-zone"><h2>Danger zone</h2><p>Deleting your account would forfeit your <strong>{balance} remaining demo credits</strong> and end API access. Credits do not expire while your account is open.</p>
+      <p>This preview does not delete your account or sign you out.</p>
       <Button className="danger" onClick={() => open('identity')}>Preview account deletion</Button></div>
     {action && <Dialog title={title} onClose={close}>
       {action !== 'done' && <>
-        <div className="field"><label htmlFor="account-operation-preview">Account operation preview</label><select id="account-operation-preview" value={scenario} disabled={pending} onChange={event => setScenario(event.target.value as typeof scenario)}>
-          <option value="success">Success</option><option value="error">Operation error / identity failure</option><option value="loading">Keep pending</option>
-        </select></div>
         <form onSubmit={event => { event.preventDefault(); void submit(); }}>
           {action === 'email' && <><p>Verification would be required before the new email becomes active. This mock sends nothing.</p><div className="field"><label htmlFor="new-account-email">New email address</label><input id="new-account-email" type="email" required value={email} disabled={pending} onChange={event => setEmail(event.target.value)} /></div></>}
           {action === 'password' && <><p>Use made-up sample text only. No real password is checked, stored or changed.</p>
