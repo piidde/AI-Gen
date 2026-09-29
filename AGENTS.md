@@ -15,6 +15,16 @@ The explicit API-only MVP correction supersedes the bootstrap's browser-at-launc
 scope; see [ADR-001](docs/decisions/ADR-001-api-only-mvp.md). Do not implement a
 first-party chat/generation frontend for the MVP.
 
+## Backend branch boundary
+
+The GrsAI/Takewing backend implementation is maintained on
+`feature/grsai-backend`. Before backend work, check the active Git branch and
+whether it contains that implementation. If the active branch is elsewhere and
+does not contain the backend, tell the owner that the work lives on
+`feature/grsai-backend`; do not silently copy, merge, cherry-pick, or recreate it.
+Keep unrelated frontend/design experiments on their own branch or stash. Only
+move between branches when the owner requests it.
+
 Use these labels consistently:
 
 - **DECIDED:** accepted direction or requirement; not proof of implementation.

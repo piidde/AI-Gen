@@ -1,0 +1,56 @@
+@baseUrl = http://localhost:8787
+@apiKey = tw_live_replace_with_a_test_key
+@model = replace-with-an-enabled-model
+@requestId = replace-with-a-request-uuid
+
+### Health (liveness only; does not check the database or GrsAI)
+GET {{baseUrl}}/healthz
+
+### Read the enabled catalogue
+GET {{baseUrl}}/v1/models
+
+### Non-streaming chat (requires a verified, enabled text model and funded account)
+POST {{baseUrl}}/v1/chat/completions
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+Idempotency-Key: sample-chat-request-0001
+
+{
+  "model": "{{model}}",
+  "messages": [
+    { "role": "user", "content": "Reply with one short sentence." }
+  ],
+  "max_tokens": 64
+}
+
+### Create a media job (input fields must match that model's verified schema)
+POST {{baseUrl}}/v1/generations
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+Idempotency-Key: sample-media-request-0001
+
+{
+  "model": "replace-with-an-enabled-image-model",
+  "input": {
+    "prompt": "A small red paper kite against a clear blue sky"
+  }
+}
+
+### Poll a job or inspect a chat request
+GET {{baseUrl}}/v1/requests/{{requestId}}
+Authorization: Bearer {{apiKey}}
+
+### Retrieve a completed result before its expiry
+GET {{baseUrl}}/v1/requests/{{requestId}}/result
+Authorization: Bearer {{apiKey}}
+
+### Download media file 0 from a completed media result
+GET {{baseUrl}}/v1/files/{{requestId}}/0
+Authorization: Bearer {{apiKey}}
+
+### Check credits and latest usage
+GET {{baseUrl}}/v1/credits
+Authorization: Bearer {{apiKey}}
+
+### Purchase and API-key-management routes require a Supabase user access token.
+### Never put a real key or token in this tracked example file.

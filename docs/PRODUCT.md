@@ -17,12 +17,13 @@ The upstream is an implementation detail, never the customer integration surface
 - Backend authentication, API keys, routing, metering, accounting, limits,
   upstream communication, and error handling serve the public API. Any later
   first-party generation interface must reuse these services.
-- No permanent first-party generated-image storage by default unless technically
-  necessary. Prefer streaming/proxying and direct downloads. Bring-your-own-storage
+- No permanent first-party generated-media storage. Temporary private storage is
+  allowed when required for asynchronous jobs and authenticated retrieval; this
+  implementation retains completed results for two hours. Bring-your-own-storage
   (R2/S3-compatible or other storage) is outside MVP.
 - Preserve the possibility of strong introductory discounts. Charges remain server-authoritative.
 
-## ASSUMPTION / conditional direction
+## DECIDED / remaining assumptions
 
 The API-only scope was explicitly clarified on 2026-09-15 and supersedes the
 bootstrap's browser-at-launch requirement and browser-first milestone; see
@@ -31,35 +32,29 @@ committed milestone. A public website and customer management dashboard are now
 accepted frontend scope; see [frontend scope](FRONTEND.md). Backend integrations
 and hosting remain open, and generation stays API-only.
 
-Node.js/TypeScript is the existing default. Supabase, Stripe, and Cloudflare are
-working technology directions; see [architecture](ARCHITECTURE.md).
-Prefer text streaming if upstream support is verified. Limited registered-user
-free usage is a possibility, not a launch commitment; any offer needs a hard
-maximum financial exposure.
+The implementation uses TypeScript/Hono on Cloudflare Workers, Supabase Auth and
+PostgreSQL, Cloudflare Queues/R2, and Stripe Checkout; see
+[architecture](ARCHITECTURE.md) and [ADR-005](decisions/ADR-005-backend-runtime-and-boundaries.md).
+Text streaming is disabled until provider format and usage billing are verified.
+Free usage remains uncommitted; any future offer needs a hard maximum financial
+exposure.
 
 ## OPEN / INVESTIGATION
 
-Pricing, discounts, free usage, exact API contracts, image delivery, and launch
-operational scope remain unresolved in [the decision register](OPEN_DECISIONS.md).
-Veo/video is **INVESTIGATION**: an apparent endpoint is not verified support and
-may be absent from the upstream model list. Do not advertise it before verification.
+Exact model prices/limits, credit offers, markup values, FX assumptions, free
+usage, provider compatibility, operational alert routing, and legal launch terms
+remain unresolved in [the decision register](OPEN_DECISIONS.md). The route
+contracts are implemented in [API.md](API.md), but streaming and all provider
+models still require verification. Veo/video remains **INVESTIGATION**; do not
+advertise support before testing.
 
 ## Delivery direction and non-goals
 
-Backend code is only a starter; the Takewing frontend is a local demo with fictional
-data, not a connected service. After documentation review, aim for one controlled
-text-generation request from a test API client through our API/backend and provider
-adapter to the upstream, with the response returned through our backend to that
-same client. Validate integration, configuration, deployment compatibility, and
-request lifecycle. Streaming is conditional on verified support and the API contract;
-it is not a browser feature or a prerequisite silently settled by this milestone.
-A temporary/manual test balance is acceptable for this controlled milestone;
-it does not remove financial protection requirements for paid usage.
-
-Then complete production credit accounting, payments, API key management, images, limits,
-monitoring, and Veo investigation as appropriate. This order is a recommendation,
-not a rigid sequence; the public API is the initial product surface. Test access
-and upstream spending must be controlled from the first billable integration.
+The backend implementation is on `feature/grsai-backend`. It is not deployed,
+the migration has not been applied, and the existing website has not been wired
+to these APIs on this branch. All models and purchase offers start disabled. The
+next delivery gate is a local database run and reviewed test-mode vertical slice,
+followed by limited-budget provider validation and production configuration.
 
 Do not prebuild microservices, Kubernetes, Kafka/event buses, custom identity,
 enterprise organizations/permission hierarchies, plugin systems, multi-region or

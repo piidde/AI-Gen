@@ -5,6 +5,9 @@ implementation details. Candidates include runtime/deployment, ledger strategy,
 provider boundary design, API compatibility, and storage strategy.
 Accepted records:
 
+- [ADR-005: Cloudflare backend runtime and service boundaries](ADR-005-backend-runtime-and-boundaries.md) —
+  Worker API, Supabase/PostgreSQL, queues, private result storage, and Stripe.
+
 - [ADR-001: API-only MVP](ADR-001-api-only-mvp.md) — explicit scope correction
   following the documentation bootstrap.
 - [ADR-002: Separate React frontend with Vite](ADR-002-frontend-stack.md) —
