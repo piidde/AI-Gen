@@ -16,9 +16,10 @@ tasks. See [SECURITY.md](SECURITY.md).
 Status: **DECIDED** for Supabase PostgreSQL, a private schema, migrations, and
 explicit service-role RPC functions. Both migrations execute in the PGlite
 tests (`npm test`), which cover ledger/balance invariants, idempotency, Stripe
-refund/dispute ordering, role grants, and result-delivery leases. They have not
-run on Supabase Postgres; real multi-connection concurrency, RLS/PostgREST
-exposure, and migration rollback still need local Supabase verification.
+refund/dispute ordering, role grants, and result-delivery leases. They are applied to the Supabase project "AI API Clone"
+(`pwaiidpiymmeppxebfjd`, 2026-10-06; function bodies match the local files, browser
+roles have no execute/table access). Not yet verified there: real multi-connection concurrency, PostgREST
+end-to-end calls, and migration rollback.
 
 ## OD-003 Payment architecture
 
@@ -98,10 +99,14 @@ rotation and production access review remain launch tasks.
 ## OD-014 Prices, markup, offers, and currency
 
 Status: **PARTLY DECIDED**. Customer pricing uses verified, versioned provider
-costs times a configurable global or per-model markup. EUR/USD offers store exact
+costs times a configurable global or per-model markup. **ASSUMPTION:** a global
+2.0x markup (+100%) and candidate prices for the 29 text/image models, scraped
+from grsai.com/dashboard/models on 2026-10-06 (CNY) and converted at an assumed
+0.14 USD/CNY, are seeded by migration `20261006120000`; all models stay disabled
+and the provider has a zero budget. Video (minimax-h3) is unpriced (OD-007). EUR/USD offers store exact
 minor-unit amounts and credit quantities. Actual provider prices, markup values,
 credit packages, conversion assumptions, payment fees, and introductory discounts
-remain **OPEN**; no price or offer is seeded.
+remain **OPEN**; no offer is seeded.
 
 ## OD-015 Search visibility and rendering
 
