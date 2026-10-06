@@ -16,3 +16,4 @@ test-results/
 !.dev.vars.example
 .DS_Store
 Thumbs.db
+supabase/.temp/

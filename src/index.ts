@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+import { createOpenApiDocument } from "./openapi.js";
+import { readBoundedJson, readBoundedText } from "./http-body.js";
 import { cors } from "hono/cors";
 import { z } from "zod";
 import Stripe from "stripe";
@@ -34,51 +36,12 @@ function createStripe(env: Env): Stripe {
   });
 }
 
-async function readJson(c: { req: { header(name: string): string | undefined; text(): Promise<string> } }, env: Env): Promise<unknown> {
-  const maxBytes = requireConfiguredInt(env.MAX_REQUEST_BYTES, 1_048_576);
-  const headerSize = Number(c.req.header("content-length") ?? 0);
-  if (headerSize > maxBytes) throw new HttpError(413, "request_too_large", "The request exceeds the configured size limit.");
-  const body = await c.req.text();
-  if (encoder.encode(body).byteLength > maxBytes) throw new HttpError(413, "request_too_large", "The request exceeds the configured size limit.");
-  try {
-    return JSON.parse(body) as unknown;
-  } catch {
-    throw new HttpError(400, "invalid_json", "The request body must be valid JSON.");
-  }
-}
-
-async function readBoundedJson(response: Response, maxBytes: number): Promise<unknown> {
-  const contentLength = Number(response.headers.get("content-length") ?? 0);
-  if (contentLength > maxBytes) throw new HttpError(502, "provider_response_too_large", "The provider response exceeds the configured size limit.");
-  if (!response.body) throw new HttpError(502, "provider_response_invalid", "The provider returned an empty response.");
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      total += value.byteLength;
-      if (total > maxBytes) {
-        try { await reader.cancel(); } catch { /* The provider response is already rejected. */ }
-        throw new HttpError(502, "provider_response_too_large", "The provider response exceeds the configured size limit.");
-      }
-      chunks.push(value);
-    }
-  } catch (cause) {
-    if (cause instanceof HttpError) throw cause;
-    throw new HttpError(502, "provider_response_invalid", "The provider response could not be read completely.");
-  } finally {
-    reader.releaseLock();
-  }
-  const bytes = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
-  try {
-    return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
-  } catch {
-    throw new HttpError(502, "provider_response_invalid", "The provider returned invalid JSON.");
-  }
+async function readJson(c: { req: { raw: Request } }, env: Env): Promise<unknown> {
+  const body = await readBoundedText(c.req.raw, requireConfiguredInt(env.MAX_REQUEST_BYTES, 1_048_576),
+    new HttpError(413, "request_too_large", "The request exceeds the configured size limit."),
+    new HttpError(400, "invalid_json", "The request body could not be read."));
+  try { return JSON.parse(body) as unknown; }
+  catch { throw new HttpError(400, "invalid_json", "The request body must be valid JSON."); }
 }
 
 function getIdempotencyKey(c: { req: { header(name: string): string | undefined } }, required: boolean): string | null {
@@ -142,40 +105,7 @@ app.use("/*", async (c, next) => {
 
 app.get("/healthz", (c) => c.json({ status: "ok" }));
 
-app.get("/v1/openapi.json", (c) => c.json({
-  openapi: "3.1.0",
-  info: { title: "Takewing API", version: "1.0.0", description: "A private gateway to enabled GrsAI models. API keys use Bearer authentication." },
-  servers: [{ url: new URL(c.req.url).origin }],
-  security: [{ bearerAuth: [] }],
-  components: { securitySchemes: { bearerAuth: { type: "http", scheme: "bearer", description: "Takewing API key, shown once when created." } } },
-  paths: {
-    "/v1/models": { get: { security: [], summary: "List enabled and priced models" } },
-    "/v1/chat/completions": { post: { summary: "OpenAI-style non-streaming chat completion" } },
-    "/v1/generations": { post: { summary: "Create an asynchronous image or video job", parameters: [{ in: "header", name: "Idempotency-Key", required: true, schema: { type: "string" } }] } },
-    "/v1/requests/{id}": { get: { summary: "Get request status" } },
-    "/v1/requests/{id}/result": { get: { summary: "Retrieve a result while it is retained" } },
-    "/v1/files/{requestId}/{index}": { get: { summary: "Download an authorized generated file" } },
-    "/v1/credits": { get: { summary: "Get available and reserved credits" } },
-    "/v1/dashboard/summary": { get: { summary: "Get customer dashboard aggregates" } },
-    "/v1/usage": { get: { summary: "Get request usage" } },
-    "/v1/api-keys": { get: { summary: "List API keys" }, post: { summary: "Create a display-once API key" } },
-    "/v1/api-keys/{id}": { delete: { summary: "Revoke an owned API key" } },
-    "/v1/billing/offers": { get: { summary: "List available top-up offers" } },
-    "/v1/billing/checkout": { post: { summary: "Create a Stripe Checkout session" } },
-    "/v1/billing/payments": { get: { summary: "List payment history" } },
-    "/stripe/webhook": { post: { security: [], summary: "Process signed Stripe events" } },
-    "/v1/internal/ops": { get: { summary: "Administrator operations overview" } },
-    "/v1/internal/admin-check": { get: { summary: "Check operations access for the signed-in user" } },
-    "/v1/internal/controls": { post: { summary: "Pause requests or change result retention" } },
-    "/v1/internal/accounts/{id}": { get: { summary: "Inspect one account and its API keys" } },
-    "/v1/internal/accounts/{id}/suspension": { post: { summary: "Suspend or restore one account" } },
-    "/v1/internal/accounts/{id}/credits": { post: { summary: "Apply an audited, idempotent credit adjustment" } },
-    "/v1/internal/api-keys/{id}/revoke": { post: { summary: "Revoke an account API key" } },
-    "/v1/internal/provider": { post: { summary: "Configure provider budget and platform controls" } },
-    "/v1/internal/models/{id}": { post: { summary: "Configure a model, price version, and limits" } },
-    "/v1/internal/offers": { post: { summary: "Configure an audited EUR or USD credit offer" } },
-  },
-}));
+app.get("/v1/openapi.json", (c) => c.json(createOpenApiDocument(new URL(c.req.url).origin)));
 
 app.get("/v1/models", async (c) => {
   const models = await rpc<Array<{
@@ -515,13 +445,9 @@ app.post("/v1/billing/checkout", requireAccount(), async (c) => {
 app.post("/stripe/webhook", async (c) => {
   const signature = c.req.header("stripe-signature");
   if (!signature || !c.env.STRIPE_WEBHOOK_SECRET) throw new HttpError(400, "invalid_webhook", "The payment webhook signature is missing.");
-  if (Number(c.req.header("content-length") ?? 0) > requireConfiguredInt(c.env.MAX_REQUEST_BYTES, 1_048_576)) {
-    throw new HttpError(413, "request_too_large", "The webhook body exceeds the configured size limit.");
-  }
-  const body = await c.req.text();
-  if (encoder.encode(body).byteLength > requireConfiguredInt(c.env.MAX_REQUEST_BYTES, 1_048_576)) {
-    throw new HttpError(413, "request_too_large", "The webhook body exceeds the configured size limit.");
-  }
+  const body = await readBoundedText(c.req.raw, requireConfiguredInt(c.env.MAX_REQUEST_BYTES, 1_048_576),
+    new HttpError(413, "request_too_large", "The webhook body exceeds the configured size limit."),
+    new HttpError(400, "invalid_webhook", "The webhook body could not be read."));
   let event: Stripe.Event;
   try {
     const stripe = createStripe(c.env);
@@ -750,6 +676,13 @@ async function deletePayload(env: Env, requestId: string, objectKey: string): Pr
 }
 
 async function storeMediaResults(env: Env, requestId: string, result: Awaited<ReturnType<typeof pollMedia>>, capability: "image" | "video", reservedUnits: number): Promise<void> {
+  const db = database(env);
+  const attempt = await rpc<number | null>(db, "tw_begin_result_delivery", { p_request_id: requestId });
+  if (attempt === null) return;
+  if (attempt > 5) {
+    await rpc(db, "tw_fail_generation", { p_request_id: requestId, p_error_category: "result_delivery_exhausted", p_ambiguous: true });
+    return;
+  }
   const sources = result.results ?? [];
   const actualUnits = capability === "image" ? sources.length : Math.ceil(result.duration ?? 0);
   if (!sources.length || actualUnits < 1 || actualUnits > reservedUnits || (capability === "video" && !result.duration)) {
@@ -770,6 +703,8 @@ async function storeMediaResults(env: Env, requestId: string, result: Awaited<Re
   let manifest: { kind: string; files: Array<{ index: number; url: string; content_type: string; bytes: number }> };
   try {
     for (let index = 0; index < sources.length; index += 1) {
+      const active = await rpc<boolean>(db, "tw_extend_result_delivery", { p_request_id: requestId });
+      if (!active) return;
       const remaining = maxResultBytes - totalBytes;
       if (remaining <= 0) throw new HttpError(413, "provider_result_too_large", "The generated result exceeds the configured size limit.");
       const downloaded = await fetchProviderResult(env, sources[index]!.url, remaining);
@@ -784,10 +719,16 @@ async function storeMediaResults(env: Env, requestId: string, result: Awaited<Re
     manifest = { kind: "media", files: stored.map((item, index) => ({
       index, url: `/v1/files/${requestId}/${index}`, content_type: item.contentType, bytes: item.bytes,
     })) };
-  } catch {
-    await Promise.all(stored.map((item) => env.GENERATED_ASSETS.delete(item.objectKey).catch(() => undefined)));
-    await rpc(database(env), "tw_fail_generation", { p_request_id: requestId, p_error_category: "provider_result_unavailable", p_ambiguous: true });
-    writeLog("generation.result_unavailable", { request_id: requestId, capability });
+  } catch (cause) {
+    // Object keys are already durable; maintenance also finds partial failed puts.
+    const permanent = cause instanceof HttpError && ["provider_result_too_large", "provider_result_url_invalid",
+      "provider_result_url_blocked", "provider_result_type_unsupported"].includes(cause.code);
+    if (permanent || attempt >= 5) {
+      await rpc(db, "tw_fail_generation", { p_request_id: requestId, p_error_category: "provider_result_unavailable", p_ambiguous: true });
+    } else {
+      await rpc(db, "tw_reschedule_media_poll", { p_request_id: requestId, p_seconds: Math.min(300, 30 * 2 ** attempt) });
+    }
+    writeLog("generation.result_delivery_failed", { request_id: requestId, capability, attempt, retry: !permanent && attempt < 5 });
     return;
   }
 
@@ -798,11 +739,10 @@ async function storeMediaResults(env: Env, requestId: string, result: Awaited<Re
     });
     writeLog("generation.succeeded", { request_id: requestId, capability, result_count: stored.length, result_bytes: totalBytes });
   } catch {
-    // Keep the objects until PostgreSQL resolves the outcome. The database already
-    // has their keys, so maintenance can remove them if this remains unresolved.
-    try { await rpc(database(env), "tw_fail_generation", { p_request_id: requestId, p_error_category: "settlement_failed", p_ambiguous: true }); }
-    catch { /* A database outage is recovered by the scheduled stale-job pass. */ }
-    writeLog("generation.settlement_unknown", { request_id: requestId, capability });
+    // Settlement may already have committed. Its RPC is idempotent; never
+    // release credits or delete these objects based on a lost DB response.
+    await rpc(db, "tw_reschedule_media_poll", { p_request_id: requestId, p_seconds: 60 });
+    writeLog("generation.settlement_retry", { request_id: requestId, capability });
   }
 }
 
@@ -872,6 +812,7 @@ async function processMediaMessage(id: string, env: Env, message: QueueBatch["me
       message.ack();
       return;
     }
+    await rpc(db, "tw_reschedule_media_poll", { p_request_id: id, p_seconds: 10 });
     try {
       await env.MEDIA_QUEUE.send(id, { delaySeconds: 10, contentType: "text" });
     } catch {

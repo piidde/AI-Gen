@@ -1,3 +1,4 @@
+import { readBoundedJson } from "./http-body.js";
 import { z } from "zod";
 import { HttpError } from "./errors.js";
 import type { Env } from "./types.js";
@@ -90,7 +91,7 @@ export async function submitMedia(
       response.status >= 500 || response.status === 429 ? "provider_rejected_ambiguous" : "provider_rejected",
       "The model provider rejected the request.");
   }
-  const value: unknown = await response.json();
+  const value: unknown = await readBoundedJson(response, 1_048_576);
   const parsed = z.object({
     id: z.string().min(1).max(200),
     status: z.string().min(1).max(64),
@@ -114,7 +115,7 @@ export async function pollMedia(env: Env, key: ProviderKey, providerRequestId: s
     signal: AbortSignal.timeout(60_000),
   });
   if (!response.ok) throw new Error("provider_poll_failed");
-  const value: unknown = await response.json();
+  const value: unknown = await readBoundedJson(response, 1_048_576);
   const parsed = z.object({
     id: z.string().min(1).max(200).optional(),
     status: z.string().min(1).max(64),
@@ -162,7 +163,7 @@ export async function fetchProviderResult(env: Env, source: string, maxBytes: nu
   const body = response.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
     transform(chunk, controller) {
       total += chunk.byteLength;
-      if (total > maxBytes) throw new Error("provider_result_too_large");
+      if (total > maxBytes) throw new HttpError(413, "provider_result_too_large", "The generated result exceeds the configured size limit.");
       controller.enqueue(chunk);
     },
   }));
