@@ -17,6 +17,8 @@ Accepted records:
 - [ADR-005: Build-time prerendering for public routes](ADR-005-public-build-time-prerendering.md)
   — accepted frontend approach; implementation and hosting verification remain
   follow-up work. No partner acceptance or deployment is implied.
+- [ADR-006: Cloudflare backend runtime and service boundaries](ADR-006-backend-runtime-and-boundaries.md) —
+  Worker API, Supabase/PostgreSQL, queues, private result storage, and Stripe.
 
 Track unresolved choices and evidence in [OPEN_DECISIONS.md](../OPEN_DECISIONS.md).
 An assumption or investigation is not an accepted ADR. When the team explicitly

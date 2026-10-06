@@ -29,14 +29,18 @@ review and evidence beyond compilation. Commit/push only when authorized.
 
 ## Validation
 
-Node starter checks: `npm run typecheck` and `npm run build`.
-After building, `npm start` is a starter smoke check, not a product test suite.
-`npm run dev` uses `tsx` and does not type-check.
+Backend checks: `npm run typecheck`, `npm run build` (TypeScript, Vite build,
+and Wrangler dry-run), and `npm test` (database and billing tests on in-memory
+PGlite; they need no Docker and never touch a hosted database). `npm run dev` builds Vite assets and starts Wrangler.
+Local database work uses `npx supabase start`, `npm run db:up`, and
+`npm run db:reset`; Docker Desktop is required. Stripe CLI can forward test
+webhooks. Do not deploy or apply migrations to a hosted database as part of
+routine validation.
 Frontend checks: `npm --prefix frontend run typecheck`,
 `npm --prefix frontend run build`, and `npm --prefix frontend test` (Playwright,
 desktop/mobile, local Chrome required). Tests use a local preview on port 4173;
 traces/results go to the OS temporary directory, not the repository. The frontend
-test script builds first. No root test, format or lint script exists. Run relevant
+test script builds first. No format or lint script exists. Run relevant
 checks and report skipped or blocked checks without claiming success.
 
 For auth/session and shared dashboard interaction changes, also run
@@ -66,7 +70,8 @@ Update API changes in [API.md](docs/API.md), schema changes in
 architecture changes in [ARCHITECTURE.md](docs/ARCHITECTURE.md) with an ADR where
 appropriate. Documentation must describe the actual implementation as it evolves.
 
-Permanent schema changes require migrations; the workflow is still OPEN (OD-002).
+Permanent schema changes require reviewed migrations. The initial workflow is
+`supabase/migrations/` with Supabase CLI; see [OD-002](docs/OPEN_DECISIONS.md#od-002-database-structure).
 Do not make undocumented manual production schema changes.
 Never commit secrets; use empty names in `.env.example` and follow
 [SECURITY.md](docs/SECURITY.md). Prefer payment test mode and separate development,

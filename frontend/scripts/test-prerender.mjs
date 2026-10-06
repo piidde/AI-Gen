@@ -17,7 +17,8 @@ try {
     const context = await browser.newContext({ javaScriptEnabled: false });
     try {
       const rules = (await readFile(join(output, '_redirects'), 'utf8')).split('\n').filter(line => line && !line.startsWith('#'));
-      const publicPaths = rules.filter(line => !line.includes('/spa.html')).map(line => line.trim().split(/\s+/)[0]);
+      // "/" has no rewrite rule because hosts serve it natively; check it explicitly.
+      const publicPaths = ['/', ...rules.filter(line => !line.includes('/spa.html')).map(line => line.trim().split(/\s+/)[0])];
       const page = await context.newPage();
       const titles = new Set();
       for (const path of publicPaths) {

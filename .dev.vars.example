@@ -1,0 +1,16 @@
+# Copy to .dev.vars and use development credentials only.
+SUPABASE_URL=
+SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+PUBLIC_SITE_URL=http://localhost:8787
+ADMIN_USER_IDS=
+SENTRY_DSN=
+GRSAI_BASE_URL=https://grsaiapi.com
+GRSAI_KEYS_JSON=[]
+# 32 random bytes encoded as unpadded base64url; do not reuse between environments.
+PAYLOAD_ENCRYPTION_KEY=
+# Persistent random secret with at least 32 bytes; changing it ends deduplication for existing keys.
+IDEMPOTENCY_HMAC_SECRET=
+DOWNLOAD_HOST_ALLOWLIST=file1.aitohumanize.com

@@ -1,12 +1,11 @@
 import { test, expect } from "@playwright/test";
 
-test("docs retains its contract boundary and legacy help links reach dedicated pages", async ({ page }) => {
+test("legacy help links reach dedicated pages, including the API docs", async ({ page }) => {
   await page.goto("/information?topic=docs");
   await expect(page).toHaveURL(/\/docs$/);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Documentation is being prepared");
-  await expect(page.locator("main")).toContainText("verified API contract");
-  await expect(page.locator("main pre, main code")).toHaveCount(0);
-  await page.getByRole("navigation", { name: "Footer navigation" }).getByRole("link", { name: "Support", exact: true }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Documentation");
+  await page.goto("/information?topic=support");
+  await expect(page).toHaveURL(/\/support$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Help & support");
   await page.goto("/information?topic=terms#deletion");
   await expect(page).toHaveURL(/\/terms#deletion$/);

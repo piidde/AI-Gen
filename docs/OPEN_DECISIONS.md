@@ -1,158 +1,120 @@
-# Open decisions and investigations
+# Decisions and investigations
 
-See the [2026-09-20 frontend review](FRONTEND_REVIEW.md) for subsequent frontend
-decisions and remaining details. Payment selection, backend mechanisms and
-investigations remain open unless explicitly resolved there.
+**DECIDED** records an accepted implementation direction, not a deployed or
+verified service. **OPEN** records unresolved choices. **INVESTIGATION** means
+evidence is required before claiming support.
 
-Entries distinguish accepted requirements from unresolved mechanisms. The
-[frontend implementation plan](superpowers/plans/2026-09-20-frontend-implementation-plan.md) tracks
-execution, dependencies and subsequent implementation findings.
-**OPEN** means no final choice;
-**INVESTIGATION** means evidence is needed. **ASSUMPTION** permits provisional
-work without making a choice permanent; **DECIDED** marks accepted direction,
-not implemented functionality. Explicit decisions must update this register and
-the owning guide, with an [ADR](decisions/README.md) for material architecture.
-
-Owners from the bootstrap are retained; suggested owners are not exclusive or
-confirmed assignments. Additional entries collect unresolved questions already
-present elsewhere in the bootstrap. Work around them using stable boundaries or
-documented assumptions; resolve blockers before dependent implementation.
+See the [2026-09-20 frontend review](FRONTEND_REVIEW.md) for frontend decisions.
+The [frontend implementation plan](superpowers/plans/2026-09-20-frontend-implementation-plan.md)
+tracks frontend execution, dependencies and implementation findings.
 
 ## OD-001 Authentication
 
-Status: **DECIDED for the initial browser auth slice**. Owner: Samuel.
-Supabase Auth is the selected auth platform.
-
-The first slice uses email/password and Google OAuth, with email confirmation,
-password reset, browser session persistence, protected dashboard routes, and
-logout. The frontend also contains a Discord OAuth option, disabled by default
-until its Discord and Supabase provider configuration is complete. Its client
-secret stays in Supabase Auth settings; `VITE_AUTH_DISCORD_ENABLED` is only a
-browser UI gate. Backend token verification, production session strategy,
-account records, and RLS remain OPEN and must be coordinated with OD-002 before
-server-backed features ship. See [SECURITY.md](SECURITY.md).
+Status: **DECIDED** for Supabase Auth. The Worker verifies Supabase bearer tokens;
+generation requires a separate Takewing API key. Production Auth URL, SMTP,
+CAPTCHA, session settings, and local authorization verification remain launch
+tasks. See [SECURITY.md](SECURITY.md).
 
 ## OD-002 Database structure
 
-Status: **OPEN**. Suggested owner: Samuel. **ASSUMPTION:** Supabase/PostgreSQL.
-
-Define final schema, migration workflow, database access, RLS strategy, and
-transaction/concurrency strategy for credits. Coordinate OD-001/009/010.
-Candidate entities/job states in [DATA.md](DATA.md) are not schema commitments.
+Status: **DECIDED** for Supabase PostgreSQL, a private schema, migrations, and
+explicit service-role RPC functions. Both migrations execute in the PGlite
+tests (`npm test`), which cover ledger/balance invariants, idempotency, Stripe
+refund/dispute ordering, role grants, and result-delivery leases. They are applied to the Supabase project "AI API Clone"
+(`pwaiidpiymmeppxebfjd`, 2026-10-06; function bodies match the local files, browser
+roles have no execute/table access). Not yet verified there: real multi-connection concurrency, PostgREST
+end-to-end calls, and migration rollback.
 
 ## OD-003 Payment architecture
 
-Status: **OPEN** for provider/integration. Suggested owner: Mario. Stripe was an
-initial candidate; no provider is selected. Operator privacy is a selection priority.
-
-Choose the provider flow, webhook/document integration and feasible methods.
-**DECIDED:** GRSAI-reference packages/bonuses, USD checkout with approximate EUR
-display, non-expiring credits and the refund/deletion policies in BILLING.md.
-Revalidate package amounts before implementation; do not reopen settled policies
-or add alternative providers solely for flexibility.
-See [BILLING.md](BILLING.md).
+Status: **DECIDED** for Stripe Checkout and signed webhooks with immutable quotes.
+EUR and USD are supported as offer currencies; no offers are configured. Test
+mode, refund/dispute ordering, receipts/invoices, tax, and payment policy remain
+launch work. See [BILLING.md](BILLING.md).
 
 ## OD-004 Deployment architecture
 
-Status: **OPEN**. Suggested owners: Pippi + Imerian. **ASSUMPTION:** Cloudflare direction.
+Status: **DECIDED** for TypeScript/Hono on Cloudflare Workers with Supabase,
+Queues, private R2, and a five-minute recovery schedule. Production runs on
+https://aiapi.deals (Worker `takewing-api`, account samuelfalecx, deployed
+2026-10-06) with R2 buckets, queues/DLQs and a 3-day R2 lifecycle backstop. Wrangler config exists;
+resources, secrets, domains, staging/production databases, alerts, and rollback
+are not configured. Text streaming is disabled.
 
-Compare Workers, Node.js server, VM, or hybrid. Determine API runtime, streaming
-compatibility, background jobs, execution limits, image/video durations, deployment
-workflow, scaling, secrets, and preview environments. Local Node.js setup does not
-settle production runtime. See [ARCHITECTURE.md](ARCHITECTURE.md).
+## OD-005 Object storage and result delivery
 
-## OD-005 Object storage and image delivery
-
-Status: **OPEN**. Suggested owners: Pippi + Imerian.
-**DECIDED:** no permanent first-party image storage by default unless technically necessary.
-
-Choose proxy/stream vs temporary upstream URLs vs temporary internal cache, retention,
-and download behavior. Evaluate URL privacy, reliability, lifetime, and exposure.
-User-connected R2/S3-compatible storage is a later possibility, outside MVP;
-do not decide its implementation now. See [ARCHITECTURE.md](ARCHITECTURE.md).
+Status: **DECIDED** for private R2 and authenticated Worker downloads. Completed
+results are accessible for two hours after storage by default; expiry is checked
+in PostgreSQL before each read. Media inputs are encrypted and temporary. Actual
+R2 lifecycle backstops and deletion alarms require deployment setup.
 
 ## OD-006 Free usage
 
-Status: **OPEN**. Owner: Team. No commitment to launch free credits.
+Status: **OPEN**. There is no free-credit offer. Any future free allowance needs
+a hard maximum financial exposure and abuse limits.
 
-Decide availability, amount, account requirements, abuse prevention, per-account
-caps, and total financial exposure. **DECIDED:** any offer needs a hard maximum
-financial exposure; unlimited free usage is prohibited. See [PRODUCT.md](PRODUCT.md).
+## OD-007 Veo and unverified video models
 
-## OD-007 Veo endpoint
+Status: **INVESTIGATION**. The seeded provider catalogue is not evidence of
+working video support. Verify parameters, cost, job states, outputs, and terms
+before enabling or advertising a video model.
 
-Status: **INVESTIGATION**. Owner: unassigned; team member must be assigned.
+## OD-008 Public API contract
 
-Video is outside the accepted image/text MVP. This investigation is future scope,
-not a dependency for frontend launch.
+Status: **DECIDED** for the current `/v1` contract in [API.md](API.md), including
+non-streaming OpenAI-style chat, asynchronous media jobs, idempotency, ownership,
+and a common error format. Streaming and full provider compatibility remain
+unverified. OpenAPI and example completeness should be checked as routes evolve.
 
-Test the apparent upstream endpoint; verify supported parameters, response format,
-cost, and reliability, including its absence from the model list. Do not advertise
-support before verification. No credentials or endpoint evidence were provided
-for this bootstrap. See [API.md](API.md).
+## OD-009 Credit accounting
 
-## OD-008 API contract
+Status: **DECIDED** for USD-value microcredits, `bigint` ledger entries, atomic
+customer/provider reservations, versioned costs, and a 24-hour unresolved-request
+policy. Database execution and concurrency/webhook fault tests remain required.
+The exact accounting, tax, and financial-record retention policy remains open.
 
-Status: **OPEN**. Owner: initial API implementer, reviewed by team (person not assigned).
+## OD-010 API keys
 
-Define exact routes/payloads, error format, streaming transport/format, compatibility
-goals, request IDs, idempotency, pagination, and versioning. Verify upstream streaming
-capabilities and deployment compatibility before committing to transport.
-Routes in [API.md](API.md) remain proposals.
-
-## OD-009 Internal credit unit and accounting
-
-Status: **OPEN**. Owners: database/billing owners (specific billing owner unconfirmed).
-
-Decide denomination, integer precision/representation, ledger rules/schema,
-reservation model, concurrency, settlement/release, refunds/adjustments,
-idempotency, and treatment of ambiguous upstream outcomes. Coordinate OD-002/003/008.
-Integer accounting and financial safety are requirements; exact implementation
-is unresolved. See [BILLING.md](BILLING.md).
-
-## OD-010 API key design
-
-Status: **OPEN**. Owner: unassigned.
-
-**DECIDED:** named keys, display-once secrets, masked identifiers, creation and
-last-used metadata, confirmed revocation and preserved historical identification.
-Define key format, secure generation/hashing, storage and effective server-side
-revocation. Prefix + hash + metadata remains a candidate storage design.
-Document the design before production. See [SECURITY.md](SECURITY.md).
+Status: **DECIDED** for 256-bit random `tw_live_` secrets displayed once and stored
+as SHA-256 digests with metadata. Revocation is enforced server-side. Generation
+idempotency fingerprints use HMAC-SHA-256 and expire after 30 days; scope is per
+account and capability.
 
 ## OD-011 Rate limits and financial stop controls
 
-Status: **OPEN**. Owner: unassigned.
+Status: **PARTLY DECIDED**. Atomic credit/provider budget checks, a default
+three-request per-account concurrency limit, global/provider pause, model
+disablement, account suspension, and key revocation exist in code. Per-IP,
+per-key, and daily limits and their thresholds are **OPEN**; Cloudflare rate-limit
+configuration is not present.
 
-Choose thresholds/mechanisms across IP, account, key, model, concurrency, daily
-usage, and global spend. Define rapid model disablement, account suspension,
-key revocation, upstream stop, and platform spend limits. Coordinate free-usage
-exposure with OD-006. See [SECURITY.md](SECURITY.md).
+## OD-012 Monitoring, logs, and retention
 
-## OD-012 Monitoring, logging, and retention
-
-Status: **OPEN**. Owner: unassigned. Candidate: Sentry or equivalent, not selected.
-
-Choose monitoring provider and operational alert handling for application/upstream/
-database errors, payment webhook/billing failures, unusual spend, and elevated
-error rates. Define metadata access/retention and any required content logging;
-prompts/output are excluded by default, and secrets must never be logged.
-Usage/audit retention is not specified. See [ARCHITECTURE.md](ARCHITECTURE.md)
-and [SECURITY.md](SECURITY.md).
+Status: **PARTLY DECIDED**. Cloudflare observability is configured; optional
+Sentry removes request bodies, cookies, credential headers, and default PII.
+Prompts and generated content are not logged. Alert destinations, log/Sentry
+retention, 90-day usage retention, and financial-record retention remain **OPEN**.
 
 ## OD-013 Minimal admin and operations
 
-Status: **OPEN**. Owner: unassigned.
+Status: **DECIDED** for restricted `/v1/internal` routes guarded by verified user
+IDs in `ADMIN_USER_IDS`, with required audit reasons for privileged changes.
+No admin dashboard UI exists yet; admin identity
+rotation and production access review remain launch tasks.
 
-Choose the smallest needed initial operational interface and timing. Candidates:
-inspect users, balances, usage, requests, provider failures, and payment status;
-suspend accounts, revoke keys, adjust credits with audit trail, and toggle models.
-Define privileged access without building a large admin product.
-See [SECURITY.md](SECURITY.md).
+## OD-014 Prices, markup, offers, and currency
 
-## OD-014 Pricing and introductory discounts
+Status: **PARTLY DECIDED**. Customer pricing uses verified, versioned provider
+costs times a configurable global or per-model markup. **ASSUMPTION:** a global
+2.0x markup (+100%) and candidate prices for the 29 text/image models, scraped
+from grsai.com/dashboard/models on 2026-10-06 (CNY) and converted at an assumed
+0.14 USD/CNY, are seeded by migration `20261006120000`; all models stay disabled
+and the provider has a zero budget. Video (minimax-h3) is unpriced (OD-007). EUR/USD offers store exact
+minor-unit amounts and credit quantities. Actual provider prices, markup values,
+credit packages, conversion assumptions, payment fees, and introductory discounts
+remain **OPEN**; no offer is seeded.
 
-Status: **OPEN**. Owner: unassigned (coordinate with payment/billing owners).
+Frontend pricing research (2026-09-20 to 2026-09-21):
 
 **DECIDED:** research current GRSAI model prices and package bonuses as the frontend
 reference; model credit rates do not change with package size or usage. Catalogue
@@ -180,7 +142,7 @@ S02.4/S02.5 are complete with backend/billing validation explicitly deferred to
 B02/S12. Commercial margin, ceiling enforcement and settlement remain open.
 No source gap or partner review is resolved by frontend approval.
 
-## OD-015 Search visibility activation and rendering strategy
+## OD-015 Search visibility and rendering
 
 Status: **DECIDED** for the frontend rendering approach; **OPEN** for activation
 and hosting verification. Suggested coordination owner: Samuel.
@@ -217,31 +179,14 @@ Coordinate with OD-004 (hosting, which determines whether `_headers` and
 `_redirects` apply), OD-012 (monitoring and retention overlap with analytics), and
 OD-014 (pricing). See [FRONTEND.md](FRONTEND.md) for the launch checklist.
 
-## Review notes and uncertainties
+## Launch gates
 
-- The existing Node.js starter agrees with the bootstrap technology default, but
-  does not establish Workers compatibility or decide deployment. No direct setup
-  contradiction was found; missing product features are expected at this stage.
-- **Resolved scope conflict (2026-09-15):** the user explicitly chose an API-only
-  MVP, superseding the bootstrap's browser-at-launch requirement and browser-first
-  milestone. The original specification need not be retained; follow
-  [ADR-001](decisions/ADR-001-api-only-mvp.md) and [PRODUCT.md](PRODUCT.md).
-- No backend framework is selected. The first slice uses an API client, not a
-  first-party chat page. Future generation UI timing is uncommitted. Public website
-  and customer dashboard scope is now accepted in [FRONTEND.md](FRONTEND.md);
-  the initial browser auth slice is implemented under OD-001; backend auth,
-  payments and the database remain open under OD-002/003. Frontend technology and
-  navigation are accepted in that guide and [ADR-002](decisions/ADR-002-frontend-stack.md).
-  Hosting, notifications and support/status delivery remain open. Public-page
-  indexing is now built but deliberately inactive under OD-015.
-- `.env.example` names anticipated Supabase/Stripe/upstream integration variables;
-  none are consumed by the starter. Monitoring variables await OD-012.
-- These repository guides are the permanent source of truth; the initial bootstrap
-  specification is no longer required.
-- Git inspection found no commits and a configured `origin/main` tracking branch
-  reported as gone during bootstrap inspection. This is a historical observation;
-  verify current Git/remote state before collaboration work.
-
+Before public sales, apply and review the migration, run database and financial
+behavior tests, validate GrsAI text/media request and response contracts with a
+limited budget, configure and test Stripe, verify all enabled model prices and
+limits, set customer terms/tax/invoicing/retention, configure alarms and Cloudflare
+resources, and complete the focused security/billing review. The backend was
+merged into `main` on 2026-10-06; the website dashboard is not yet connected to it.
 
 ## 2026-09-21: upstream purchasing basis confirmed
 
@@ -253,6 +198,10 @@ OD-014 (pricing). See [FRONTEND.md](FRONTEND.md) for the launch checklist.
 ## 2026-09-21: provisional selling-price markup
 
 **DECIDED (owner, for now):**20% markup above acquisition cost using the USD150 package. Formula: model credits /133,200 *1.20 USD (equivalently credits /111,000 USD). This is markup, not20% gross margin; gross margin before fees and other costs is1/6. Supersedes the open markup choice in the preceding package decision. Implementation and production enforcement remain pending.
+
+**Superseded for the backend (2026-10-06 merge):** OD-014 records the backend's
+assumed 2.0x markup, which takes precedence. Frontend price displays still use
+the 20% formula and must be aligned before any model is enabled.
 
 This does not establish universal savings: Sunburst2400 credits gives acquisition0.018018... USD and proposed retail0.0216216... USD, above the official1024-square Medium output example0.01317 and below the4K High output example0.10008. Comparisons must retain explicit settings and exclusions; no blanket positive percentage is authorized by this commercial choice.
 

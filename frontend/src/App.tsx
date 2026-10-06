@@ -7,6 +7,7 @@ import ConsentBanner from "./components/ConsentBanner";
 import Home from "./pages/Home";
 import Models from "./pages/Models";
 import ModelDetail from "./pages/ModelDetail";
+import Docs from "./pages/Docs";
 import Information, { topicSlugs } from "./pages/Information";
 import Support from "./pages/Support";
 import Policy from "./pages/Policy";
@@ -80,6 +81,7 @@ export default function App({ children }: { children?: ReactNode }) {
         <Route path="/" element={<Home />} />
         <Route path="/models" element={<Models publicPage />} />
         <Route path="/models/:slug" element={<ModelDetail />} />
+        <Route path="/docs" element={<Docs />} />
         <Route path="/information" element={<LegacyInformation />} />
         <Route path="/updates" element={<Updates />} />
         <Route path="/updates/:slug" element={<Updates />} />

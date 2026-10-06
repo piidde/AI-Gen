@@ -1,41 +1,50 @@
 # Architecture
 
-## Observed implementation
+## Implemented architecture (not yet deployed)
 
-The repository contains an npm-managed Node.js starter (`node >=24`, `.nvmrc` 24),
-TypeScript with strict NodeNext/ES-module settings, and `tsx` development watch.
-`src/index.ts` prints a readiness message; compilation writes to `dist/`.
-`frontend/` is a separate React/TypeScript/Vite browser application with React
-Router and ordinary CSS. It implements the reviewed seven-screen design using
-local demo fixtures, plus a public catalogue and pending-content/missing-page
-states. The initial Supabase Auth browser slice adds Google OAuth, a
-configuration-gated Discord OAuth option, email/password auth, password reset,
-callback handling, session guards and logout. Its package,
-lockfile, TypeScript configuration and build output are independent of the Node
-starter. Playwright covers public routes and key interactions at desktop/mobile
-widths; generated test artifacts stay outside the repository. There is still no
-HTTP API, database schema, payment integration, provider adapter or deployment
-configuration. Backend requirements below describe intended behavior.
+The API and Vite site run in one TypeScript Cloudflare Worker using Hono. The
+Worker verifies Supabase Auth access tokens for dashboard/admin operations and
+accepts separately generated Takewing API keys for customer generation. It calls
+private Supabase PostgreSQL functions for account, model, usage, billing, and
+request state; browser roles cannot read the private schema. The Worker is the
+only component holding Stripe and GrsAI credentials.
 
-## DECIDED — boundaries
+Text requests use GrsAI's OpenAI-style chat endpoint synchronously. Streaming is
+disabled. Image/video requests reserve limits and credits in PostgreSQL, store an
+encrypted short-lived input in private R2, and enqueue only the request ID in
+Cloudflare Queues. The Worker polls GrsAI, copies allowlisted media into private
+R2, and serves downloads through authenticated routes. A five-minute scheduled
+handler recovers queue work, marks stale submissions unresolved, releases old
+reservations according to the 24-hour policy, and removes expired R2 objects.
 
-The API-only MVP accepts customer API calls through our backend/gateway, with services for
-authentication, key validation, model availability/routing, pricing, credits,
-usage metering, request tracking, errors, and applicable rate limits.
-The backend coordinates persistence, trusted payment confirmation, and an adapter
-that communicates with the private upstream. These are conceptual responsibilities,
-not a mandate for separate services, packages, classes, or deployment units.
+PostgreSQL is authoritative for request and payment state. Atomic SQL functions
+reserve customer credits and provider-group spend, snapshot prices, settle usage,
+and append a credit ledger. The schema is introduced by
+`supabase/migrations/20260929120000_takewing_backend.sql`; it has not yet been
+applied to a local or hosted database. The seed contains the discovered provider
+catalogue with every model disabled and no price rows.
 
-Responses return from upstream through the adapter/backend to the calling API
-client, which decides how to display or use them. No first-party generation UI
-is required. If one is added later, it must reuse the same backend logic.
-See [ADR-001](decisions/ADR-001-api-only-mvp.md).
+## Boundaries
+
+- Public generation is API-only. The website is a customer account, billing,
+  API-key, usage, and restricted operations portal; it has no generation UI.
+- A single GrsAI adapter isolates provider endpoints and response parsing.
+  Provider-listed models are not treated as verified compatibility or pricing.
+- Supabase Auth tokens are verified server-side. Account ownership is checked in
+  database functions for customer data and results. Admin access is an explicit
+  environment allowlist (`ADMIN_USER_IDS`) plus an audit reason.
+- API keys, Stripe secrets, Supabase service credentials, media encryption keys,
+  and request-fingerprint HMAC secrets stay in Worker secrets. Never expose them
+  through Vite variables or logs.
+- R2 is private; files are delivered only after account and expiry checks. The
+  default result lifetime is two hours after successful storage. There is no
+  cross-customer prompt/result cache.
 
 A public website and customer management dashboard are accepted scope in
 [FRONTEND.md](FRONTEND.md). They add account, billing, key, and usage management
 surfaces without adding a browser generation interface. The frontend stack is
-accepted in [ADR-002](decisions/ADR-002-frontend-stack.md); hosting and management
-API contracts remain open. `frontend/src/demo/fixtures.ts` contains fictional
+accepted in [ADR-002](decisions/ADR-002-frontend-stack.md); management API
+contracts are in [API.md](API.md), but the dashboard is not yet connected to them. `frontend/src/demo/fixtures.ts` contains fictional
 view data, not network contracts. Components never perform credit arithmetic or
 issue credentials. Notification preferences remain account-scoped demo memory, while the
 authenticated display name is persisted through Supabase Auth user metadata.
@@ -47,43 +56,40 @@ persistence. These modules are not yet page consumers or management API contract
 existing pages still use the legacy fixtures until their incremental migration.
 Feature stages add their specific operations. Supabase auth remains independent.
 
-Clients call only our API. Keep upstream credentials, privileged database
-credentials, payment secrets, pricing, credit deduction, and routing server-side.
+## Deployment and operations
 
-Isolate actual upstream behavior in one provider adapter. Translate public input
-to internal types, then upstream input; translate upstream results/errors back to
-internal and public forms. Model listing, text generation, and image generation
-are conceptual capabilities, not finalized TypeScript signatures. Add only verified
-behavior; do not build multi-provider machinery or speculative video methods.
+`wrangler.jsonc` defines the Worker, same-origin Vite assets, private R2 binding,
+media queue/consumer, five-minute cron, and an isolated staging name/bucket/queue.
+Cloudflare observability is enabled. Sentry is an optional Worker binding via
+`SENTRY_DSN`, with request bodies, cookies, authorization headers, and default PII
+excluded. Alert destinations and retention still require operator configuration.
 
-## ASSUMPTION — technology direction
+Local setup uses Node.js 24+, npm, Supabase CLI with Docker, and Wrangler. Stripe
+CLI can forward test webhooks. Migrations are applied locally with `npm run
+db:up`; deployments do not apply database migrations automatically. Do not run a
+deploy until the matching Cloudflare resources, Supabase project, secrets, origins,
+limits, alarms, and rollback path are configured.
 
-- Node.js/TypeScript remains the default existing setup, not a decision against Workers.
-- Supabase Auth is selected for the initial browser auth slice. Supabase/PostgreSQL
-  remains the database direction; database access, migrations, RLS, and any
-  limited internal storage remain subject to database design.
-- Payment provider selection remains open; Stripe was the initial candidate, not
-  a commitment. Operator privacy is a selection priority. Do not add alternative
-  providers for theoretical flexibility.
-- Cloudflare is a cloud direction. DNS/CDN/WAF, limits, Workers, R2, hosting, and
-  server/VM/hybrid arrangements are candidates, not provisioned infrastructure.
-- Prefer upstream-to-backend-to-client text streaming when supported. SSE or
-  streaming HTTP is a candidate; verify long-lived request/runtime compatibility.
+## Known limitations and open launch gates
 
-## OPEN — deployment, delivery, and operations
+- No live provider or Stripe request has been tested by this implementation.
+  Provider media submit/result formats, costs, usage fields, model parameters,
+  and result-host allowlist must be validated before enablement.
+- All model entries, provider spending, platform request acceptance, and purchase
+  offers default off. A price row requires an operator-supplied evidence note and
+  limits; this is not itself proof of provider behavior.
+- `stream=true` returns 501. There is no IP/API-key rate-limit service; the
+  database enforces available-credit, provider-budget, and per-account concurrency
+  limits (default three concurrent requests).
+- Usage and audit retention, tax/invoicing, customer terms, resale and data
+  processing terms, alert routing, and production secrets are not finalized.
+- Database migrations and financial/authentication behavior still need local
+  database execution, meaningful behavior/concurrency tests, and focused review.
 
-[Accepted ADR-005](decisions/ADR-005-public-build-time-prerendering.md) selects
-a Vite server build plus React static
-prerendering, with a separate private SPA shell. S11 implements local asset
-assembly, metadata and hydration for 18 public pages, resolving F-001 in build
-artifacts. The frontend owner accepted the approach; actual host behavior,
-coordination and indexing activation remain open under B09/S13.
+See [API](API.md), [billing](BILLING.md), [data](DATA.md), [security](SECURITY.md),
+[open decisions](OPEN_DECISIONS.md), and [ADR-006](decisions/ADR-006-backend-runtime-and-boundaries.md).
 
-See [OD-004](OPEN_DECISIONS.md#od-004-deployment-architecture) for runtime, streaming
-limits, jobs, request durations, secrets, preview environments, scaling, and deployment.
-Image delivery may proxy/stream, use a temporary upstream URL only after privacy,
-reliability, lifetime, and exposure are understood, or use temporary internal
-storage when technically necessary (OD-005). No generic storage framework is required.
+## Operations requirements
 
 Aim to separate development, preview/staging, and production. Use structured logs
 with useful request/account/key/model/provider IDs, status, latency, usage, charges,
@@ -97,9 +103,14 @@ a large admin product (OD-013). Rapid model disabling, key revocation, account
 suspension, upstream shutdown, and platform spending limits are required directions
 for financial protection; mechanisms/thresholds remain OPEN (OD-011).
 
-Billing rules live in [BILLING.md](BILLING.md); data concepts in [DATA.md](DATA.md);
-contracts in [API.md](API.md). Record accepted material choices in
-[ADRs](decisions/README.md) and update this guide as implementation changes.
+## Frontend architecture
+
+[Accepted ADR-005](decisions/ADR-005-public-build-time-prerendering.md) selects
+a Vite server build plus React static
+prerendering, with a separate private SPA shell. S11 implements local asset
+assembly, metadata and hydration for 18 public pages, resolving F-001 in build
+artifacts. The frontend owner accepted the approach; actual host behavior,
+coordination and indexing activation remain open under B09/S13.
 
 ### Stage 3 catalogue consumers
 

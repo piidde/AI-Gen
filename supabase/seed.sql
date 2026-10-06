@@ -1,0 +1,2 @@
+-- Purchases remain disabled until EUR/USD offers and confirmed credit conversion
+-- have been intentionally configured by an operator.

@@ -1,8 +1,10 @@
 # Security guide
 
-These are requirements for implementation, not claims of deployed controls or
-regulatory compliance. Supabase Auth is implemented for the browser login slice;
-no backend authorization, payments, or production infrastructure exists yet.
+These controls describe the current backend code and its remaining deployment
+gates; they are not proof of a deployed service or regulatory compliance. See
+[OD-002](OPEN_DECISIONS.md#od-002-database-structure) and
+[OD-004](OPEN_DECISIONS.md#od-004-deployment-architecture) for current database
+and deployment status.
 
 ## Secrets and trust boundaries
 
@@ -16,15 +18,13 @@ while the ignored local `.env.local` supplies browser-safe development values.
 Keep production credentials out of routine local development. Aim for separate
 development, preview/staging, and production access; use payment test mode where possible.
 
-The browser is untrusted and calls only our backend or the selected Supabase Auth
-client flow. Keep privileged credentials,
-upstream access, routing, pricing, credit deduction, and payment secrets server-side.
-Validate external requests, webhooks, configuration, and necessary upstream responses
-at boundaries. Enforce account ownership, permissions, model availability, balances,
-rate limits, and payment state server-side on every relevant operation.
-The current client guard protects dashboard navigation, but it is not a substitute
-for server-side token verification or authorization. Backend auth/session and RLS
-details remain OPEN (OD-001/002).
+The browser is untrusted and calls the backend for account data. The Worker
+verifies Supabase access tokens, authenticates Takewing API keys by SHA-256 digest,
+and routes account-owned data through private database functions. Privileged
+credentials, upstream access, routing, pricing, credit deduction, and payment
+secrets stay server-side. External requests, webhooks, configuration, and
+necessary upstream responses are validated at boundaries. Database execution and
+behavioral tests remain pre-launch gates (OD-001/002).
 
 ## Browser-auth production gates
 
@@ -65,11 +65,19 @@ following are complete and tested on the final HTTPS domain:
   `VITE_AUTH_DISCORD_ENABLED=true`. That variable reveals a button only; it is
   not a security control or a credential.
 
-Before users rely on data, credits, API keys, or billing, implement backend
-access-token verification, account ownership checks, migrations, and RLS. The
-current browser route guard cannot protect any future server-backed resource.
+Before users rely on data, credits, API keys, or billing, apply and review the
+migration, verify token and ownership behavior against Supabase, and execute the
+database/API flow locally. The browser route guard is presentation only; every
+protected resource must continue to enforce authorization in the Worker/database.
 
 ## API keys and payments
+
+Takewing keys use a `tw_live_` prefix and 256 random bits, are shown once, and are
+stored only as a SHA-256 digest plus prefix/metadata. Revocation is checked during
+authentication and again before request reservation. GrsAI keys remain in the
+Worker secret `GRSAI_KEYS_JSON`; never store them in Postgres or expose them to the
+browser. The per-request provider key ID is persisted so already accepted jobs
+continue to use the same key; retain old key entries until their jobs finish.
 
 ### Stage 7 account controls and auth recovery
 
@@ -98,12 +106,6 @@ and email templates must preserve the safe destination query as well as the path
 verify this on the final host without broad wildcard authorization. No partner
 approval, email delivery or production account change is evidenced by local fixtures.
 
-Our keys must map to accounts, support creation/revocation, and stop working when
-revoked. They must not expose upstream credentials. Avoid unnecessary raw-secret
-storage. Display-once secrets and last-used metadata are accepted frontend
-requirements. Prefix/hash storage remains a candidate design. Document exact
-generation/hashing and revocation behavior before production use (OD-010).
-
 Verify trusted server-side payment confirmation; frontend success is insufficient.
 Handle repeated webhook events without duplicate credit. Preserve billing
 concurrency/idempotency guarantees and deliberately handle ambiguous upstream
@@ -111,24 +113,27 @@ outcomes; see [BILLING.md](BILLING.md).
 
 ## Logging, abuse, and production access
 
-Use structured operational metadata, such as request/account/key identifiers,
-model/provider IDs, status, latency, usage, charge/cost, and error category.
-Never log secrets, authorization headers, or raw keys. Avoid prompts and generated
-content by default unless specifically required; minimize sensitive data and limit
-log access. Retention and monitoring provider remain OPEN (OD-012).
+Structured logs include operational IDs, status, latency, usage, and error
+categories without prompts, outputs, secrets, authorization headers, or raw keys.
+Optional Sentry uses `SENTRY_DSN`, disables default PII, and strips request bodies,
+cookies, and credential headers. Cloudflare observability is configured in
+`wrangler.jsonc`. Alert destinations, observability retention, 90-day usage
+retention, and financial-record retention still require explicit setup/decisions.
 
-Rate limits protect money as well as capacity. Candidate dimensions are IP,
-account, API key, model, concurrency, daily usage, and global spend. Thresholds
-and mechanisms remain OPEN (OD-011); any free offer needs a hard financial cap.
-Plan rapid model disablement, key revocation, account suspension, upstream stop,
-and platform spending limits. Temporary upstream result URLs require privacy,
-reliability, lifetime, and exposure evaluation (OD-005).
+The database enforces atomic available-credit and provider-budget reservations,
+and defaults to at most three concurrent requests per account. It does not yet
+enforce per-IP, per-key, or daily-rate limits; Cloudflare rate-limit configuration
+is a launch task. Operators can pause the platform/provider, disable models,
+suspend accounts, revoke keys, and adjust credits with an audit reason. Results
+are copied to private R2 and delivered only through authenticated, expiry-checked
+Worker routes; upstream result hosts are restricted by `DOWNLOAD_HOST_ALLOWLIST`.
 
-Use least-privilege production access and restrict privileged administration.
-Credit adjustments need an audit trail. No undocumented production schema edits;
-use migrations. Deployment/secrets/access workflow and minimal admin tooling await
-OD-004/013. Review dependencies and lockfile changes, keep dependencies minimal,
-and investigate relevant vulnerabilities rather than blindly updating packages.
+Use least-privilege production access and restrict privileged administration to
+the verified user IDs in `ADMIN_USER_IDS`. Credit adjustments require an
+idempotency key, reason, and audit record. No undocumented production schema
+edits; use migrations. Production secrets/access and alert routing are not yet
+configured. Review the current dependency audit and relevant advisories before
+deployment; do not update dependencies blindly.
 
 High-risk code requires additional review and meaningful tests; see
 [AGENTS.md](../AGENTS.md). Security controls alone do not establish legal or
