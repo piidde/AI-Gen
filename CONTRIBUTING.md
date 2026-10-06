@@ -29,8 +29,9 @@ review and evidence beyond compilation. Commit/push only when authorized.
 
 ## Validation
 
-Backend checks: `npm run typecheck` and `npm run build` (TypeScript, Vite build,
-and Wrangler dry-run). `npm run dev` builds Vite assets and starts Wrangler.
+Backend checks: `npm run typecheck`, `npm run build` (TypeScript, Vite build,
+and Wrangler dry-run), and `npm test` (database and billing tests on in-memory
+PGlite; they need no Docker and never touch a hosted database). `npm run dev` builds Vite assets and starts Wrangler.
 Local database work uses `npx supabase start`, `npm run db:up`, and
 `npm run db:reset`; Docker Desktop is required. Stripe CLI can forward test
 webhooks. Do not deploy or apply migrations to a hosted database as part of
@@ -39,7 +40,7 @@ Frontend checks: `npm --prefix frontend run typecheck`,
 `npm --prefix frontend run build`, and `npm --prefix frontend test` (Playwright,
 desktop/mobile, local Chrome required). Tests use a local preview on port 4173;
 traces/results go to the OS temporary directory, not the repository. The frontend
-test script builds first. No root test, format or lint script exists. Run relevant
+test script builds first. No format or lint script exists. Run relevant
 checks and report skipped or blocked checks without claiming success.
 
 When behavior is implemented, prioritize billing, credits, auth, API keys,

@@ -46,7 +46,8 @@ Use these labels consistently:
    Node checks are `npm run typecheck` and `npm run build`. Frontend checks are
    `npm --prefix frontend run typecheck`, `npm --prefix frontend run build`, and
    `npm --prefix frontend test` (desktop/mobile Playwright with local Chrome).
-   There are no format, lint, or root test scripts; do not invent results or add
+   Backend checks also include `npm test` (PGlite database/billing, body-limit, and
+   OpenAPI tests). There are no format or lint scripts; do not invent results or add
    tooling just to tick boxes. Keep browser artifacts outside the repository.
 6. Summarize changes, unresolved decisions, assumptions, and risks. Do not commit
    or push unless explicitly instructed.

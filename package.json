@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "npm run prebuild && wrangler dev",
     "prebuild": "npm --prefix frontend run build",
+    "test": "tsx --test tests/*.test.ts",
     "typecheck": "wrangler types --no-strict-vars && tsc --noEmit",
     "build": "npm run typecheck && npm --prefix frontend run build && wrangler deploy --dry-run",
     "deploy": "npm run build && wrangler deploy",

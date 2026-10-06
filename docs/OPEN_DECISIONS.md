@@ -14,9 +14,11 @@ tasks. See [SECURITY.md](SECURITY.md).
 ## OD-002 Database structure
 
 Status: **DECIDED** for Supabase PostgreSQL, a private schema, migrations, and
-explicit service-role RPC functions. The initial migration exists but has not
-been applied or tested. RLS/table-grant behavior, migration rollback, and
-concurrency need local verification before production.
+explicit service-role RPC functions. Both migrations execute in the PGlite
+tests (`npm test`), which cover ledger/balance invariants, idempotency, Stripe
+refund/dispute ordering, role grants, and result-delivery leases. They have not
+run on Supabase Postgres; real multi-connection concurrency, RLS/PostgREST
+exposure, and migration rollback still need local Supabase verification.
 
 ## OD-003 Payment architecture
 

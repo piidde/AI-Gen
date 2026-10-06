@@ -13,7 +13,7 @@ Takewing is a prepaid AI API gateway. Customer apps call the Takewing API; the W
 - The backend API and dashboard-management routes are implemented. This branch does not include the frontend API integration; the existing Vite site still needs a separate, reviewed client change.
 - No model prices, credit offers, or enabled GrsAI routes are seeded.
 
-This is implementation code, not a deployed service. The migration has not been applied to a local or production database, and no live GrsAI or Stripe transaction has been run. Public provider catalogue entries are not tested support.
+This is implementation code, not a deployed service. The migrations run against in-memory PGlite in `npm test`, but have not been applied to a Supabase (local or hosted) database, and no live GrsAI or Stripe transaction has been run. Public provider catalogue entries are not tested support.
 
 ## Requirements and install
 
@@ -31,6 +31,7 @@ For local Supabase, use its generated API URL and keys. Keep service-role keys, 
 ## Commands
 
 - npm run typecheck checks the Worker TypeScript.
+- npm test runs the database, billing, request-body and OpenAPI tests on in-memory PGlite (no Docker, no hosted database). PGlite serialises connections, so it verifies SQL logic and idempotent outcomes but not true row-lock concurrency.
 - npm run build checks types, builds the frontend, and runs Wrangler's Worker dry-run.
 - npm --prefix frontend run typecheck and npm --prefix frontend run build check the browser app.
 - npm run db:new -- migration_name creates a SQL migration.

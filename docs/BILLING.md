@@ -67,8 +67,9 @@ profit: operating, payment, FX, and provider-loss costs must be accounted for.
 
 ## Before money is accepted
 
-Apply and execute the migration locally, test concurrency and duplicate event
-behavior, use Stripe test mode/CLI, reconcile quote and webhook paths, and verify
+Duplicate-event, refund/dispute ordering and ledger-invariant behavior are covered
+by `npm test` (PGlite). Still required: run the migrations on local Supabase,
+test true multi-connection concurrency, use Stripe test mode/CLI, reconcile quote and webhook paths, and verify
 all provider usage/pricing bounds. Configure production secrets and alerts,
 customer terms, tax/invoicing, refund policy, resale rights, and an explicit
 provider risk budget before activating a model or offer. See
