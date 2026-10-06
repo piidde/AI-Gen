@@ -31,7 +31,9 @@ launch work. See [BILLING.md](BILLING.md).
 ## OD-004 Deployment architecture
 
 Status: **DECIDED** for TypeScript/Hono on Cloudflare Workers with Supabase,
-Queues, private R2, and a five-minute recovery schedule. Wrangler config exists;
+Queues, private R2, and a five-minute recovery schedule. Production runs on
+https://aiapi.deals (Worker `takewing-api`, account samuelfalecx, deployed
+2026-10-06) with R2 buckets, queues/DLQs and a 3-day R2 lifecycle backstop. Wrangler config exists;
 resources, secrets, domains, staging/production databases, alerts, and rollback
 are not configured. Text streaming is disabled.
 

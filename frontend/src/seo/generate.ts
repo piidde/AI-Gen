@@ -99,10 +99,12 @@ export function buildRedirects(): string {
     "",
     "# One rewrite per known route; see buildRedirects() for why this is not a",
     "# catch-all. Dashboard children share a prefix rule.",
+    // "/" is served natively, and the target is "/" rather than "/index.html":
+    // Cloudflare's HTML handling strips "/index.html", which it rejects as a loop.
     ...routeMeta
-      .filter((route) => !route.path.startsWith("/dashboard/"))
-      .map((route) => route.path.padEnd(36) + "/index.html".padEnd(20) + "200"),
-    "/dashboard/*".padEnd(36) + "/index.html".padEnd(20) + "200",
+      .filter((route) => route.path !== "/" && !route.path.startsWith("/dashboard/"))
+      .map((route) => route.path.padEnd(36) + "/".padEnd(20) + "200"),
+    "/dashboard/*".padEnd(36) + "/".padEnd(20) + "200",
     "",
   ];
 
