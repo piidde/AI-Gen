@@ -18,6 +18,7 @@ import ApiKeys from "./pages/ApiKeys";
 import Settings from "./pages/Settings";
 import Signup from "./pages/Signup";
 import UpdatePassword from "./pages/UpdatePassword";
+import Docs from "./pages/Docs";
 import Information, { topicSlugs } from "./pages/Information";
 
 /**
@@ -60,7 +61,8 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/models" element={<Models publicPage />} />
-        <Route path="/information" element={<Information />} />
+        <Route path="/docs" element={<Docs />} />
+        <Route path="/information"element={<Information />} />
         {/* Each content topic also resolves at its own crawlable URL, e.g.
             /docs and /privacy, so the topics can rank independently. */}
         <Route path="/:topic" element={<TopicRoute />} />

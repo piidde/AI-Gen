@@ -6,11 +6,6 @@ import Brand from "../components/Brand";
 // canonicalise the parameter away, so only one of them would ever be indexed.
 // The `?topic=` form still resolves here so existing links keep working.
 const topics: Record<string, { title: string; description: string }> = {
-  docs: {
-    title: "Documentation is being prepared",
-    description:
-      "Quickstart examples and API reference will follow the verified API contract. No provisional endpoint or request schema is presented as working documentation.",
-  },
   support: {
     title: "Support information is being prepared",
     description:
