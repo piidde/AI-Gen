@@ -169,7 +169,8 @@ app.post("/v1/chat/completions", requireAccount(), async (c) => {
     throw new HttpError(503, "provider_outcome_unknown", "The provider outcome is unclear. The request will not be resubmitted automatically.");
   }
   if (!upstream.ok) {
-    const ambiguous = upstream.status >= 500 || upstream.status === 408 || upstream.status === 429;
+    // 429 means the provider refused before generating; release immediately.
+    const ambiguous = upstream.status >= 500 || upstream.status === 408;
     await rpc(db, "tw_fail_generation", {
       p_request_id: reservation.request_id,
       p_error_category: ambiguous ? "provider_rejection_ambiguous" : "provider_rejected",
@@ -206,18 +207,24 @@ app.post("/v1/chat/completions", requireAccount(), async (c) => {
     throw new HttpError(502, "provider_response_too_large", "The provider response exceeds the configured size limit.");
   }
   const objectKey = `results/${reservation.request_id}/response.json`;
-  await c.env.GENERATED_ASSETS.put(objectKey, resultBytes, { httpMetadata: { contentType: "application/json", cacheControl: "private, no-store" } });
+  const settle = () => rpc(db, "tw_settle_generation", {
+    p_request_id: reservation.request_id,
+    p_input_tokens: parsed.data.usage.prompt_tokens,
+    p_output_tokens: parsed.data.usage.completion_tokens,
+    p_units: null,
+    p_result_manifest: { kind: "chat" },
+    p_result_object_keys: [objectKey],
+  });
   try {
-    await rpc(db, "tw_settle_generation", {
-      p_request_id: reservation.request_id,
-      p_input_tokens: parsed.data.usage.prompt_tokens,
-      p_output_tokens: parsed.data.usage.completion_tokens,
-      p_units: null,
-      p_result_manifest: { kind: "chat" },
-      p_result_object_keys: [objectKey],
-    });
-  } catch {
-    await rpc(db, "tw_fail_generation", { p_request_id: reservation.request_id, p_error_category: "settlement_failed", p_ambiguous: true });
+    await c.env.GENERATED_ASSETS.put(objectKey, resultBytes, { httpMetadata: { contentType: "application/json", cacheControl: "private, no-store" } });
+    // Settlement is idempotent: a retry after a lost DB response returns the committed outcome.
+    try { await settle(); } catch (cause) {
+      if (cause instanceof HttpError && cause.code === "usage_exceeds_reservation") throw cause;
+      await settle();
+    }
+  } catch (cause) {
+    const exceeded = cause instanceof HttpError && cause.code === "usage_exceeds_reservation";
+    await rpc(db, "tw_fail_generation", { p_request_id: reservation.request_id, p_error_category: exceeded ? "usage_exceeds_reservation" : "settlement_failed", p_ambiguous: true });
     writeLog("generation.settlement_unknown", { request_id: reservation.request_id, model: model.id, provider_key_id: key.id });
     throw new HttpError(503, "settlement_outcome_unknown", "The response could not be safely settled. Check the request status before retrying.");
   }
@@ -456,26 +463,32 @@ app.post("/stripe/webhook", async (c) => {
   } catch {
     throw new HttpError(400, "invalid_webhook", "The payment webhook signature is invalid.");
   }
+  // Events that can never be reconciled automatically (not our purchase, unknown status)
+  // are acknowledged with an alert log; a 5xx would make Stripe retry and finally disable
+  // the endpoint. Signature failures and database errors still fail loudly.
+  const unlinked = (reason: string) => {
+    writeLog("stripe.webhook_needs_review", { event_id: event.id, event_type: event.type, reason });
+    return c.json({ received: true, processed: false });
+  };
+  const isUuid = (value: string | undefined): value is string => !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
   if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
     const session = event.data.object as Stripe.Checkout.Session;
     if (session.payment_status === "paid") {
-      if (session.amount_total === null || !session.currency || !session.metadata?.quote_id) {
-        throw new HttpError(503, "webhook_reconciliation_required", "The paid Checkout session is missing its purchase reference.");
-      }
+      if (session.amount_total === null || !session.currency || !isUuid(session.metadata?.quote_id)) return unlinked("missing_purchase_reference");
       await rpc(database(c.env), "tw_fulfill_checkout", {
         p_event_id: event.id, p_event_type: event.type, p_session_id: session.id,
         p_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null,
-        p_amount_minor: session.amount_total, p_currency: session.currency, p_metadata_quote_id: session.metadata.quote_id,
+        p_amount_minor: session.amount_total, p_currency: session.currency, p_metadata_quote_id: session.metadata!.quote_id,
       });
     }
   } else if (event.type === "charge.refunded") {
     const charge = event.data.object as Stripe.Charge;
-    if (!charge.payment_intent) throw new HttpError(503, "webhook_reconciliation_required", "The refund is missing its payment reference.");
+    if (!charge.payment_intent) return unlinked("missing_payment_reference");
     const stripe = createStripe(c.env);
     const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent.id;
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     const quoteId = paymentIntent.metadata.quote_id;
-    if (!quoteId) throw new HttpError(503, "webhook_reconciliation_required", "The refund is not linked to a Takewing purchase.");
+    if (!isUuid(quoteId)) return unlinked("not_a_takewing_purchase");
     await rpc(database(c.env), "tw_reverse_checkout", {
       p_event_id: event.id, p_event_type: event.type, p_payment_intent_id: paymentIntent.id, p_metadata_quote_id: quoteId,
       p_refunded_amount_minor: charge.amount_refunded,
@@ -491,19 +504,22 @@ app.post("/stripe/webhook", async (c) => {
       paymentIntentId = typeof charge.payment_intent === "string"
         ? charge.payment_intent : charge.payment_intent?.id ?? null;
     }
-    if (!paymentIntentId) throw new HttpError(503, "webhook_reconciliation_required", "The dispute is missing its payment reference.");
+    if (!paymentIntentId) return unlinked("missing_payment_reference");
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     const quoteId = paymentIntent.metadata.quote_id;
-    if (!quoteId) throw new HttpError(503, "webhook_reconciliation_required", "The dispute is not linked to a Takewing purchase.");
+    if (!isUuid(quoteId)) return unlinked("not_a_takewing_purchase");
     if (event.type === "charge.dispute.created") {
       await rpc(database(c.env), "tw_reverse_checkout", {
         p_event_id: event.id, p_event_type: event.type, p_payment_intent_id: paymentIntent.id,
         p_metadata_quote_id: quoteId, p_refunded_amount_minor: null,
       });
     } else {
+      // "prevented" closes a dispute in the merchant's favour, like "won".
+      const status = dispute.status === "prevented" ? "won" : dispute.status;
+      if (!["won", "lost", "warning_closed"].includes(status)) return unlinked(`unsupported_dispute_status:${dispute.status}`);
       await rpc(database(c.env), "tw_resolve_dispute", {
         p_event_id: event.id, p_event_type: event.type, p_payment_intent_id: paymentIntent.id,
-        p_metadata_quote_id: quoteId, p_status: dispute.status,
+        p_metadata_quote_id: quoteId, p_status: status,
       });
     }
   }
@@ -753,10 +769,22 @@ async function processMediaMessage(id: string, env: Env, message: QueueBatch["me
     payload_object_key: string; capability: "image" | "video"; reserved_units: number;
   } | null>(db, "tw_claim_media_submission", { p_request_id: id });
   if (submission) {
-    const payloadObject = await env.GENERATED_ASSETS.get(submission.payload_object_key);
+    // Nothing has been sent to the provider yet, so any failure before submitMedia is a
+    // definite failure: release the reservation instead of stranding it in 'submitting'.
+    let payloadObject: R2ObjectBody | null;
+    let providerKey: ReturnType<typeof chooseProviderKey>;
+    try {
+      payloadObject = submission.payload_object_key ? await env.GENERATED_ASSETS.get(submission.payload_object_key) : null;
+      providerKey = chooseProviderKey(env, submission.provider_group_id, submission.provider_key_id);
+    } catch {
+      await rpc(db, "tw_fail_generation", { p_request_id: id, p_error_category: "job_setup_failed", p_ambiguous: false });
+      if (submission.payload_object_key) await deletePayload(env, id, submission.payload_object_key);
+      message.ack();
+      return;
+    }
     if (!payloadObject) {
       await rpc(db, "tw_fail_generation", { p_request_id: id, p_error_category: "job_payload_missing", p_ambiguous: false });
-      await deletePayload(env, id, submission.payload_object_key);
+      if (submission.payload_object_key) await deletePayload(env, id, submission.payload_object_key);
       message.ack();
       return;
     }
@@ -770,7 +798,6 @@ async function processMediaMessage(id: string, env: Env, message: QueueBatch["me
       message.ack();
       return;
     }
-    const providerKey = chooseProviderKey(env, submission.provider_group_id, submission.provider_key_id);
     let accepted;
     try {
       accepted = await submitMedia(env, providerKey, submission.provider_model_id, payload.input);
@@ -843,6 +870,9 @@ async function processMediaMessage(id: string, env: Env, message: QueueBatch["me
     }
     if (outcome === "succeeded" && result.results?.length) {
       await storeMediaResults(env, id, result, poll.capability, poll.reserved_units);
+      // A rescheduled delivery retry needs a message; a settled job ignores it.
+      try { await env.MEDIA_QUEUE.send(id, { delaySeconds: 60, contentType: "text" }); }
+      catch { writeLog("queue.poll_recovery_needed", { request_id: id }); }
       message.ack();
       return;
     }
@@ -871,19 +901,25 @@ export async function queue(batch: QueueBatch, env: Env): Promise<void> {
 
 export async function scheduled(_controller: ScheduledController, env: Env): Promise<void> {
   const db = database(env);
-  try {
-    await rpc(db, "tw_recover_expired_reservations");
-    await rpc(db, "tw_recover_expired_idempotency_keys");
-    await rpc(db, "tw_mark_stale_submissions_unknown");
-    const [queued, pending, expired] = await Promise.all([
+  // Each step is isolated so one failing RPC does not stop the remaining recovery work.
+  const step = async (name: string, run: () => Promise<unknown>) => {
+    try { await run(); } catch { writeLog("scheduled.step_failed", { step: name }); }
+  };
+  await step("expired_reservations", () => rpc(db, "tw_recover_expired_reservations"));
+  await step("expired_idempotency_keys", () => rpc(db, "tw_recover_expired_idempotency_keys"));
+  await step("stale_submissions", () => rpc(db, "tw_mark_stale_submissions_unknown"));
+  await step("requeue_media", async () => {
+    const [queued, pending] = await Promise.all([
       rpc<string[]>(db, "tw_recover_queued_media"),
       rpc<string[]>(db, "tw_recover_pending_media_polls"),
-      rpc<Array<{ request_id: string; state: string; result_keys: string[]; payload_key: string | null }>>(db, "tw_expired_objects"),
     ]);
     for (const id of [...queued, ...pending]) {
       try { await env.MEDIA_QUEUE.send(id, { contentType: "text" }); }
       catch { writeLog("queue.recovery_send_failed", { request_id: id }); }
     }
+  });
+  await step("object_cleanup", async () => {
+    const expired = await rpc<Array<{ request_id: string; state: string; result_keys: string[]; payload_key: string | null }>>(db, "tw_expired_objects");
     for (const item of expired) {
       let resultDeleted = true;
       for (const key of item.result_keys ?? []) {
@@ -902,9 +938,7 @@ export async function scheduled(_controller: ScheduledController, env: Env): Pro
         catch { writeLog("storage.delete_failed", { request_id: item.request_id, object: "payload" }); }
       }
     }
-  } catch {
-    writeLog("scheduled.maintenance_failed");
-  }
+  });
 }
 
 const worker = {

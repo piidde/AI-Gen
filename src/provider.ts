@@ -1,4 +1,4 @@
-import { readBoundedJson } from "./http-body.js";
+import { readBoundedBytes, readBoundedJson } from "./http-body.js";
 import { z } from "zod";
 import { HttpError } from "./errors.js";
 import type { Env } from "./types.js";
@@ -87,8 +87,9 @@ export async function submitMedia(
     signal: AbortSignal.timeout(110_000),
   });
   if (!response.ok) {
-    throw new HttpError(response.status >= 500 || response.status === 429 ? 503 : 400,
-      response.status >= 500 || response.status === 429 ? "provider_rejected_ambiguous" : "provider_rejected",
+    // Match chat: 5xx/408 may have been accepted; 429 and other 4xx were refused.
+    const ambiguous = response.status >= 500 || response.status === 408;
+    throw new HttpError(ambiguous ? 503 : 400, ambiguous ? "provider_rejected_ambiguous" : "provider_rejected",
       "The model provider rejected the request.");
   }
   const value: unknown = await readBoundedJson(response, 1_048_576);
@@ -137,7 +138,7 @@ export function resultHosts(env: Env): Set<string> {
 }
 
 export async function fetchProviderResult(env: Env, source: string, maxBytes: number): Promise<{
-  body: ReadableStream<Uint8Array>;
+  body: ReadableStream<Uint8Array> | Uint8Array;
   contentType: string;
   bytes: number;
   getBytes(): number;
@@ -159,13 +160,15 @@ export async function fetchProviderResult(env: Env, source: string, maxBytes: nu
   }
   const bytes = Number(response.headers.get("content-length") ?? 0);
   if (bytes > maxBytes) throw new HttpError(413, "provider_result_too_large", "The generated result exceeds the configured size limit.");
-  let total = 0;
-  const body = response.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
-    transform(chunk, controller) {
-      total += chunk.byteLength;
-      if (total > maxBytes) throw new HttpError(413, "provider_result_too_large", "The generated result exceeds the configured size limit.");
-      controller.enqueue(chunk);
-    },
-  }));
-  return { body, contentType, bytes, getBytes: () => total };
+  // R2.put rejects streams of unknown length. A declared length is enforced exactly by
+  // FixedLengthStream; otherwise the body is buffered up to the remaining byte budget.
+  if (bytes > 0) {
+    let total = 0;
+    const body = response.body.pipeThrough(new FixedLengthStream(bytes)).pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) { total += chunk.byteLength; controller.enqueue(chunk); },
+    }));
+    return { body, contentType, bytes, getBytes: () => total };
+  }
+  const buffered = await readBoundedBytes(response, maxBytes);
+  return { body: buffered, contentType, bytes: buffered.byteLength, getBytes: () => buffered.byteLength };
 }

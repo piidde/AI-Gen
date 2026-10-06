@@ -237,3 +237,23 @@ test("API keys: authenticate by digest, revoke by owner only, revoked keys canno
   assert.match(await rpcError(db, "tw_reserve_generation", ALICE, key.id, "gpt-5.5", null, hash("h"), "text", 1, 1, null, null, "k"), /api_key_revoked/);
   assert.match(await rpcError(db, "tw_create_api_key", ALICE, "   ", "tw_live_abcd", hash("digest-2")), /invalid_key_name/);
 });
+
+test("a late definite failure after the 24-hour unknown release does not release credits twice", async () => {
+  const db = await funded();
+  const { request_id } = await reserveText(db, ALICE, "idem-0001");
+  await rpc(db, "tw_fail_generation", request_id, "provider_acceptance_unknown", true);
+  await db.exec(`update private.generation_requests set created_at=now()-interval '25 hours'`);
+  await rpc(db, "tw_recover_expired_reservations");
+  await rpc(db, "tw_fail_generation", request_id, "provider_rejected", false);
+  assert.equal((await row(db, "select count(*)::int n from private.credit_ledger where entry_type='release'")).n, 1);
+  await assertLedgerMatchesBalances(db);
+});
+
+test("payloads of jobs not yet submitted are never offered for cleanup", async () => {
+  const db = await funded();
+  const { request_id } = await reserveImage(db, ALICE, "idem-img-1", 1);
+  await db.exec(`update private.generation_requests set created_at=now()-interval '3 hours'`);
+  assert.deepEqual(await rpc(db, "tw_expired_objects"), []);
+  await rpc(db, "tw_fail_generation", request_id, "x", false);
+  assert.equal((await rpc(db, "tw_expired_objects")).length, 1);
+});

@@ -39,6 +39,13 @@ const databaseErrors: Record<string, { status: number; message: string }> = {
   reason_required: { status: 400, message: "A reason between 3 and 500 characters is required." },
   invalid_result_ttl: { status: 400, message: "Result retention must be between 1 and 48 hours." },
   invalid_key_name: { status: 400, message: "Key name must be between 1 and 60 characters." },
+  api_key_not_found: { status: 404, message: "The API key was not found." },
+  request_not_settleable: { status: 409, message: "The request is not in a settleable state." },
+  invalid_result_object_keys: { status: 500, message: "The service could not complete this request." },
+  provider_key_unavailable: { status: 503, message: "No provider key is configured for this model." },
+  invalid_stripe_event: { status: 400, message: "The payment event is invalid." },
+  unsupported_stripe_event: { status: 400, message: "The payment event type is not supported." },
+  unsupported_dispute_resolution: { status: 400, message: "The dispute resolution is not supported." },
 };
 
 export function mapDatabaseError(message: string): HttpError {

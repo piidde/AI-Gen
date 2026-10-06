@@ -40,3 +40,26 @@ export async function readBoundedJson(response: Response, maxBytes: number): Pro
     new HttpError(502, "provider_response_too_large", "The provider response exceeds the configured size limit."), invalid);
   try { return JSON.parse(text) as unknown; } catch { throw invalid; }
 }
+
+export async function readBoundedBytes(response: Response, maxBytes: number): Promise<Uint8Array> {
+  const tooLarge = new HttpError(413, "provider_result_too_large", "The generated result exceeds the configured size limit.");
+  const reader = response.body?.getReader();
+  if (!reader) throw new HttpError(502, "provider_result_download_failed", "The generated result could not be retrieved.");
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) { await reader.cancel().catch(() => undefined); throw tooLarge; }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  return bytes;
+}
