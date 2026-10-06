@@ -5,9 +5,10 @@ import {
   reserveText, row, rpc, rpcError,
 } from "./db-helpers.js";
 
-// Text reservation: 1000 in + 1000 out = (1000*1 + 1000*2) provider micros = 3000; x2 markup = 6000.
-const RESERVED_PROVIDER = 3000n;
-const RESERVED_CUSTOMER = 6000n;
+// Text reservation covers the model output ceiling (8000), not the requested 1000:
+// 1000*1 + 8000*2 = 17000 provider micros; x2 markup = 34000.
+const RESERVED_PROVIDER = 17000n;
+const RESERVED_CUSTOMER = 34000n;
 
 async function funded(balance = 1_000_000n) {
   const db = await freshDb();
@@ -111,7 +112,7 @@ test("settlement charges actual usage, returns the remainder once, and is idempo
 test("usage above the reservation is rejected and leaves balances untouched", async () => {
   const db = await funded();
   const { request_id } = await reserveText(db, ALICE, "idem-0001");
-  assert.match(await rpcError(db, "tw_settle_generation", request_id, 5000, 5000, null, {}, []), /usage_exceeds_reservation/);
+  assert.match(await rpcError(db, "tw_settle_generation", request_id, 5000, 9000, null, {}, []), /usage_exceeds_reservation/);
   assert.match(await rpcError(db, "tw_settle_generation", request_id, null, null, null, {}, []), /usage_unavailable/);
   await assertLedgerMatchesBalances(db);
   assert.equal((await row(db, "select state from private.generation_requests where id=$1", [request_id])).state, "submitting");
@@ -256,4 +257,14 @@ test("payloads of jobs not yet submitted are never offered for cleanup", async (
   assert.deepEqual(await rpc(db, "tw_expired_objects"), []);
   await rpc(db, "tw_fail_generation", request_id, "x", false);
   assert.equal((await rpc(db, "tw_expired_objects")).length, 1);
+});
+
+test("text reservations cover the model output ceiling so billed reasoning tokens can settle", async () => {
+  const db = await funded();
+  // max_tokens=50, but the provider reports 127 completion tokens (hidden reasoning).
+  const { request_id, reserved_customer_micros } = await reserveText(db, ALICE, "idem-0001", "h1", 87, 50);
+  assert.ok(BigInt(reserved_customer_micros) >= 2n * BigInt(Math.ceil((87 * 1 + 8000 * 2) / 1)));
+  const settled = await rpc(db, "tw_settle_generation", request_id, 87, 127, null, { kind: "chat" }, []);
+  assert.equal(settled.state, "succeeded");
+  await assertLedgerMatchesBalances(db);
 });
