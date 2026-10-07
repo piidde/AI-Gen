@@ -48,7 +48,7 @@ export default function Models({ publicPage = false }: { publicPage?: boolean })
       })}
       {shown.length === 0 && <section className="empty"><h2>No matching models</h2><p>Try another provider, capability or search.</p></section>}
     </DataState>
-    {publicPage && <section className="catalogue-closing"><div><span className="catalogue-eyebrow">YOUR NEXT IDEA STARTS HERE</span><h2>Find your model.<br />Build something great.</h2><p>One account for image and text APIs. Explore Takewing while paid API access is being prepared.</p></div><div className="catalogue-closing-actions"><Link className="button" to="/signup">Get started ↗</Link><Link className="text-link" to="/docs">Explore the documentation</Link></div></section>}
+    {publicPage && <section className="catalogue-closing"><div><span className="catalogue-eyebrow">YOUR NEXT IDEA STARTS HERE</span><h2>Find your model.<br />Build something great.</h2><p>One account for image and text APIs. Explore AIAPI.deals while paid API access is being prepared.</p></div><div className="catalogue-closing-actions"><Link className="button" to="/signup">Get started ↗</Link><Link className="text-link" to="/docs">Explore the documentation</Link></div></section>}
   </div>;
   return publicPage ? <PublicCatalogueShell>{content}</PublicCatalogueShell> : content;
 }

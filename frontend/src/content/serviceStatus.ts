@@ -55,7 +55,7 @@ export const updates = [
     slug: "sample-catalogue-reference", title: "Sample announcement: exploring model references",
     publishedAt: "2026-09-20T10:00:00Z", sample: true,
     summary: "An example product update describing a model reference catalogue.",
-    paragraphs: ["This sample demonstrates the announcement format. It is not production news or a launch announcement.", "Model references let readers compare listed variants and inspect evidence gaps. A reference listing does not establish Takewing support, a working API ID or current availability."],
+    paragraphs: ["This sample demonstrates the announcement format. It is not production news or a launch announcement.", "Model references let readers compare listed variants and inspect evidence gaps. A reference listing does not establish AIAPI.deals support, a working API ID or current availability."],
   },
   {
     slug: "sample-account-tools", title: "Sample announcement: account tools preview",

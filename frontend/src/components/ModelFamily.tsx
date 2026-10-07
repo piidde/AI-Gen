@@ -40,7 +40,7 @@ export default function ModelFamily({ family, variants, currency, linkPage = tru
       {variants.map(model => <article className="panel model-card reference-card" data-model-id={model.upstreamId} key={model.upstreamId}>
         {overview && <div className="catalogue-card-provider"><img src={model.provider === 'OpenAI' ? openaiIcon : geminiIcon} alt="" width={18} height={18} /><span>{model.provider}</span></div>}
         <h3>{overview ? modelDisplayName(model.upstreamId) : model.upstreamId}</h3>
-        {(!overview || model.modality === 'image') && <p className="model-family">{model.modality === "image" ? `Listed resolutions: ${model.listedResolutions.join(" / ") || "not verified"}` : "Text · separately metered components"}</p>}
+        <p className="model-family">{model.modality === "image" ? `Listed resolutions: ${model.listedResolutions.join(" / ") || "not verified"}` : "Text · separately metered components"}</p>
         <ModelPrices model={model} overview={overview} />
         <footer><button className="text-link" aria-label={`View details for ${model.upstreamId}`} onClick={() => setSelected(model)}>View details<span className="sr-only"> for {model.upstreamId}</span> ↗</button>
         <div className="catalogue-status-slot">{model.availability !== "unknown" && <span className={`availability-label ${model.availability === "unavailable-notice" ? "availability-warning" : ""}`}>
@@ -56,14 +56,14 @@ export default function ModelFamily({ family, variants, currency, linkPage = tru
       <p><strong>{availabilityLabel(selected)}</strong> · checked {snapshot.checkedOn}</p>
       <p>Reference ID: <code>{selected.upstreamId}</code></p>
       <CopyButton text={selected.upstreamId} label="Copy reference ID" />
-      <p>Public API ID pending. This reference identifier is not a working Takewing integration ID.</p>
-      <p>{selected.identity.status === "verified" ? "Official identity documented; the served version and Takewing support remain unverified." : "Exact model or channel identity is awaiting evidence."}</p>
+      <p>Public API ID pending. This reference identifier is not a working AIAPI.deals integration ID.</p>
+      <p>{selected.identity.status === "verified" ? "Official identity documented; the served version and AIAPI.deals support remain unverified." : "Exact model or channel identity is awaiting evidence."}</p>
       <ModelPrices model={selected} />
       <CatalogueRates rates={selected.rates} currency={currency} detailed />
       <h3>Limitations</h3>
       <ul>{selected.limitations.map(limit => <li key={limit}>{limit}</li>)}</ul>
       {selected.gaps.length > 0 && <p>Evidence gaps: {selected.gaps.join(", ")}. Alias mapping, channel behavior or availability needs review before use.</p>}
-      <p><Link className="text-link" to="/docs">Takewing documentation status</Link> · <Link className="text-link" to={statusHref(search)}>Status and notices</Link></p>
+      <p><Link className="text-link" to="/docs">AIAPI.deals documentation status</Link> · <Link className="text-link" to={statusHref(search)}>Status and notices</Link></p>
     </Dialog>}
   </section>;
 }

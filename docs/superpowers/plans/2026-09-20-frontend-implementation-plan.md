@@ -27,15 +27,15 @@ compatible prerender/content mechanism during S01 and record the decision.
 
 | Field | Current value |
 | --- | --- |
-| Last updated | 2026-09-24 |
+| Last updated | 2026-10-07 |
 | Overall status | IN_PROGRESS overall; S01-S11 DONE for local/mock boundaries |
-| Working branch | `main` after authorized H-069 integration; source `feat/frontend-mvp-foundation` retained |
+| Working branch | `feat/deal-style-rollout`, preserving Claude's uncommitted rebrand and homepage work from `main` |
 | Inspected code baseline | `67a8386` — frontend plan naming; baseline verified in H-004 |
-| Current implementation step | H-069 dashboard review checkpoint; owner authorized commit, push and main merge |
-| Next action | Owner Settings visual review; S12.1 backend contracts/readiness when partners are ready. |
-| Latest completed work | H-068 Settings tabs, notifications and draft warnings refined |
-| Delivery | H-069 integrates H-062 through H-068 into main; see git history for checkpoint commit |
-| Latest verification | H-069: root/frontend builds and typechecks; 202 frontend checks passed (14 expected skips); H-068 auth 76 passed (2 expected skips) |
+| Current implementation step | H-070 approved homepage style extended across public/auth/account pages |
+| Next action | Owner visual review at local port 5173; commit/push only when requested. S12 integration remains separate. |
+| Latest completed work | H-070 site-wide styles and responsive corrections; see verification below |
+| Delivery | Uncommitted local changes; no push or deployment |
+| Latest verification | H-070: full frontend 204 passed / 16 skipped; isolated auth 76 passed / 2 skipped; root typecheck/build passed; final scoped checks below |
 | Global blocker | None for mock-first frontend work; verified API examples and real publication remain gated under B07/B08/S12/S13. |
 | Do not forget | Equal image/text acquisition; credits never expire; F-001 fixed in local artifacts only; preserve partner authentication; B09/B12/S12/S13 gates remain |
 
@@ -2015,3 +2015,38 @@ H-068 validation: production/fixture builds and typecheck passed; full auth suit
 Owner requested committing and pushing all current changes, checking out main and merging. Scope includes reviewed Overview data/layout, Requests history, shared dashboard dropdowns, Billing packages and direct editing, API-key cleanup, Settings cleanup and associated documentation/tests. Fetched origin before integration; origin/main is an ancestor of the feature branch, so integration can fast-forward without conflict resolution. Preserve the feature branch. Backend/payment/security production gates and the documented browser-history draft-warning limitation remain unchanged.
 
 H-069 validation: root typecheck/build and frontend build passed; full frontend suite 202 passed with 14 expected skips. The preceding authenticated suite passed 76 with two expected skips, plus five alert-policy tests. Staged whitespace check passed. Integration uses the identical tested tree because main can fast-forward; no deployment, credential change or production backend gate closure.
+
+### H-070 - 2026-10-07 - Approved AIAPI.deals style rollout (DONE locally)
+
+Continued the final authorized task in the supplied Claude handoff: carry the
+partner-approved homepage design across the existing public site and dashboard,
+avoiding the earlier alignment, wrapping and monetary-display errors. Preserved
+Claude's already-dirty rebrand/homepage work and created `feat/deal-style-rollout`.
+Updated existing shared/page CSS plus active public navigation and the model
+detail style import. No business behavior or price arithmetic changed. Public,
+auth, catalogue and all six account routes now share ink/paper/yellow styling;
+tables and forms retain compact layouts and semantic statuses.
+
+Validation: root typecheck/full build passed; frontend build passed; full frontend
+204 passed / 16 expected skips, isolated auth 76 passed / two expected skips.
+Final scoped public/home/blog 30 passed / 16 expected skips and auth six passed;
+final mobile Settings refinement separately passed both keyboard/dialog checks.
+Browser sweep covered 29 routes at four widths plus 320px. Fixed reproduced docs
+table and blog heading overflow, a small homepage burst overflow, narrow docs
+heading wrap, and login spacing; independent review caught a hidden white Discord
+logo. The final affected-route sweep passed 25 page/width checks without overflow
+or runtime errors. Screenshots remain in OS temp. Details and file ownership:
+[rollout plan](2026-10-07-deal-style-rollout.md).
+
+Handoff: normal local preview on port 5173 for owner review. Changes remain
+uncommitted, including inherited Claude changes; no push/deployment. S12 live
+integration, production pricing alignment and publication gates remain separate.
+
+### H-071 - 2026-10-07 - Authorized commit, push and live publication
+
+Owner explicitly requested committing and pushing the complete redesign so it is
+available on the live domain. Scope includes the inherited Claude rebrand/homepage
+and H-070 site-wide rollout. Origin was fetched and main is unchanged from the
+branch base, permitting fast-forward integration. H-070 verification applies to
+the unchanged implementation. Publication verification follows the push; this
+authorization does not close pricing/provider/payment launch gates.

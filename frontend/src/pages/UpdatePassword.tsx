@@ -57,7 +57,7 @@ export default function UpdatePassword() {
   return (
     <AuthShell
       title="Choose a new password"
-      description="Set a new password for your Takewing AI account."
+      description="Set a new password for your AIAPI.deals account."
     >
       {!loading && (!session || invalidLink) && (
         <p className="auth-warning" role="alert">

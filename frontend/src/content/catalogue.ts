@@ -43,7 +43,7 @@ export const snapshot = {
   publication: "reference-only-owner-approved",
 } as const;
 
-const support: ReviewStatus = { status: "awaiting-evidence", reason: "B01/B02: Takewing support, public API ID and production price not approved." };
+const support: ReviewStatus = { status: "awaiting-evidence", reason: "B01/B02: AIAPI.deals support, public API ID and production price not approved." };
 const textLimitations = ["Upstream context limits, token accounting, tools, vision and streaming require integration evidence."];
 
 type ImageRow = [id: string, family: string, provider: "OpenAI" | "Google", resolutions: string[], credits: string, gaps: string[]];

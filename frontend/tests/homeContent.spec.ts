@@ -1,59 +1,85 @@
-﻿import { test, expect } from '@playwright/test';
-import { catalogue } from '../src/content/catalogue';
-import { formatAmount } from '../src/lib/pricing';
-import { sellingPrice } from '../src/content/publishedPrices';
+import { test, expect } from '@playwright/test';
+import { deals, maxDealPercent, multiply, subtract, usd, usdTotal } from '../src/content/homeDeals';
 import { findRouteMeta } from '../src/seo/routes';
 import { overviewSummary } from '../src/data/overviewDemo';
 import { homeDashboardRequests } from '../src/data/homeDashboardDemo';
 
-test('homepage uses shared image and text reference prices with honest purchase guidance', async ({ page }, testInfo) => {
+test('homepage deal cards use shared catalogue prices and honest comparisons', async ({ page }, testInfo) => {
   await page.goto('/');
-  const cards = page.locator('.home-models .model-card');
+  const cards = page.locator('.deal-card');
   await expect(cards).toHaveCount(4);
-  for (const [id, name] of [['gpt-image-2.5', 'GPT Image 2.5'], ['nano-banana-pro', 'Nano Banana Pro'], ['gpt-6-astra', 'GPT-6 Astra'], ['gemini-3.8-flash', 'Gemini 3.8 Flash']]) {
-    const model = catalogue.find(model => model.upstreamId === id)!;
-    const card = cards.filter({ has: page.getByRole('heading', { name, exact: true }) });
-    await expect(card).toContainText(`$${formatAmount(sellingPrice(model.rates[0].credits!), model.modality === 'image' && id === 'gpt-image-2.5' ? 3 : 2).decimal}`);
-    await expect(card).not.toContainText(/Cache read|Availability not verified|Public API ID|Comparison unavailable|Reference ID|Official API example|Pricing details|Official pricing/);
-    await expect(card.locator('s.discounted')).toHaveCount(model.modality === 'text' ? 2 : 1);
+  const expected: Record<string, { percent: string; official: string }> = {
+    'nano-banana-pro': { percent: '87', official: '$0.134' },
+    'gpt-6-astra': { percent: '92', official: '$10.00' },
+    'gpt-image-2.5': { percent: '89', official: '$0.053' },
+    'gemini-3.8-flash': { percent: '85', official: '$0.75' },
+  };
+  for (const deal of deals) {
+    const card = cards.filter({ has: page.getByRole('heading', { name: deal.name, exact: true }) });
+    const main = deal.rates[0]!;
+    expect(main.percent).toBe(expected[deal.id]!.percent);
+    await expect(card.locator('.deal-card-price strong')).toHaveText(usd(main.ours).replace('≈ ', '≈'));
+    await expect(card.locator('.deal-card-price .deal-strike')).toContainText(expected[deal.id]!.official);
+    await expect(card.locator('.deal-card-saving')).toContainText(`Save up to ${main.percent}%`);
+    await expect(card.locator('.deal-card-saving')).toContainText(usd(subtract(main.official, main.ours), 'saving'));
     await expect(card.getByRole('link', { name: /Model details/ })).toHaveAttribute('href', /^\/models[/?]/);
-    if (model.modality === 'text') {
-      await expect(card).toContainText('Official API');
-      await expect(card.locator('.landing-official .discounted')).toHaveCount(2);
-      await expect(card.locator('.landing-saving')).toHaveText(id === 'gpt-6-astra'
-        ? ['Save up to 92%', 'Save up to 92%'] : ['Save up to 85%', 'Save up to 83%']);
-    } else {
-      await expect(card).toContainText('/ request');
-      if (id === 'gpt-image-2.5') await expect(card.locator('.landing-saving')).toHaveText('Save up to 89%');
-      else await expect(card.locator('.landing-saving')).toHaveText('Save up to 93%');
-      await expect(card.locator('.landing-official')).toContainText(id === 'gpt-image-2.5' ? '$0.053' : '$0.24');
-      await expect(card.locator('.price-reference-basis')).toContainText(id === 'gpt-image-2.5' ? '1K · Auto quality; official High reference' : '4K image output');
-      await expect(card.locator('.landing-official')).not.toContainText(/depends|Varies/);
-    }
+    if (deal.modality === 'text') await expect(card.locator('.deal-strike')).toHaveCount(2);
   }
+  await expect(page.locator('.deal-ticker span')).toHaveText(deals.map(deal => `−${deal.rates[0]!.percent}% ${deal.name}`));
   await expect(page.getByRole('link', { name: 'Get started', exact: true }).first()).toHaveAttribute('href', '/signup');
-  await expect(page.getByText('Credits never expire.', { exact: true })).toBeVisible();
+  await expect(page.locator('.home-steps')).toContainText('Credits never expire.');
   const faq = page.locator('details').filter({ hasText: 'Are failed requests always refunded?' });
   await faq.locator('summary').focus();
   await page.keyboard.press('Enter');
   await expect(faq).toHaveAttribute('open', '');
   await expect(faq).toContainText('no upstream cost');
-  await expect(page.locator('.home')).not.toContainText('Accounts, payments and API access are not connected');
+  await expect(page.locator('.home')).not.toContainText(/hottest|today only|limited time/i);
   const destinations = await page.locator('.home a[href^="/"]').evaluateAll(links => links.map(link => new URL((link as HTMLAnchorElement).href).pathname));
   for (const destination of new Set(destinations)) expect(findRouteMeta(destination), destination).toBeDefined();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('homepage-content.png'), fullPage: true });
 });
 
-test('homepage illustrations respect reduced motion and guide links work', async ({ page }) => {
+test('hero headline stays on two lines', async ({ page }) => {
+  await page.goto('/');
+  const heading = page.getByRole('heading', { level: 1 });
+  await expect(heading).toHaveText(`Official AI.Up to ${maxDealPercent}% off.`);
+  await page.evaluate(() => document.fonts.ready);
+  const lines = await heading.evaluate(element => element.getBoundingClientRect().height / parseFloat(getComputedStyle(element).lineHeight));
+  expect(lines).toBeLessThan(2.5);
+});
+
+test('savings calculator compares official and AIAPI.deals bills', async ({ page }) => {
+  await page.goto('/');
+  const calculator = page.locator('.deal-calculator');
+  const result = calculator.locator('.deal-calculator-result');
+  const check = async (dealIndex: number, quantity: number) => {
+    const rate = deals[dealIndex]!.rates[0]!;
+    const official = multiply(rate.official, quantity);
+    const ours = multiply(rate.ours, quantity);
+    await expect(result).toContainText(usdTotal(official));
+    await expect(result).toContainText(usdTotal(ours));
+    await expect(result.locator('.deal-calculator-saved')).toHaveText(`≈${usdTotal(subtract(official, ours))}`);
+    await expect(result).toContainText(`up to ${rate.percent}% less`);
+  };
+  await expect(calculator.getByRole('button', { name: deals[0]!.name, exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await check(0, 10000);
+  const height = await calculator.evaluate(element => element.getBoundingClientRect().height);
+  const textIndex = deals.findIndex(deal => deal.modality === 'text');
+  await calculator.getByRole('button', { name: deals[textIndex]!.name, exact: true }).click();
+  await expect(calculator.getByRole('button', { name: '100M', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  // Switching between image and text keeps the volume row, and the card height, stable.
+  expect(await calculator.evaluate(element => element.getBoundingClientRect().height)).toBe(height);
+  await check(textIndex, 100);
+  await calculator.getByRole('button', { name: '1B', exact: true }).click();
+  await check(textIndex, 1000);
+  await expect(calculator).toContainText('Input tokens only');
+});
+
+test('homepage has no running animations with reduced motion', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
-  await expect(page.locator('.model-featured')).toContainText('GPT Image 2.5');
-  await expect(page.locator('.home-flow')).not.toContainText('API access coming soon');
   expect(await page.locator('.home').evaluate(element => element.getAnimations({ subtree: true }).filter(animation => animation.playState === 'running').length)).toBe(0);
-  await page.locator('.home-guide').first().click();
-  await expect(page).toHaveURL(/\/blog\/understanding-image-model-rates$/);
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('image');
 });
 
 test('dashboard excerpt uses the actual request table and consistent chart totals', async ({ page }) => {
@@ -72,32 +98,21 @@ test('dashboard excerpt uses the actual request table and consistent chart total
   expect(await preview.evaluate(element => element.getAnimations({ subtree: true }).length)).toBe(0);
 });
 
-test('featured image dots animate while reduced motion keeps a still frame', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/');
-  const dots = page.locator('.model-featured canvas');
-  await dots.scrollIntoViewIfNeeded();
-  await expect.poll(() => dots.evaluate((element: HTMLCanvasElement) => element.width)).toBeGreaterThan(300);
-  const still = await dots.evaluate((element: HTMLCanvasElement) => element.toDataURL());
-  await page.waitForTimeout(250);
-  expect(await dots.evaluate((element: HTMLCanvasElement) => element.toDataURL())).toBe(still);
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await expect.poll(() => dots.evaluate((element: HTMLCanvasElement) => element.toDataURL())).not.toBe(still);
-  await expect(page.locator('.model-featured')).not.toContainText(/Thinking|Generating|23 %/);
+test('homepage image deals compare at the same resolution, in the agreed order', async () => {
+  expect(deals.map(deal => deal.name)).toEqual(['GPT Image 2.5', 'GPT-6 Astra', 'Nano Banana Pro', 'Gemini 3.8 Flash']);
+  for (const deal of deals.filter(entry => entry.modality === 'image')) expect(deal.basis).toMatch(/^1K /);
 });
 
-test('dot canvas matches displayed dimensions at high density and after resize', async ({ browser }) => {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 2, reducedMotion: 'reduce' });
-  const page = await context.newPage();
-  try {
-    await page.goto('http://127.0.0.1:4173/');
-    const canvas = page.locator('.model-featured canvas');
-    for (const width of [1440, 390]) {
-      await page.setViewportSize({ width, height: 1000 });
-      await expect.poll(() => canvas.evaluate((element: HTMLCanvasElement) => {
-        const rect = element.getBoundingClientRect();
-        return element.width === Math.round(rect.width * devicePixelRatio) && element.height === Math.round(rect.height * devicePixelRatio);
-      })).toBe(true);
-    }
-  } finally { await context.close(); }
+test('deal card rows line up across cards', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'Four cards share one row on desktop');
+  await page.goto('/');
+  await page.evaluate(() => document.fonts.ready);
+  for (const selector of ['.deal-card-saving', '.deal-card-price strong', '.deal-card-link']) {
+    const boxes = await page.locator(`.deal-card ${selector}`).evaluateAll(elements => elements.map(element => {
+      const rect = element.getBoundingClientRect();
+      return { top: Math.round(rect.top), height: Math.round(rect.height) };
+    }));
+    expect(new Set(boxes.map(box => box.top)).size, selector).toBe(1);
+    if (selector === '.deal-card-saving') expect(new Set(boxes.map(box => box.height)).size).toBe(1);
+  }
 });

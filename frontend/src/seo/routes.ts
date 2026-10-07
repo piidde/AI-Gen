@@ -27,14 +27,14 @@ export type RouteMeta = {
 export const routeMeta: RouteMeta[] = [
   { path: "/blog", title: "Image and text cost guides", description: "Understand image request tariffs and text token components with dated reference guides.", indexable: true, changefreq: "monthly" },
   ...publishedBlogArticles.map(article => ({ path: `/blog/${article.slug}`, title: article.title, description: article.summary, indexable: true, changefreq: "monthly" as const })),
-  { path: "/updates", title: "Updates", description: "Sample product announcements and the Takewing updates archive preview.", indexable: false },
+  { path: "/updates", title: "Updates", description: "Sample product announcements and the AIAPI.deals updates archive preview.", indexable: false },
   ...updates.map(update => ({ path: `/updates/${update.slug}`, title: update.title, description: update.summary, indexable: false })),
   ...familyPages.map(page => ({ path: `/models/${page.slug}`, title: `${page.family} models & pricing`, description: page.description, indexable: true, priority: 0.8, changefreq: "weekly" as const })),
   {
     path: "/",
-    title: "Leading AI models. Lower API prices.",
+    title: "Official AI models without the official price.",
     description:
-      "Image and text generation APIs built to cut your AI costs. Explore Takewing pricing, official rate references and the prepaid dashboard preview.",
+      "Image and text generation APIs built to cut your AI costs. Explore AIAPI.deals pricing, official rate references and the prepaid dashboard preview.",
     indexable: true,
     priority: 1.0,
     changefreq: "weekly",
@@ -52,7 +52,7 @@ export const routeMeta: RouteMeta[] = [
     path: "/docs",
     title: "Documentation and quickstart",
     description:
-      "Documentation preparation status. Quickstart and API examples await a verified Takewing API contract.",
+      "Documentation preparation status. Quickstart and API examples await a verified AIAPI.deals API contract.",
     indexable: true,
     priority: 0.9,
     changefreq: "weekly",
@@ -61,7 +61,7 @@ export const routeMeta: RouteMeta[] = [
     path: "/support",
     title: "Support",
     description:
-      "Get help with your Takewing AI account, API keys, billing or a failing request.",
+      "Get help with your AIAPI.deals account, API keys, billing or a failing request.",
     indexable: true,
     priority: 0.6,
     changefreq: "monthly",
@@ -78,7 +78,7 @@ export const routeMeta: RouteMeta[] = [
   {
     path: "/contact",
     title: "Contact",
-    description: "How to reach the Takewing AI team.",
+    description: "How to reach the AIAPI.deals team.",
     indexable: true,
     priority: 0.5,
     changefreq: "monthly",
@@ -107,38 +107,38 @@ export const routeMeta: RouteMeta[] = [
     path: "/information",
     title: "Documentation, support and service information",
     description:
-      "Find documentation, support channels, service status, contact details and the legal information for Takewing AI in one place.",
+      "Find documentation, support channels, service status, contact details and the legal information for AIAPI.deals in one place.",
     indexable: false,
   },
   // Account flows: real pages, deliberately kept out of search results.
   {
     path: "/login",
     title: "Sign in",
-    description: "Sign in to your Takewing AI account.",
+    description: "Sign in to your AIAPI.deals account.",
     indexable: false,
   },
   {
     path: "/signup",
     title: "Create your account",
-    description: "Create a Takewing AI account to get an API key and start building.",
+    description: "Create an AIAPI.deals account to get an API key and start building.",
     indexable: false,
   },
   {
     path: "/forgot-password",
     title: "Reset your password",
-    description: "Request a password reset link for your Takewing AI account.",
+    description: "Request a password reset link for your AIAPI.deals account.",
     indexable: false,
   },
   {
     path: "/update-password",
     title: "Update your password",
-    description: "Choose a new password for your Takewing AI account.",
+    description: "Choose a new password for your AIAPI.deals account.",
     indexable: false,
   },
   {
     path: "/auth/callback",
     title: "Signing you in",
-    description: "Completing your Takewing AI sign-in.",
+    description: "Completing your AIAPI.deals sign-in.",
     indexable: false,
   },
   // Dashboard. Private by definition; never indexed.

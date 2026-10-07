@@ -78,7 +78,7 @@ export default function Usage() {
       const url = URL.createObjectURL(new Blob([usageCsv(filtered)], { type: "text/csv;charset=utf-8" }));
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = "takewing-demo-usage.csv";
+      anchor.download = "aiapi-deals-demo-usage.csv";
       document.body.append(anchor);
       anchor.click();
       anchor.remove();

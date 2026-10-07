@@ -100,6 +100,6 @@ export function orderExplanation(order: Order): string {
 }
 
 export function orderSupportSummary(order: Order): string {
-  return ["DEMO ORDER — no real payment", `Order: ${order.id}`, `Created (UTC): ${order.createdAt}`,
+  return ["DEMO ORDER: no real payment", `Order: ${order.id}`, `Created (UTC): ${order.createdAt}`,
     `Amount: ${order.usd} USD`, `Payment: ${order.payment}`, `Fulfillment: ${order.fulfillment}`, `Refund: ${order.refund}`].join("\n");
 }

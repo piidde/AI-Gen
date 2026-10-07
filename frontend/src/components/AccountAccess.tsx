@@ -58,8 +58,8 @@ export default function AccountAccess() {
   }
 
   const title = pending ? 'Mock operation pending…' : error ? 'Mock operation failed'
-    : action === 'email' ? 'Change email — mock' : action === 'password' ? 'Change password — mock'
-      : action === 'identity' ? 'Confirm identity — simulation' : action === 'delete' ? 'Confirm account deletion — mock' : 'Mock operation complete';
+    : action === 'email' ? 'Change email (mock)' : action === 'password' ? 'Change password (mock)'
+      : action === 'identity' ? 'Confirm identity (simulation)' : action === 'delete' ? 'Confirm account deletion (mock)' : 'Mock operation complete';
   return <>
     <div className="panel setting-section">
       <h2>Account access</h2>

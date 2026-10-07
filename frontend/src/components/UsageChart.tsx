@@ -100,14 +100,14 @@ export default function UsageChart({ daily, totals, granularity = "day" }: {
               <desc>{data.values.map((value, index) => `${labels[index]}: ${daily && metric === "Credits used" ? daily[index]!.credits : value}`).join("; ")}</desc>
               <defs>
                 <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                  <stop stopColor="#57C99B" stopOpacity=".17" />
-                  <stop offset="1" stopColor="#57C99B" stopOpacity="0" />
+                  <stop stopColor="#FFDD33" stopOpacity=".55" />
+                  <stop offset="1" stopColor="#FFDD33" stopOpacity="0" />
                 </linearGradient>
               </defs>
               <path d="M0 0H660M0 60H660M0 120H660M0 180H660"
-                stroke="#434a47" strokeWidth="1" strokeDasharray="2 6" vectorEffect="non-scaling-stroke" />
+                stroke="#b8b8b0" strokeWidth="1" strokeDasharray="2 6" vectorEffect="non-scaling-stroke" />
               {line && <path d={`${line} L${points.at(-1)!.x} 180 L0 180Z`} fill={`url(#${gradientId})`} />}
-              <path d={line} fill="none" stroke="#57C99B" strokeWidth="2.5"
+              <path d={line} fill="none" stroke="#111111" strokeWidth="2.5"
                 strokeLinecap="round" vectorEffect="non-scaling-stroke" />
               {active && <>
                 <path d={`M${active.x} 0V180`} className="usage-chart__guide" vectorEffect="non-scaling-stroke" />

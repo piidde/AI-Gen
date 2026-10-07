@@ -1,14 +1,21 @@
 :root {
-  color-scheme: dark;
-  font-family: "Geist", sans-serif;
+  color-scheme: light;
+  font-family: "Archivo Variable", "Archivo", sans-serif;
   font-synthesis: none;
-  --bg: #101112;
-  --sidebar: #141516;
-  --panel: #191b1d;
-  --text: #f2f2f3;
-  --muted: #b6b8bd;
-  --accent: #57c99b;
-  --border: #37393d;
-  --control-border: #4d5055;
-  --danger: #f2b9ac;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --bg: #f1f1ec;
+  --sidebar: #ffffff;
+  --panel: #ffffff;
+  --text: #111111;
+  --muted: #4a4a45;
+  /* Ink is the interactive/accent colour; yellow and red carry the deal branding. */
+  --accent: #111111;
+  --highlight: #ffdd33;
+  --deal: #d42a1f;
+  --border: #d3d3cb;
+  --control-border: #8a8a82;
+  --danger: #b3261e;
+  --radius-panel: 16px;
+  --radius-control: 10px;
+  --border-strong: 2px solid var(--text);
 }

@@ -68,7 +68,7 @@ export default function NotificationSettings({ onDirtyChange }: { onDirtyChange?
     <form className="panel setting-section" onSubmit={save}>
       <h2>Notification preferences</h2>
       <p>Email notification delivery is not connected yet. Preferences are saved for this session only.</p>
-      <p>Account email: {user?.email || 'Unavailable'} · <strong>{verified ? 'Verified' : 'Not verified — low-balance alerts are paused'}</strong></p>
+      <p>Account email: {user?.email || 'Unavailable'} · <strong>{verified ? 'Verified' : 'Not verified, low-balance alerts are paused'}</strong></p>
       <label className="setting-row"><span><strong>Low-balance email alerts</strong><span className="setting-description">An alert when your balance falls below your threshold, then after it rises above the threshold and falls again.</span></span>
         <input className="setting-toggle" type="checkbox" checked={draft.lowBalance} disabled={pending} onChange={event => { setDraft({ ...draft, lowBalance: event.target.checked }); setMessage(''); }} /></label>
       {draft.lowBalance && <div className="field"><label htmlFor="credit-alert-threshold">Credit alert threshold</label><input id="credit-alert-threshold" inputMode="numeric" pattern="[1-9][0-9]*" required value={draft.threshold} disabled={pending} onChange={event => { setDraft({ ...draft, threshold: event.target.value }); setMessage(''); }} aria-describedby="threshold-hint" />

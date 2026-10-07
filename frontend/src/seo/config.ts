@@ -10,11 +10,11 @@ function envFlag(value: string | undefined): boolean {
 }
 
 function normalizeOrigin(value: string | undefined): string {
-  const origin = value?.trim() || "https://takewing.ai";
+  const origin = value?.trim() || "https://aiapi.deals";
   return origin.endsWith("/") ? origin.slice(0, -1) : origin;
 }
 
-/** Canonical origin without a trailing slash, e.g. `https://takewing.ai`. */
+/** Canonical origin without a trailing slash, e.g. `https://aiapi.deals`. */
 export const siteOrigin = normalizeOrigin(import.meta.env.VITE_SITE_ORIGIN);
 
 /**
@@ -23,12 +23,12 @@ export const siteOrigin = normalizeOrigin(import.meta.env.VITE_SITE_ORIGIN);
  */
 export const isIndexable = envFlag(import.meta.env.VITE_SITE_INDEXABLE);
 
-export const siteName = "Takewing AI";
+export const siteName = "AIAPI.deals";
 
-export const siteTagline = "Leading AI models. Lower API prices.";
+export const siteTagline = "Official AI models without the official price.";
 
 export const siteDescription =
-  "Image and text generation APIs built to cut your AI costs. Explore Takewing pricing, official rate references and the prepaid dashboard preview.";
+  "Image and text generation APIs built to cut your AI costs. Explore AIAPI.deals pricing, official rate references and the prepaid dashboard preview.";
 
 /** Locale advertised to crawlers and social scrapers. */
 export const siteLocale = "en_US";

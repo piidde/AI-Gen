@@ -33,8 +33,8 @@ test("billing totals preserve exact decimals, charged failures and unresolved am
   expect(usageDaily([charged, refund, pending])[0]).toMatchObject({ requests: 3, credits: "9007199254740993.223" });
   expect(billingLabel(charged)).toBe("Charged 9007199254740993.123 credits");
   expect(billingLabel(refund)).toBe("Refunded 0.2 of 0.3 credits; net 0.1 credits");
-  expect(billingLabel(pending)).toBe("Pending — awaiting confirmation");
-  expect(billingLabel(row({ status: "unknown", reason: "Unconfirmed" }))).toBe("Unknown — awaiting confirmation");
+  expect(billingLabel(pending)).toBe("Pending: awaiting confirmation");
+  expect(billingLabel(row({ status: "unknown", reason: "Unconfirmed" }))).toBe("Unknown: awaiting confirmation");
 });
 
 test("demo contains historical keys, retained identifiers, outcomes and distinct billing states", () => {

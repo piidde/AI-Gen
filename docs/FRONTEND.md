@@ -257,6 +257,8 @@ See [product scope](PRODUCT.md), [architecture](ARCHITECTURE.md), and
 
 ## DECIDED - Takewing AI visual direction (2026-09-16)
 
+**Superseded (2026-10-07)** by the AIAPI.deals rebrand at the end of this guide.
+
 Owner: JannesG / PlaYa-44. Accepted after local prototype review, then authorized
 application across the existing seven-screen design set. This records a design
 contract, not implemented application behavior.
@@ -846,3 +848,57 @@ H-067 follow-up: API keys actions now read View requests (same key-filtered Requ
 ### Settings review (2026-09-24, H-068)
 
 Settings separates Profile, Security, Notifications and Billing. Top and per-operation scenario selectors are removed. Notifications use checkbox switches, show the credit threshold only while low-balance alerts are enabled, and retain a concise disconnected-delivery/session-only notice. Security has a separate danger zone; credential/deletion previews remain explicitly nonfunctional. Profile, billing and notification Save actions require edits. Settings warns before discarding drafts through tab changes and normal page links, with beforeunload warnings for reload/close; native SPA back/forward traversal is not blocked by this scoped guard. The shared Billing form also disables unchanged saves. Auth, alert-delivery and real deletion gates are unchanged.
+
+## DECIDED — AIAPI.deals rebrand and deal-board style (2026-10-07)
+
+Owner: JannesG / PlaYa-44, following the move to the aiapi.deals domain. This
+supersedes the 2026-09-16 Takewing AI visual direction above for the website and
+dashboard. The previous Takewing branding is preserved on the `takewing-branding`
+Git branch. Layout, routes, data flows and dashboard behaviour are unchanged.
+
+- Name and wordmark: AIAPI.deals, with "AIAPI" in heavy condensed Archivo with a
+  rotated yellow ".deals" tag. Positioning: low-cost access to official models.
+- Light theme only: paper #F1F1EC, white panels, ink #111111 for text, primary
+  buttons, focus and accent roles; yellow #FFDD33 highlights; red #D42A1F for
+  struck-through official prices and savings bursts. Tokens live in
+  `frontend/src/styles/tokens.css`; legacy hard-coded dark colours were converted.
+- Fonts are self-hosted through Fontsource (Archivo variable, IBM Plex Mono); no
+  Google Fonts requests. Licences ship in `frontend/public/`.
+- Homepage: two-line hero ("Official AI. Up to N% off.") with the compact
+  savings calculator beside it, savings ticker, four permanent deal cards, a dark
+  "How it works" band (flow diagram plus three step cards), a developer section
+  with the documented chat request, dashboard excerpt, FAQ and closing call to
+  action. Copy describes fixed everyday prices; no daily deals, countdowns or
+  other invented urgency. Owner feedback (2026-10-07): no dash punctuation in
+  site copy, two-line headlines must not wrap to three, clear spacing between
+  headlines and supporting text.
+- Homepage deal order is GPT Image 2.5, GPT-6 Astra, Nano Banana Pro, Gemini 3.8
+  Flash; the calculator defaults to GPT Image 2.5. All homepage image comparisons
+  use the official 1K reference (owner request, 2026-10-07), so Nano Banana Pro
+  shows 87% against $0.134 rather than 93% against the 4K price. The catalogue
+  page keeps the H-043 "up to" rule of the largest listed preset.
+- Deal cards, ticker and calculator derive every amount from
+  `frontend/src/content/homeDeals.ts`, which reuses the catalogue comparison rules
+  in `publishedPrices.ts`. They therefore still show the 20% markup preview basis;
+  align them with the backend's configured prices before launch (see BILLING.md).
+- Internal identifiers (package names, storage keys, API key prefix `tw_live_`,
+  backend service names) still say Takewing and are intentionally unchanged.
+
+### Site-wide rollout (2026-10-07)
+
+The owner and partner approved the homepage and authorized extending its design
+to every existing public and account page. The shared controls, navigation,
+dialogs and panels now use the same ink outlines, paper/white surfaces, condensed
+Archivo headings and yellow selected states. Public content, model-family pages,
+docs, blog, support, policies, status, authentication and all six dashboard routes
+have received the matching page-specific treatment. Financial/status information
+retains its units, source qualifications and distinct error/success colours.
+
+Responsive checks include 320/390px phones, 900px tablet and 1440/2560px desktop.
+Documentation tables now wrap instead of inheriting the data-table `nowrap` rule;
+long blog/documentation headings fit narrow phones, the homepage savings burst
+stays inside the viewport, and mobile Settings tabs form two balanced columns.
+Auth-provider icons remain visible on the light buttons. Price calculations,
+reference data, routes and mock/live business boundaries were not changed by this
+rollout. See [the rollout log](superpowers/plans/2026-10-07-deal-style-rollout.md)
+and H-070 for verification. No commit, push or deployment was performed.

@@ -221,7 +221,7 @@ test("account preferences persist within one session and isolate signed-in accou
   await page.getByRole("tab", { name: "Notifications", exact: true }).click();
   await expect(page.getByLabel("Credit alert threshold", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("checkbox", { name: /^Low-balance/ })).not.toBeChecked();
-  await expect(page.getByText("Not verified — low-balance alerts are paused")).toBeVisible();
+  await expect(page.getByText("Not verified, low-balance alerts are paused")).toBeVisible();
   await page.getByRole("tab", { name: "Security", exact: true }).click();
   await expect(page.getByRole("button", { name: "Change password", exact: true })).toHaveCount(0);
   await expect(page.getByText(/Your sign-in provider manages your password/)).toBeVisible();

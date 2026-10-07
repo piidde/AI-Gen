@@ -3,7 +3,7 @@ import PublicCatalogueShell from "../components/PublicCatalogueShell";
 
 export default function Support() {
   return <PublicCatalogueShell><div className="help-page">
-    <header className="help-intro"><p className="eyebrow">TAKEWING HELP</p><h1>Help &amp; support</h1><p>Find the right place to investigate a request, understand a payment, or prepare your integration.</p></header>
+    <header className="help-intro"><p className="eyebrow">AIAPI.DEALS HELP</p><h1>Help &amp; support</h1><p>Find the right place to investigate a request, understand a payment, or prepare your integration.</p></header>
     <nav className="section-links" aria-label="On this page"><a href="#help-topics">Common topics</a><a href="#safe-details">Safe details to share</a><a href="#contact-channel">Contact support</a></nav>
     <section id="help-topics" className="help-section" tabIndex={-1}><h2>Start with your question</h2>
       <div className="help-grid">

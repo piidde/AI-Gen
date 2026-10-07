@@ -1,30 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Takewing AI — affordable AI API access">
-  <defs>
-    <linearGradient id="lift" x1="0" y1="1" x2="1" y2="0">
-      <stop stop-color="#1A3C2B"/>
-      <stop offset=".6" stop-color="#57C99B"/>
-      <stop offset="1" stop-color="#A3E9C6"/>
-    </linearGradient>
-  </defs>
-
-  <rect width="1200" height="630" fill="#101112"/>
-  <g stroke="#23392B" stroke-width="1" fill="none" opacity=".7">
-    <path d="M0 470 1200 200M0 560 1200 290"/>
-    <path d="M840 630V120M980 630V60M1120 630V0"/>
-  </g>
-
-  <g transform="translate(724 176)">
-    <path d="M0 186 372 0v89L0 275Z" fill="url(#lift)"/>
-    <path d="m0 275 41 25L413 114l-41-25Z" fill="#214F37"/>
-  </g>
-
-  <g transform="translate(88 150)">
-    <path d="M2 18 30 4v10L2 28Zm10 12 18-9v9l-18 8Z" fill="#57C99B" transform="scale(1.6)"/>
-  </g>
-
-  <text x="88" y="330" fill="#F2F2F3" font-family="Geist, Inter, Helvetica, Arial, sans-serif" font-size="72" font-weight="600">Takewing AI</text>
-  <text x="88" y="400" fill="#B6B8BD" font-family="Geist, Inter, Helvetica, Arial, sans-serif" font-size="34" font-weight="400">Affordable AI API access for</text>
-  <text x="88" y="446" fill="#B6B8BD" font-family="Geist, Inter, Helvetica, Arial, sans-serif" font-size="34" font-weight="400">independent builders.</text>
-
-  <text x="88" y="536" fill="#57C99B" font-family="Geist, Inter, Helvetica, Arial, sans-serif" font-size="22" font-weight="500" letter-spacing="2">A LITTLE MORE LIFT</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="AIAPI.deals — official AI models without the official price">
+  <rect width="1200" height="630" fill="#F1F1EC"/>
+  <rect y="0" width="1200" height="56" fill="#111111"/>
+  <text x="88" y="37" fill="#F1F1EC" font-family="IBM Plex Mono, Menlo, monospace" font-size="20">IMAGE + TEXT APIs · PREPAID · NO SUBSCRIPTION</text>
+  <text x="88" y="170" fill="#111111" font-family="Archivo, Arial Black, Arial, sans-serif" font-size="64" font-weight="900">AIAPI</text>
+  <g transform="translate(284 122) rotate(-3)"><rect width="214" height="66" fill="#FFDD33"/><text x="12" y="52" fill="#111111" font-family="Archivo, Arial Black, Arial, sans-serif" font-size="64" font-weight="900">.deals</text></g>
+  <text x="88" y="330" fill="#111111" font-family="Archivo, Arial Black, Arial, sans-serif" font-size="92" font-weight="900">OFFICIAL AI.</text>
+  <text x="88" y="430" fill="#111111" font-family="Archivo, Arial Black, Arial, sans-serif" font-size="92" font-weight="900">WITHOUT THE</text>
+  <g transform="translate(78 452)"><rect width="850" height="104" fill="#FFDD33"/><text x="10" y="86" fill="#111111" font-family="Archivo, Arial Black, Arial, sans-serif" font-size="92" font-weight="900">OFFICIAL PRICE.</text></g>
+  <g transform="translate(1000 300) rotate(12)"><circle r="110" fill="#D42A1F"/><text y="-12" text-anchor="middle" fill="#FFFFFF" font-family="Archivo, Arial Black, Arial, sans-serif" font-size="30" font-weight="800">SAVE BIG</text><text y="40" text-anchor="middle" fill="#FFFFFF" font-family="Archivo, Arial Black, Arial, sans-serif" font-size="44" font-weight="900">ON APIs</text></g>
 </svg>

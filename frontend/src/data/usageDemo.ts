@@ -105,8 +105,8 @@ export function billingLabel(request: UsageRequest): string {
   const billing = request.billing;
   if (billing.status === "charged") return `Charged ${billing.credits} credits`;
   if (billing.status === "refunded") return `Refunded ${billing.refundedCredits} of ${billing.chargedCredits} credits; net ${requestNetCredits(request)} credits`;
-  if (billing.status === "not-charged") return "Not charged — 0 credits";
-  return billing.status === "pending" ? "Pending — awaiting confirmation" : "Unknown — awaiting confirmation";
+  if (billing.status === "not-charged") return "Not charged: 0 credits";
+  return billing.status === "pending" ? "Pending: awaiting confirmation" : "Unknown: awaiting confirmation";
 }
 
 const anchor = new Date();

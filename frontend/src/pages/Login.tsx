@@ -76,7 +76,7 @@ export default function Login() {
 
   return (
     <AuthShell
-      title="Sign in to Takewing AI"
+      title="Sign in to AIAPI.deals"
       description={
         isDiscordSignInEnabled
           ? "Use Google, Discord, or your email and password to access the dashboard."

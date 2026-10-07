@@ -11,7 +11,7 @@ export default function Policy({ kind }: { kind: PolicyKind }) {
     : [["support", "Customer support"], ["business", "Business and legal contact"]];
   return <PublicCatalogueShell><div className="help-page policy-page">
     <header className="help-intro"><p className="eyebrow">SERVICE INFORMATION</p><h1>{titles[kind]}</h1><p>Content review dated <time dateTime="2026-09-20">20 September 2026</time></p>
-      <p className="content-gate">{kind === "terms" ? "Product-policy summary for review — not published legal terms. The local demo does not offer a paid service." : kind === "privacy" ? "Data-handling summary for review — not a published privacy notice. Final disclosures are pending." : "Verified contact information is pending. No contact channel or response-time commitment is currently published."}</p>
+      <p className="content-gate">{kind === "terms" ? "Product-policy summary for review, not published legal terms. The local demo does not offer a paid service." : kind === "privacy" ? "Data-handling summary for review, not a published privacy notice. Final disclosures are pending." : "Verified contact information is pending. No contact channel or response-time commitment is currently published."}</p>
     </header>
     <nav className="section-links" aria-label="On this page">{sections.map(([id, label]) => <a key={id} href={`#${id}`}>{label}</a>)}</nav>
     {kind === "terms" && <>

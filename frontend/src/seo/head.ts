@@ -15,7 +15,7 @@ import { findRouteMeta, type RouteMeta } from "./routes";
 /** Title shown in the tab and in search results. */
 export function formatTitle(meta: RouteMeta): string {
   return meta.path === "/"
-    ? `${siteName} — ${meta.title}`
+    ? `${meta.title} | ${siteName}`
     : `${meta.title} · ${siteName}`;
 }
 

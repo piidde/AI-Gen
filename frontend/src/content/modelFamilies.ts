@@ -1,6 +1,6 @@
 import { catalogue, type CatalogueReference } from "./catalogue.ts";
 
-// Editorial pages describe official model families, not verified Takewing support.
+// Editorial pages describe official model families, not verified AIAPI.deals support.
 export const familyPages = [
   {
     family: "GPT Image 2", slug: "gpt-image-2", modality: "image",
@@ -20,7 +20,7 @@ export const familyPages = [
     family: "GPT-5.6", slug: "gpt-5-6", modality: "text",
     description: "Inspect GPT-5.6 text reference rates, input and output units, cache pricing and context conditions.",
     explanation: "Terra and Sol have separate identifiers and separately priced input, output and cache-read components. Compare the components your text workflow uses instead of treating a token rate as a flat request price.",
-    limitation: "Official context tiers are shown separately. The catalogue does not verify matching token accounting, tools or streaming through Takewing, and a lower component rate alone cannot establish a total saving.",
+    limitation: "Official context tiers are shown separately. The catalogue does not verify matching token accounting, tools or streaming through AIAPI.deals, and a lower component rate alone cannot establish a total saving.",
     source: "https://developers.openai.com/api/docs/models/gpt-5.6-terra",
   },
   {

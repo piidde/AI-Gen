@@ -1,17 +1,28 @@
-.settings-tabs { flex-wrap: wrap; }
-.settings-panel .setting-section { margin-top: 24px; }
+.settings-tabs { flex-wrap: wrap; gap: 10px; border-bottom: 2px solid var(--text); }
+.settings-tabs button { padding: 10px 15px; border: 2px solid transparent; border-radius: 10px 10px 0 0; font-weight: 800; }
+.settings-tabs button[aria-selected="true"] { border-color: var(--text); border-bottom-color: var(--highlight); background: var(--highlight); }
+.settings-panel { max-width: 920px; }
+.settings-panel .setting-section { margin-top: 24px; border: 2px solid var(--text); border-radius: 18px; background: var(--panel); }
+.settings-panel .setting-section h2 { font-size: clamp(24px, 2.5vw, 34px); font-weight: 900; font-stretch: 75%; line-height: 1.05; text-transform: uppercase; }
 .settings-panel .billing-details { margin-top: 24px; }
 .settings-panel .setting-section > p { max-width: 760px; }
-.settings-panel .setting-row input.setting-toggle { appearance: none; flex: 0 0 40px; width: 40px; height: 24px; min-width: 40px; border: 1px solid var(--control-border); border-radius: 999px; background: #303438; padding: 0; position: relative; cursor: pointer; }
-.settings-panel .setting-row input.setting-toggle::before { content: ''; position: absolute; width: 16px; height: 16px; border-radius: 50%; background: #c4c8c6; left: 3px; top: 3px; transition: transform .15s; }
-.settings-panel .setting-row input.setting-toggle:checked { background: #275d48; border-color: var(--accent); }
-.settings-panel .setting-row input.setting-toggle:checked::before { transform: translateX(16px); background: #8fe4b8; }
+.settings-panel .setting-row input.setting-toggle { appearance: none; flex: 0 0 40px; width: 40px; height: 24px; min-width: 40px; border: 2px solid var(--text); border-radius: 999px; background: var(--bg); padding: 0; position: relative; cursor: pointer; }
+.settings-panel .setting-row input.setting-toggle::before { content: ''; position: absolute; width: 14px; height: 14px; border-radius: 50%; background: var(--text); left: 3px; top: 3px; transition: transform .15s; }
+.settings-panel .setting-row input.setting-toggle:checked { background: var(--highlight); border-color: var(--text); }
+.settings-panel .setting-row input.setting-toggle:checked::before { transform: translateX(16px); background: var(--text); }
+.settings-panel .setting-row input.setting-toggle:focus-visible { outline: 3px solid var(--text); outline-offset: 3px; }
 .settings-panel .setting-row input.setting-toggle:disabled { opacity: .55; cursor: default; }
-.settings-panel .settings-danger-zone { border-color: #614246; margin-top: 32px; }
-.settings-danger-zone h2 { color: #edb5b5; }
+.settings-panel .settings-danger-zone { border-color: var(--danger); margin-top: 32px; }
+.settings-danger-zone h2 { color: var(--danger); }
 .settings-danger-zone .button { margin-top: 18px; }
 @media (prefers-reduced-motion: reduce) { .settings-panel .setting-row input.setting-toggle::before { transition: none; } }
 
 .settings-panel label.setting-row { flex-direction: row; align-items: center; }
 .settings-panel label.setting-row > span { flex: 1; min-width: 0; }
 .settings-panel label.setting-row:last-of-type { border-bottom: 0; }
+
+@media (max-width: 600px) {
+  .settings-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-bottom: 0; gap: 8px; }
+  .settings-tabs button { border: 2px solid var(--text); border-radius: var(--radius-control); }
+  .settings-tabs button[aria-selected="true"] { border-bottom-color: var(--text); box-shadow: none; }
+}

@@ -1,15 +1,26 @@
 import { test, expect, type Page } from "@playwright/test";
 
 const routes = [
-  ["/", "Leading AI models."],
+  ["/", "Official AI."],
   ["/models", "Great models."],
-  ["/login", "Sign in to Takewing AI"],
+  ["/login", "Sign in to AIAPI.deals"],
   ["/signup", "Create your account"],
   ["/forgot-password", "Reset your password"],
 ] as const;
 
 const e2eEmail = process.env.E2E_EMAIL;
 const e2ePassword = process.env.E2E_PASSWORD;
+
+test("public layouts fit tablet and narrow phone widths", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "Explicit responsive viewport checks");
+  for (const [path, width] of [["/docs", 900], ["/docs", 320], ["/", 320]] as const) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(path);
+    await page.evaluate(() => document.fonts.ready);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${path} at ${width}px`).toBe(true);
+  }
+});
 
 async function signIn(page: Page, route: string) {
   if (!e2eEmail || !e2ePassword) {
@@ -27,9 +38,9 @@ test("wide homepage preserves its reviewed composition", async ({ page }, testIn
   test.skip(testInfo.project.name !== "desktop", "Wide-screen regression");
   await page.setViewportSize({ width: 2550, height: 1340 });
   await page.goto("/");
-  const home = await page.locator(".home-wrap").boundingBox();
-  expect(home!.width).toBeGreaterThan(1400);
-  expect(home!.width).toBeLessThan(1600);
+  const home = await page.locator(".home-wrap").first().boundingBox();
+  expect(home!.width).toBeGreaterThan(1200);
+  expect(home!.width).toBeLessThan(1280);
   expect(Math.abs(home!.x - (2550 - home!.x - home!.width))).toBeLessThan(20);
   await page.screenshot({ path: testInfo.outputPath("homepage-wide.png"), fullPage: true });
 });
@@ -75,58 +86,19 @@ test("reviewed routes load directly without runtime errors or document overflow"
       await page.evaluate(
         () => getComputedStyle(document.body).backgroundColor,
       ),
-    ).toBe("rgb(16, 17, 18)");
-    expect(await page.evaluate(() => document.fonts.check("15px Geist"))).toBe(
+    ).toBe("rgb(241, 241, 236)");
+    expect(await page.evaluate(() => document.fonts.check('15px "Archivo Variable"'))).toBe(
       true,
     );
   }
   expect(errors).toEqual([]);
 });
 
-test("lift hero enhances pointer interaction and respects reduced motion", async ({
-  page,
-}, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "Pointer enhancement regression");
-
-  await page.goto("/");
-  const artwork = page.locator(".home-art");
-  await expect(artwork).toBeVisible();
-
-  const box = await artwork.boundingBox();
-  expect(box).not.toBeNull();
-  await page.mouse.move(box!.x + box!.width * 0.8, box!.y + box!.height * 0.35);
-  await page.waitForTimeout(50);
-
-  const pointerState = await artwork.evaluate((element) => ({
-    interactive: element.dataset.liftInteractive,
-    upperTransform: element.querySelector<SVGGElement>(
-      ".home-plane-pointer-upper",
-    )?.getAttribute("style"),
-  }));
-  expect(pointerState.interactive).toBe("true");
-  expect(pointerState.upperTransform).toContain("--lift-pointer-x");
-
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.reload();
-  const reducedMotionState = await artwork.evaluate((element) => ({
-    interactive: element.dataset.liftInteractive,
-    planeAnimation: getComputedStyle(
-      element.querySelector(".home-plane")!,
-    ).animationName,
-    heroAnimation: getComputedStyle(
-      document.querySelector(".home-hero-copy")!,
-    ).animationName,
-  }));
-  expect(reducedMotionState.interactive).toBeUndefined();
-  expect(reducedMotionState.planeAnimation).toBe("none");
-  expect(reducedMotionState.heroAnimation).toBe("none");
-});
-
 test("dashboard routes require an authenticated session", async ({ page }) => {
   await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/login\?next=%2Fdashboard$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    "Sign in to Takewing AI",
+    "Sign in to AIAPI.deals",
   );
 });
 
@@ -174,7 +146,7 @@ test("catalogue filters, neutral detail links, modal Escape and focus return", a
   await details.hover();
   expect(
     await details.evaluate((element) => getComputedStyle(element).color),
-  ).toBe("rgb(221, 223, 226)");
+  ).toBe("rgb(17, 17, 17)");
   await details.click();
   await expect(page.getByRole("dialog")).toContainText("Availability not verified");
   await page.keyboard.press("Escape");

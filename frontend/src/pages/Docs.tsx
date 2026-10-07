@@ -68,7 +68,7 @@ export default function Docs() {
               <li>Send a request.</li>
             </ol>
             <Code>{`curl ${BASE}/v1/chat/completions \\
-  -H "Authorization: Bearer $TAKEWING_API_KEY" \\
+  -H "Authorization: Bearer $AIAPI_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "model": "MODEL_ID",
@@ -84,7 +84,7 @@ export default function Docs() {
               ship it in browser or mobile code. A key is shown once when you
               create it and can be revoked at any time.
             </p>
-            <Code>{`Authorization: Bearer $TAKEWING_API_KEY`}</Code>
+            <Code>{`Authorization: Bearer $AIAPI_KEY`}</Code>
           </section>
 
           <section id="models">
@@ -164,7 +164,7 @@ export default function Docs() {
               The fields allowed in <code>input</code> depend on the model.
             </p>
             <Code>{`curl ${BASE}/v1/generations \\
-  -H "Authorization: Bearer $TAKEWING_API_KEY" \\
+  -H "Authorization: Bearer $AIAPI_KEY" \\
   -H "Content-Type: application/json" \\
   -H "Idempotency-Key: my-unique-key-0001" \\
   -d '{
@@ -173,7 +173,7 @@ export default function Docs() {
   }'`}</Code>
             <p>Poll the request until it finishes:</p>
             <Code>{`curl ${BASE}/v1/requests/REQUEST_ID \\
-  -H "Authorization: Bearer $TAKEWING_API_KEY"`}</Code>
+  -H "Authorization: Bearer $AIAPI_KEY"`}</Code>
             <table className="docs-table">
               <thead>
                 <tr>

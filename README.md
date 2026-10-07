@@ -1,6 +1,6 @@
-# Takewing
+# AIAPI.deals
 
-Takewing is a prepaid AI API gateway. Customer apps call the Takewing API; the Worker authenticates requests, reserves customer credits and provider budget, calls GrsAI, and returns verified results. The website is the account portal for credits, API keys, model availability, usage, billing, and restricted operations.
+AIAPI.deals (internally still named Takewing) is a prepaid AI API gateway. Customer apps call the Takewing API; the Worker authenticates requests, reserves customer credits and provider budget, calls GrsAI, and returns verified results. The website is the account portal for credits, API keys, model availability, usage, billing, and restricted operations.
 
 ## Current implementation
 

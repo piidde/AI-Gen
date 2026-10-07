@@ -13,7 +13,7 @@
 .dashboard-main .public-footer {
   margin: 0 calc(-1 * var(--dashboard-gutter));
   padding-inline: var(--dashboard-gutter);
-  border-top-color: #343434;
+  border-top: var(--border-strong);
 }
 
 .sidebar {
@@ -30,7 +30,7 @@
   min-height: var(--dashboard-footer-band-height, 128px);
   margin-inline: -18px;
   padding: 0 18px;
-  border-top-color: #343434;
+  border-top: var(--border-strong);
 }
 
 .sidebar .account-error {

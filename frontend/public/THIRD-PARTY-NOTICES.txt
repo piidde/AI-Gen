@@ -1,7 +1,12 @@
-Geist font
-Copyright 2024 The Geist Project Authors.
-Distributed through @fontsource/geist under the SIL Open Font License 1.1.
-See GEIST-LICENSE.txt. Source: https://github.com/vercel/geist-font
+Archivo font
+Copyright 2020 The Archivo Project Authors.
+Distributed through @fontsource-variable/archivo under the SIL Open Font License 1.1.
+See ARCHIVO-LICENSE.txt. Source: https://github.com/Omnibus-Type/Archivo
+
+IBM Plex Mono font
+Copyright 2017 IBM Corp.
+Distributed through @fontsource/ibm-plex-mono under the SIL Open Font License 1.1.
+See IBM-PLEX-MONO-LICENSE.txt. Source: https://github.com/IBM/plex
 
 OpenAI and Gemini monochrome SVG provider icons
 Obtained from the LobeHub icons library through the accepted local design assets.
@@ -11,8 +16,8 @@ Original distribution: @lobehub/icons-static-svg via jsDelivr.
 Provider names and marks belong to their respective owners. Display does not
 imply a partnership, endorsement, or confirmed catalogue availability.
 
-Takewing lift mark and homepage artwork are project implementation assets
-transferred from the owner's accepted design.
+AIAPI.deals wordmark and homepage design are project implementation assets
+based on the owner's accepted design.
 
 Google and Discord OAuth sign-in marks
 Google G source: https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg
