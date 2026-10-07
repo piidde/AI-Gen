@@ -46,4 +46,10 @@ on its white button. All screenshots/logs are under OS temp `aiapi-style-*`, not
 
 No business logic, financial arithmetic, provider availability or deployment flags
 changed. Existing live-integration/pricing/publication gates remain. Normal local
-preview is available at port 5173. No commit or push.
+preview is available at port 5173. No commit or push occurred during implementation.
+
+Owner subsequently authorized commit, push and live publication (H-071). The full
+redesign is committed as `0696d41`, fast-forwarded to main and pushed, with the
+feature branch preserved remotely. Live publication awaits Cloudflare account
+authentication; the domain still serves the previous build and no automatic
+GitHub deployment run was reported.

@@ -29,12 +29,12 @@ compatible prerender/content mechanism during S01 and record the decision.
 | --- | --- |
 | Last updated | 2026-10-07 |
 | Overall status | IN_PROGRESS overall; S01-S11 DONE for local/mock boundaries |
-| Working branch | `feat/deal-style-rollout`, preserving Claude's uncommitted rebrand and homepage work from `main` |
+| Working branch | `main`; redesign branch `feat/deal-style-rollout` preserved and pushed |
 | Inspected code baseline | `67a8386` — frontend plan naming; baseline verified in H-004 |
 | Current implementation step | H-070 approved homepage style extended across public/auth/account pages |
-| Next action | Owner visual review at local port 5173; commit/push only when requested. S12 integration remains separate. |
+| Next action | Authenticate Cloudflare, deploy the approved main revision, verify aiapi.deals. S12 integration remains separate. |
 | Latest completed work | H-070 site-wide styles and responsive corrections; see verification below |
-| Delivery | Uncommitted local changes; no push or deployment |
+| Delivery | Redesign committed as `0696d41` and pushed to main; live publication blocked by Cloudflare authentication |
 | Latest verification | H-070: full frontend 204 passed / 16 skipped; isolated auth 76 passed / 2 skipped; root typecheck/build passed; final scoped checks below |
 | Global blocker | None for mock-first frontend work; verified API examples and real publication remain gated under B07/B08/S12/S13. |
 | Do not forget | Equal image/text acquisition; credits never expire; F-001 fixed in local artifacts only; preserve partner authentication; B09/B12/S12/S13 gates remain |
@@ -2050,3 +2050,12 @@ and H-070 site-wide rollout. Origin was fetched and main is unchanged from the
 branch base, permitting fast-forward integration. H-070 verification applies to
 the unchanged implementation. Publication verification follows the push; this
 authorization does not close pricing/provider/payment launch gates.
+
+H-071 delivery: `0696d41` committed all approved work, main fast-forwarded, and
+both main and the preserved feature branch were pushed. Remote main was verified
+at that revision. GitHub reported no check runs, commit statuses or Actions runs.
+The live domain returned HTTP 200 but still served the old Takewing asset bundle
+and title. Wrangler has no authenticated session/token and the available browser
+requires Cloudflare sign-in. Publication is therefore BLOCKED pending account
+authentication, not complete. Cloudflare sign-in was opened for the owner; no
+new credentials, permissions, secrets or deployment configuration were created.
