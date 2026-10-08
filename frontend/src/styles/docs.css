@@ -95,7 +95,8 @@
   font-stretch: 78%;
   text-transform: uppercase;
 }
-.docs-main ol {
+.docs-main ol,
+.docs-main ul {
   padding-left: 20px;
 }
 .docs-main a:not(.button) {

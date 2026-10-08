@@ -9,6 +9,8 @@ const sections = [
   { id: "quickstart", title: "Quickstart" },
   { id: "authentication", title: "Authentication" },
   { id: "models", title: "Models" },
+  { id: "codex", title: "Use with Codex" },
+  { id: "responses", title: "Responses API (tools)" },
   { id: "chat", title: "Chat completions" },
   { id: "media", title: "Image and video jobs" },
   { id: "results", title: "Results and files" },
@@ -42,8 +44,9 @@ export default function Docs() {
         <div className="docs-main">
           <h1 tabIndex={-1}>Documentation</h1>
           <p className="docs-lead">
-            One JSON API for text, image and video models. Base URL:{" "}
-            <code>{BASE}/v1</code>
+            One API key for coding, chat and image models. It is an ordinary
+            OpenAI-compatible key: point any OpenAI SDK, Codex or your own
+            harness at <code>{BASE}/v1</code>.
           </p>
 
           <section id="quickstart">
@@ -84,11 +87,82 @@ export default function Docs() {
             <Code>{`curl ${BASE}/v1/models`}</Code>
           </section>
 
+          <section id="codex">
+            <h2>Use with Codex (CLI &amp; VS Code)</h2>
+            <p>
+              Coding models (GPT) speak the <Mention name="OpenAI" /> Responses
+              API with tool calling, so Codex runs on them unchanged. Add a
+              provider to <code>~/.codex/config.toml</code> and export your key
+              as <code>AIAPI_KEY</code>. The Codex extension for VS Code reads
+              the same file.
+            </p>
+            <Code>{`model_provider = "aiapi"
+model = "gpt-5.6-sol"
+
+[model_providers.aiapi]
+name = "AIAPI.deals"
+base_url = "${BASE}/v1"
+wire_api = "responses"
+env_key = "AIAPI_KEY"
+supports_websockets = false`}</Code>
+            <Code>{`export AIAPI_KEY="your-api-key"
+codex`}</Code>
+            <p>
+              Use any model whose entry in <code>/v1/models</code> lists{" "}
+              <code>responses</code> in <code>endpoints</code>. Hosted tools such
+              as web search are not available; local tools, shell and file edits
+              work as usual.
+            </p>
+          </section>
+
+          <section id="responses">
+            <h2>Responses API (tool calling)</h2>
+            <p>
+              <code>POST /v1/responses</code> follows the{" "}
+              <Mention name="OpenAI" /> Responses API for coding models. Use it
+              from the OpenAI SDK or any harness that supports it: set the base
+              URL to <code>{BASE}/v1</code> and use your key.
+            </p>
+            <Code>{`curl ${BASE}/v1/responses \
+  -H "Authorization: Bearer $AIAPI_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-5.6-sol",
+    "input": "What is the weather in Berlin?",
+    "tools": [{
+      "type": "function",
+      "name": "get_weather",
+      "parameters": { "type": "object", "properties": { "city": { "type": "string" } }, "required": ["city"] }
+    }]
+  }'`}</Code>
+            <Code>{`from openai import OpenAI
+
+client = OpenAI(base_url="${BASE}/v1", api_key="your-api-key")
+response = client.responses.create(model="gpt-5.6-sol", input="Write a haiku about APIs.")
+print(response.output_text)`}</Code>
+            <ul>
+              <li>
+                Function tools, tool results (<code>function_call_output</code>)
+                and streaming (<code>stream: true</code>) are supported.
+              </li>
+              <li>
+                Responses are not stored: send the full input each turn.{" "}
+                <code>previous_response_id</code>, background mode, hosted tools
+                and image input return an error.
+              </li>
+              <li>
+                Without <code>instructions</code> a short neutral default is used.
+              </li>
+            </ul>
+          </section>
+
           <section id="chat">
             <h2>Chat completions</h2>
             <p>
-              <code>POST /v1/chat/completions</code> is a non-streaming subset
-              of the <Mention name="OpenAI" /> chat format.
+              <code>POST /v1/chat/completions</code> is the{" "}
+              <Mention name="OpenAI" /> chat format and works with every text
+              model, including chat models. It is text in, text out: for tool
+              calling use the Responses API above.
             </p>
             <table className="docs-table">
               <thead>
@@ -102,39 +176,45 @@ export default function Docs() {
                   <td>
                     <code>model</code>
                   </td>
-                  <td>An enabled text model.</td>
+                  <td>Any enabled text model.</td>
                 </tr>
                 <tr>
                   <td>
                     <code>messages</code>
                   </td>
                   <td>
-                    1–100 items. <code>role</code> is <code>system</code>,{" "}
+                    Up to 500 items. <code>role</code> is <code>system</code>,{" "}
                     <code>developer</code>, <code>user</code> or{" "}
-                    <code>assistant</code>; <code>content</code> is a string.
+                    <code>assistant</code>; <code>content</code> is a string or a
+                    list of text parts.
                   </td>
                 </tr>
                 <tr>
                   <td>
                     <code>max_tokens</code> / <code>max_completion_tokens</code>
                   </td>
+                  <td>Optional. Defaults to the model&apos;s output limit.</td>
+                </tr>
+                <tr>
                   <td>
-                    Required; set exactly one. Credits are reserved against this
-                    limit before the call.
+                    <code>stream</code>
+                  </td>
+                  <td>
+                    Optional. Returns server-sent chunks; the answer arrives in
+                    one chunk once it is complete.
                   </td>
                 </tr>
                 <tr>
                   <td>
                     <code>temperature</code>, <code>top_p</code>,{" "}
-                    <code>stop</code>, <code>seed</code>
+                    <code>stop</code>, <code>seed</code>, penalties
                   </td>
                   <td>Optional.</td>
                 </tr>
               </tbody>
             </table>
             <p>
-              Streaming (<code>stream: true</code>), tools, image input and
-              other options are not supported and return an error. Send an{" "}
+              <code>tools</code> and image input return an error. Send an{" "}
               <code>Idempotency-Key</code> (8–128 characters) to make retries
               safe: the same key and body returns the stored response; the same
               key with a different body returns <code>409</code>.

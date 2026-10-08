@@ -105,3 +105,19 @@ test("availability notices agree between catalogue and status without live healt
   await expect(page.getByRole("list", { name: "Model availability notices" })).toContainText("gpt-image-2.5-sunburst");
   await expect(page.getByRole("list", { name: "Model availability notices" })).toContainText("Temporarily unavailable");
 });
+
+test("model collection separates coding and chat models and links Codex and tool guides", async ({ page }) => {
+  await page.goto("/models");
+  const coding = page.getByRole("region", { name: "Coding & agent models" });
+  await expect(coding).toContainText("tool calling");
+  await expect(coding.getByRole("link", { name: "Use with Codex (CLI & VS Code)" })).toHaveAttribute("href", "/docs#codex");
+  await expect(coding.getByRole("link", { name: "Use with any OpenAI tool" })).toHaveAttribute("href", "/docs#responses");
+  await expect(coding.locator(".model-card").first()).toHaveAttribute("data-model-id", /^gpt-/);
+  const chat = page.getByRole("region", { name: "Chat models" });
+  await expect(chat.locator(".model-card").first()).toHaveAttribute("data-model-id", /^gemini-/);
+  await expect(chat.getByRole("link", { name: /Codex/ })).toHaveCount(0);
+  await coding.getByRole("link", { name: "Use with Codex (CLI & VS Code)" }).click();
+  await expect(page.locator("#codex")).toContainText('wire_api = "responses"');
+  await expect(page.locator("#codex")).toContainText("https://aiapi.deals/v1");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});

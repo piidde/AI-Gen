@@ -17,7 +17,7 @@ export default function DashboardModels() {
     (capability === "all" || model.capability === capability) &&
     `${model.id} ${model.name}`.toLowerCase().includes(search.trim().toLowerCase()));
   return <div className="dashboard-models">
-    <PageHeading title="Models & pricing" description="Models available to your API keys, with the prices your requests are charged." />
+    <PageHeading title="Models & pricing" description="Models available to your API keys: coding models with tool calling, chat models and image models, with the prices your requests are charged." />
     <div className="catalog-filter">
       <div className="filter-group"><FilterSelect label="Filter capability" value={capability} options={[{ value: "all", label: "All capabilities" }, { value: "text", label: "Text" }, { value: "image", label: "Image" }, { value: "video", label: "Video" }]} onChange={setCapability} /></div>
       <input type="search" className="search" aria-label="Search models" placeholder="Search models…" value={search} onChange={event => setSearch(event.target.value)} />
@@ -28,11 +28,12 @@ export default function DashboardModels() {
       : <section className="panel requests">
         <div className="table-head"><h2>Available models</h2><span className="small muted" role="status">{shown.length} of {models.data.data.length} models · USD</span></div>
         <div className="table-scroll" role="region" aria-label="Available models table" tabIndex={0}><table><thead><tr>
-          {["MODEL", "API ID", "CAPABILITY", "INPUT / 1M TOKENS", "OUTPUT / 1M TOKENS", "PER UNIT"].map(label => <th scope="col" key={label}>{label}</th>)}
+          {["MODEL", "API ID", "USE WITH", "INPUT / 1M TOKENS", "OUTPUT / 1M TOKENS", "PER UNIT"].map(label => <th scope="col" key={label}>{label}</th>)}
         </tr></thead><tbody>{shown.map(model => <tr key={model.id}>
           <td>{model.name}</td>
           <td><code>{model.id}</code> <CopyButton text={model.id} label={`Copy ${model.id}`} /></td>
-          <td>{model.capability.charAt(0).toUpperCase() + model.capability.slice(1)}</td>
+          <td>{model.capability !== "text" ? model.capability.charAt(0).toUpperCase() + model.capability.slice(1)
+            : model.endpoints?.includes("responses") ? <>Coding · <Link className="text-link" to="/docs#codex">Responses + tools</Link></> : <>Chat · <Link className="text-link" to="/docs#chat">Chat completions</Link></>}</td>
           <td>{model.pricing.input_per_million ?? "—"}</td>
           <td>{model.pricing.output_per_million ?? "—"}</td>
           <td>{model.pricing.per_unit ? `${model.pricing.per_unit} ${unitLabels[model.pricing.unit] ?? `per ${model.pricing.unit}`}` : "—"}</td>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import type { CatalogueReference } from "../content/catalogue";
 import { snapshot } from "../content/catalogue";
@@ -18,8 +18,9 @@ function modelDisplayName(id: string) {
     ? word.toUpperCase() : word.charAt(0).toUpperCase() + word.slice(1)).join(' ').replace(/^GPT (\d)/, 'GPT-$1');
 }
 
-export default function ModelFamily({ family, variants, currency, linkPage = true, overview = false }: {
+export default function ModelFamily({ family, variants, currency, linkPage = true, overview = false, note, actions }: {
   family: string; variants: CatalogueReference[]; currency: DisplayCurrency; linkPage?: boolean; overview?: boolean;
+  note?: string; actions?: ReactNode;
 }) {
   const [selected, setSelected] = useState<CatalogueReference | null>(null);
   const status = useServiceStatus();
@@ -29,12 +30,13 @@ export default function ModelFamily({ family, variants, currency, linkPage = tru
   const first = variants[0];
   if (!first) return null;
   return <section className={`catalogue-family${overview ? ' catalogue-collection' : ''}${reserveStatus ? ' catalogue-has-status' : ''}`} aria-label={overview ? family : `${family} family`}>
-    {overview ? <header className="collection-heading"><h2>{family}</h2><span>{variants.length} models</span><p>{first.modality === 'image' ? 'Per-request pricing. Choose your model and resolution.' : 'Input and output pricing, side by side. Per 1M tokens.'}</p></header> : <header className="family-heading">
-      <div className="provider-line"><ProviderLogo name={family === "Nano Banana Pro" ? family : first.provider} size={30} /><span>{first.provider}</span><span className="capability">{first.modality === "image" ? "Image" : "Text"}</span></div>
+    {overview ? <header className="collection-heading"><h2>{family}</h2><span>{variants.length} models</span><p>{note ?? (first.modality === 'image' ? 'Per-request pricing. Choose your model and resolution.' : 'Input and output pricing, side by side. Per 1M tokens.')}</p></header> : <header className="family-heading">
+      <div className="provider-line"><ProviderLogo name={family === "Nano Banana Pro" ? family : first.provider} size={30} /><span>{first.provider}</span><span className="capability">{first.modality === "image" ? "Image" : first.provider === "OpenAI" ? "Coding · tool calling" : "Chat"}</span></div>
       <h2>{family}</h2>
       <p>{page?.description ?? (first.modality === "image" ? "Image request variants. Compare listed options; quality and speed differences remain unverified." : "Text variants with separate input, output and cache-read rates. Integration capabilities remain unverified.")}</p>
       {linkPage && page && <Link className="text-link" to={`/models/${page.slug}`}>Explore {family} →</Link>}
     </header>}
+    {actions && <div className="collection-actions">{actions}</div>}
     <div className="model-grid">
       {variants.map(model => <article className="panel model-card reference-card" data-model-id={model.upstreamId} key={model.upstreamId}>
         {overview && <div className="catalogue-card-provider"><ProviderLogo name={model.upstreamId.includes("banana") ? "Nano Banana" : model.provider} /><span>{model.provider}</span></div>}

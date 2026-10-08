@@ -144,11 +144,11 @@ export default function Home() {
           <div className="home-wrap">
             <div className="home-dev-head">
               <h2 id="home-dev-title">One API. Image and text.</h2>
-              <p>Use the <Mention name="OpenAI" />-style chat format you already know, or start image jobs and poll for the result. Swap models by changing one ID.</p>
+              <p>Point any <Mention name="OpenAI" /> SDK, Codex or your own harness at our base URL, or start image jobs and poll for the result. Swap models by changing one ID.</p>
             </div>
             <ApiExample />
             <ul className="home-dev-features">
-              <li><Icon name="text" /><h3><Mention name="OpenAI" />-style chat</h3><p>Send the chat format you already use and switch models with one ID.</p></li>
+              <li><Icon name="text" /><h3>A normal <Mention name="OpenAI" /> key</h3><p>Chat completions for your apps, Responses with tool calling for Codex and your harness.</p></li>
               <li><Icon name="image" /><h3>Image jobs</h3><p>Start a job with an idempotency key, then poll the request for the result.</p></li>
               <li><Icon name="usage" /><h3>Exact charge</h3><p>Every request shows what it cost in your usage history.</p></li>
               <li><Icon name="keys" /><h3>Keys you control</h3><p>Shown once, stored hashed and revocable any time.</p></li>

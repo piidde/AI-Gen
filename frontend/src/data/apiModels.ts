@@ -25,7 +25,8 @@ export type OfferDto = { id: string; currency: "eur" | "usd"; amount_minor: numb
 export type PaymentDto = { id: string; offer_id: string; currency: "eur" | "usd"; amount_minor: number; credits_micros: Micros; status: string; created_at: string };
 export type PreferencesDto = { low_balance_enabled: boolean; threshold_micros: Micros | null; product_updates: boolean; last_alert_at: string | null };
 export type BillingProfileDto = { kind: "personal" | "business" | null; name: string | null; company: string | null; address_line1: string | null; address_line2: string | null; city: string | null; postal_code: string | null; region: string | null; country_code: string | null; vat_id: string | null };
-export type ModelDto = { id: string; name: string; capability: "text" | "image" | "video"; price_version: number; pricing: { unit: string; input_per_million: string | null; output_per_million: string | null; per_unit: string | null } };
+export type ModelDto = { id: string; name: string; capability: "text" | "image" | "video"; price_version: number; pricing: { unit: string; input_per_million: string | null; output_per_million: string | null; per_unit: string | null };
+  endpoints?: ("chat.completions" | "responses")[]; tool_calling?: boolean; context_window?: number | null; max_output_tokens?: number | null };
 export type IncidentDto = { id: string; title: string; impact: string; service: string; model_ids: string[]; timeline: { at: string; message: string }[]; started_at: string; updated_at: string; resolved_at: string | null };
 export type StatusDto = { checked_at: string; updated_at: string | null; incidents: IncidentDto[] };
 
