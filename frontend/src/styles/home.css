@@ -61,65 +61,41 @@
 .deal-choices-models button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .deal-choices .provider-logo { box-sizing: content-box; padding: 3px; border-radius: 50%; background: #ffffff; }
 .deal-choices button[aria-pressed="true"] .provider-logo { box-shadow: 0 0 0 2px var(--highlight); }
-.deal-calculator-result { margin-top: 22px; background: var(--bg); border-radius: 14px; padding: 18px 20px 20px; }
-/* Shared result pieces */
+.deal-calculator-result { margin-top: 24px; }
+/* Result receipt */
 .calc-who { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
 .calc-who img { flex: none; }
 .calc-money { font-family: var(--font-mono); font-weight: 600; white-space: nowrap; }
 
-/* A: receipt. Paper slip with a torn edge; the discount is a red minus line. */
-.calc-receipt { position: relative; background: var(--panel); padding: 18px 18px 26px; border-radius: 10px 10px 0 0; font-size: 15px;
-  -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 16px 100%;
-          mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 16px 100%; }
-.calc-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0; }
-.calc-row + .calc-row { border-top: 1px dashed var(--control-border); }
+/* Receipt: a paper slip printed from an ink slot, outlined and hard-shadowed like the
+   site's cards. The outline and shadow sit on the frame (drop-shadow follows the torn edge). */
+.calc-printer { display: block; height: 14px; margin: 0 -6px; border-radius: 999px; background: var(--text); box-shadow: inset 0 -4px 0 #3a3a36; position: relative; z-index: 1; }
+.calc-receipt-frame { margin: -7px 6px 0; overflow: hidden; padding-bottom: 3px; filter: drop-shadow(2px 0 0 var(--text)) drop-shadow(-2px 0 0 var(--text)) drop-shadow(0 2px 0 var(--text)); }
+.calc-receipt { --tooth: 9px; background: var(--panel); padding: 20px 20px calc(18px + var(--tooth)); font-size: 15px;
+  -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / calc(2 * var(--tooth)) 100%;
+          mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / calc(2 * var(--tooth)) 100%; }
+.home .calc-receipt-head { display: flex; justify-content: space-between; gap: 12px; font-family: var(--font-mono); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text); }
+.home .calc-receipt-item { margin-top: 4px; padding-bottom: 12px; border-bottom: 2px dashed var(--control-border); font-family: var(--font-mono); font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.calc-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; }
+.calc-row + .calc-row { border-top: 1px dashed var(--border); }
 .calc-row .calc-money { font-size: 18px; }
 .calc-row-discount { color: var(--deal); font-weight: 700; }
-.calc-row-discount b { background: var(--deal); color: #ffffff; font-size: 12px; padding: 2px 6px; border-radius: 6px; }
-.calc-row-discount .calc-money { font-size: 22px; font-weight: 700; }
-.calc-row.calc-row-total { border-top: 3px double var(--text); margin-top: 4px; padding-top: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; font-size: 14px; }
-.calc-row-total .calc-money { font-size: clamp(30px, 3.4vw, 40px); font-weight: 700; letter-spacing: -1px; background: var(--highlight); padding: 0 8px; text-transform: none; }
-
-/* B: one bar is the whole official bill, split into pay and keep. */
-.calc-split-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-weight: 700; color: var(--text); }
-.calc-split-head .calc-money { font-size: 18px; text-decoration: line-through; text-decoration-color: var(--deal); text-decoration-thickness: 2px; }
-.calc-split-head small { font-size: 12px; color: var(--muted); text-decoration: none; }
-.calc-split-bar { display: flex; height: 64px; margin-top: 12px; border: 3px solid var(--text); border-radius: 12px; overflow: hidden; background: var(--panel); }
-.calc-split-bar i { display: flex; align-items: center; justify-content: center; }
-.calc-split-pay { flex: none; background: var(--text); transition: width .55s cubic-bezier(.2, .8, .2, 1); }
-.calc-split-save { flex: 1; border-left: 3px solid var(--text); background: var(--highlight) repeating-linear-gradient(-45deg, #0000 0 10px, #ffffff55 10px 20px); }
-.calc-split-save b { font-weight: 900; font-stretch: 75%; font-size: 30px; font-style: normal; }
-.calc-split-legend { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; margin: 14px 0 0; }
-.calc-split-legend div { display: grid; gap: 2px; padding-left: 14px; border-left: 6px solid var(--text); }
-.calc-split-legend dt { font-size: 13px; font-weight: 700; color: var(--muted); }
-.calc-split-legend dd { margin: 0; font-family: var(--font-mono); font-weight: 700; font-size: 20px; }
-.calc-split-legend-save { border-left-color: var(--highlight) !important; text-align: right; justify-items: end; padding: 0 0 0 14px; }
-.calc-split-legend-save dd { font-family: inherit; font-weight: 900; font-stretch: 70%; font-size: clamp(40px, 4.4vw, 56px); line-height: 1; background: var(--highlight); padding: 0 8px; }
-
-/* C: answer first, then the equation that proves it. */
-.home .calc-eq-label { font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text); }
-.calc-eq-hero { display: inline-block; margin-top: 6px; font-weight: 900; font-stretch: 70%; font-size: clamp(56px, 6vw, 84px); line-height: .95; color: var(--text); background: linear-gradient(transparent 55%, var(--highlight) 55%); }
-.calc-eq { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, .8fr); align-items: stretch; gap: 6px; margin-top: 16px; }
-.calc-eq-tile { display: grid; align-content: space-between; gap: 6px; padding: 10px 12px; background: var(--panel); border: 2px solid var(--text); border-radius: 10px; min-width: 0; }
-.calc-eq-tile .calc-who { font-size: 12px; font-weight: 700; color: var(--muted); }
-.calc-eq-tile .calc-money { font-size: 16px; }
-.calc-eq-ours { background: var(--text); color: var(--highlight); }
-.calc-eq-ours .calc-who { color: #c9c9c1; }
-.calc-eq-save { background: var(--deal); border-color: var(--deal); color: #ffffff; }
-.calc-eq-save .calc-who { color: #ffffff; text-transform: uppercase; letter-spacing: 1px; }
-.calc-eq-save .calc-money { font-family: inherit; font-weight: 900; font-stretch: 75%; font-size: 26px; line-height: 1; }
-.calc-eq-op { align-self: center; font-weight: 900; font-size: 26px; }
+.calc-row-discount b { background: var(--deal); color: #ffffff; font-size: 12px; font-weight: 800; padding: 2px 7px; border-radius: 6px; transform: rotate(-3deg); }
+.calc-row-discount .calc-money { font-size: 20px; font-weight: 700; }
+.calc-row.calc-row-total { position: relative; border-top: 0; margin-top: 6px; padding-top: 16px; align-items: end; font-weight: 900; font-stretch: 75%; font-size: 26px; text-transform: uppercase; white-space: nowrap; }
+.calc-row-total::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 7px; border-block: 2px solid var(--text); transform-origin: left; }
+.calc-total { font-weight: 900; font-stretch: 70%; font-size: clamp(48px, 5vw, 64px); line-height: .95; white-space: nowrap; background: linear-gradient(transparent 52%, var(--highlight) 52%) no-repeat 0 0 / 100% 100%; padding: 0 4px; text-transform: none; }
+@media (prefers-reduced-motion: no-preference) {
+  /* Print: the slip feeds out of the slot, the total rule draws, then the marker swipes the total. */
+  .calc-receipt { animation: calc-print .55s cubic-bezier(.2, .8, .2, 1); }
+  .calc-row-total::before { animation: calc-rule .3s .4s ease-out backwards; }
+  .calc-total { animation: calc-marker .35s .55s ease-out backwards; }
+}
+@keyframes calc-print { from { transform: translateY(-100%); } }
+@keyframes calc-marker { from { background-size: 0 100%; } }
+@keyframes calc-rule { from { transform: scaleX(0); } }
 
 .home .deal-calculator-percent { margin-top: 14px; font-weight: 800; font-size: 17px; color: var(--deal); }
-@media (prefers-reduced-motion: no-preference) {
-  .deal-calculator-result > * { animation: calc-in .35s cubic-bezier(.2, .8, .2, 1); }
-}
-@keyframes calc-in { from { transform: translateY(6px); opacity: 0; } }
-
-/* Dev-only switcher for the three result layouts. */
-.calc-variant-switch { position: fixed; z-index: 50; left: 50%; bottom: 16px; translate: -50% 0; display: flex; gap: 4px; padding: 6px; background: var(--text); border-radius: 999px; box-shadow: 0 8px 24px #0004; }
-.calc-variant-switch a { padding: 8px 14px; border-radius: 999px; color: #ffffff; font-weight: 700; font-size: 14px; text-decoration: none; }
-.calc-variant-switch a[aria-current="true"] { background: var(--highlight); color: var(--text); }
 .home .deal-calculator-note { margin-top: 14px; font-family: var(--font-mono); font-size: 12px; line-height: 1.6; min-height: 4.8em; }
 .deal-calculator .button { display: flex; margin-top: 18px; }
 
@@ -288,12 +264,12 @@
   .deal-burst-large small { font-size: 10px; }
   .home h2.deal-calculator-title { padding-right: 84px; }
   .home .deal-calculator-note { min-height: 6.4em; }
-  .calc-eq { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
-  .calc-eq-save { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; }
-  .calc-eq-op:nth-of-type(2) { display: none; }
-  .calc-split-legend { grid-template-columns: minmax(0, 1fr); }
-  .calc-split-legend-save { text-align: left; justify-items: start; }
-  .calc-row { flex-wrap: wrap; }
+  .calc-receipt { padding: 16px 14px calc(14px + var(--tooth)); font-size: 13px; }
+  .calc-row.calc-row-total { font-size: 20px; }
+  .calc-total { font-size: 40px; }
+  .calc-row .calc-money { font-size: 15px; }
+  .calc-row-discount .calc-money { font-size: 16px; }
+  .calc-row-discount b { display: none; }
   .deal-ticker .home-wrap { font-size: 18px; gap: 6px 0; }
   .deal-ticker span + span::before { margin: 0 14px; }
   .home-code { box-shadow: 6px 6px 0 var(--highlight); }

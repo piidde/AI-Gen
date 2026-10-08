@@ -59,7 +59,7 @@ test('savings calculator compares official and AIAPI.deals bills', async ({ page
     const ours = multiply(rate.ours, quantity);
     await expect(result).toContainText(usdTotal(official));
     await expect(result).toContainText(usdTotal(ours));
-    await expect(result.locator('.deal-calculator-saved')).toHaveText(`≈${usdTotal(subtract(official, ours))}`);
+    await expect(result.locator('.deal-calculator-saved')).toHaveText(usdTotal(subtract(official, ours)));
     await expect(result).toContainText(`up to ${rate.percent}% less`);
   };
   await expect(calculator.getByRole('button', { name: deals[0]!.name, exact: true })).toHaveAttribute('aria-pressed', 'true');
