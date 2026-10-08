@@ -101,10 +101,13 @@ export function buildRedirects(): string {
     "# catch-all. Dashboard children share a prefix rule.",
     // "/" is served natively: a "/ /index.html" rule is rejected by Cloudflare's
     // HTML handling as a loop, because it strips "/index.html" back to "/".
+    // Targets use the canonical HTML-handling form ("/spa", "/blog/"): a ".html"
+    // target is answered with a 307 to that form, which would change the visible
+    // URL and break client routing (e.g. /login ending up at /spa).
     ...routeMeta
       .filter((route) => route.path !== "/" && !route.path.startsWith("/dashboard/"))
-      .map((route) => route.path.padEnd(48) + (publicRoutes.some(page => page.path === route.path) ? `${route.path}/index.html` : "/spa.html").padEnd(60) + "200"),
-    "/dashboard/*".padEnd(36) + "/spa.html".padEnd(20) + "200",
+      .map((route) => route.path.padEnd(48) + (publicRoutes.some(page => page.path === route.path) ? `${route.path}/` : "/spa").padEnd(60) + "200"),
+    "/dashboard/*".padEnd(36) + "/spa".padEnd(20) + "200",
     "",
   ];
 
