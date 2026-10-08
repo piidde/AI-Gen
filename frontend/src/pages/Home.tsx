@@ -7,7 +7,7 @@ import SavingsCalculator from "../components/SavingsCalculator";
 import ApiExample from "../components/ApiExample";
 import { snapshot } from "../content/catalogue";
 import { familyPages } from "../content/modelFamilies";
-import { deals, maxDealPercent, share, subtract, usd, type Deal } from "../content/homeDeals";
+import { comparisonRate, deals, maxDealPercent, share, subtract, usd, type Deal } from "../content/homeDeals";
 import type { ExactAmount } from "../lib/pricing";
 import { Mention, ProviderLogo } from "../components/ProviderLogo";
 import "../styles/home.css";
@@ -25,10 +25,11 @@ function detailsHref(deal: Deal) {
 
 function DealCard({ deal }: { deal: Deal }) {
   const [main, second] = deal.rates;
+  const saving = comparisonRate(deal);
   const image = deal.modality === "image";
   return (
     <article className="deal-card">
-      <span className="deal-burst" aria-hidden="true">−{main!.percent}%</span>
+      <span className="deal-burst" aria-hidden="true">−{saving.percent}%</span>
       <div className="deal-card-meta">{deal.provider} · {image ? "Image" : "Text"}</div>
       <h3><ProviderLogo name={deal.name} size={22} /> {deal.name}</h3>
       <div className="deal-card-price">
@@ -37,7 +38,7 @@ function DealCard({ deal }: { deal: Deal }) {
         <span className="deal-card-bar" aria-hidden="true"><i style={{ width: `${Math.max(share(main!.ours, main!.official), 3)}%` }} /></span>
       </div>
       <div className="deal-card-unit">{image ? "per request" : "per 1M input tokens"}{second && <> · output {usd(second.ours)} <s className="deal-strike">{usd(second.official, "reference")}</s></>}</div>
-      <div className="deal-card-saving"><b>Save up to {main!.percent}%</b> {usd(subtract(main!.official, main!.ours), "saving")} {image ? "per image" : "per 1M input"}</div>
+      <div className="deal-card-saving"><b>Save up to {saving.percent}%</b> {usd(subtract(saving.official, saving.ours), "saving")} {image ? "per image" : "per 1M output tokens"}</div>
       <div className="deal-card-basis">{deal.basis}</div>
       <Link className="deal-card-link" to={detailsHref(deal)}>Model details ↗</Link>
     </article>
@@ -81,7 +82,7 @@ export default function Home() {
 
         <div className="deal-ticker" aria-label="Savings overview">
           <div className="home-wrap">
-            {deals.map(deal => <span key={deal.id}><b>−{deal.rates[0]!.percent}%</b> <ProviderLogo name={deal.name} size={14} /> {deal.name}</span>)}
+            {deals.map(deal => <span key={deal.id}><b>−{comparisonRate(deal).percent}%</b> <ProviderLogo name={deal.name} size={14} /> {deal.name}</span>)}
           </div>
         </div>
 
@@ -113,7 +114,7 @@ export default function Home() {
                 <code>POST /v1/chat/completions</code>
                 <p>Any language, any framework. Just HTTPS and your API key.</p>
               </div>
-              <div className="flow-link" aria-hidden="true"><span>request →</span><span>← result</span></div>
+              <div className="flow-link" aria-hidden="true"><span>request</span><span>result</span></div>
               <div className="flow-node flow-node-core">
                 <span className="flow-node-label">AIAPI.deals</span>
                 <ul>
@@ -122,7 +123,7 @@ export default function Home() {
                   <li>Logs the exact charge</li>
                 </ul>
               </div>
-              <div className="flow-link" aria-hidden="true"><span>routed →</span><span>← output</span></div>
+              <div className="flow-link" aria-hidden="true"><span>routed</span><span>output</span></div>
               <div className="flow-node">
                 <span className="flow-node-label">Official models</span>
                 <div className="flow-providers">

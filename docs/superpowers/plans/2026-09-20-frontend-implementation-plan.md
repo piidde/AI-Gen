@@ -29,13 +29,13 @@ compatible prerender/content mechanism during S01 and record the decision.
 | --- | --- |
 | Last updated | 2026-10-08 |
 | Overall status | IN_PROGRESS overall; S01-S11 DONE for local/mock boundaries |
-| Working branch | `main`; redesign branch `feat/deal-style-rollout` preserved and pushed |
+| Working branch | `fix/website-pricing-responsive-details`; H-074 delivery branch based on `611d918` |
 | Inspected code baseline | `67a8386` — frontend plan naming; baseline verified in H-004 |
-| Current implementation step | H-072 dashboard connected to the live backend (S12 code complete, uncommitted) |
+| Current implementation step | H-074 complete: focused website pricing, responsive flow and model-detail fixes, reconciled with partner H-073 |
 | Next action | Operator steps in docs/GO_LIVE.md: Stripe secrets/webhook and test purchase, Email Service onboarding, offers and models via admin API |
-| Latest completed work | H-072: all /dashboard pages read/write /v1; demo modules removed; backend preferences, billing profile, receipts, savings, incidents and alerts added |
-| Delivery | H-072 committed (45b7eff, 8878c06), pushed to main and deployed to aiapi.deals (Worker version a87e6337); migration dashboard_live applied to Supabase |
-| Latest verification | H-072: backend npm test 49/49, typecheck + build dry-run passed; frontend typecheck/build passed; auth fixture 56 passed / 2 skipped; main suite only the 4 pre-existing catalogue failures (also failing on HEAD cf98425) |
+| Latest completed work | H-074: output-based homepage savings, wider pricing disclaimer, stacked dashed flow and plain-language model details |
+| Delivery | H-074 delivery is through `fix/website-pricing-responsive-details`; no merge to main or deployment in this task. Partner H-073 at `611d918` and its live Responses/coding changes are preserved. |
+| Latest verification | After sync: backend typecheck/build (Wrangler dry-run) and 55 tests passed; frontend typecheck/build passed; auth 56 passed / 2 skipped; full frontend suite 159 passed / 16 skipped / 3 failed. All 3 failures reproduced on clean `611d918`. |
 | Global blocker | None for mock-first frontend work; verified API examples and real publication remain gated under B07/B08/S12/S13. |
 | Do not forget | Equal image/text acquisition; credits never expire; F-001 fixed in local artifacts only; preserve partner authentication; B09/B12/S12/S13 gates remain |
 
@@ -2111,3 +2111,110 @@ messages and an `additional_tools` item without `instructions`; such requests ke
 provider's Codex prompt and reserve 4.5k extra input tokens. Remaining: OD-017
 provider-routing risk; GPT candidate prices are not invoice-verified.
 
+### H-074 — Website pricing and responsive detail fixes (2026-10-08)
+
+Owner-requested adjustments implemented on `fix/website-pricing-responsive-details`
+from `4e89f6f`, uncommitted. Homepage calculator, savings boxes, bursts and ticker
+use output-token comparisons for text, retaining both displayed input/output
+rates and existing image settings. Reference wording follows output conditions.
+The disclaimer width increases from 780px to 860px. The existing <=1080px flow
+layout retains vertical dashed rails with down request/routing and up return
+arrows. Model-detail dialogs opt into outside-click/tap closing; panel padding
+and inside-to-outside drags remain safe, with Close/Escape and focus restoration
+preserved. No changes to backend prices, settlement or other dialog policies.
+
+Verification: frontend typecheck and build passed. Final focused homepage and
+model-detail suite: 17 passed, 1 desktop-only test skipped on mobile. Auth fixture:
+56 passed, 2 skipped. Full frontend suite: 149 passed, 16 skipped, 7 failed.
+All seven failures reproduced in an isolated temporary archive of unchanged
+`4e89f6f`: catalogue EUR expectation (desktop/mobile), catalogue filter keyboard
+selection (desktop/mobile), copy-failure test expecting the former image-first
+ordering (desktop/mobile), and query-only scroll preservation (desktop). These
+are outside this change; this expands the earlier H-072 four-failure report with
+fresh baseline evidence. The full suite ran before the final output-reference
+wording refinement; final build and focused checks include that refinement.
+
+Browser measurements covered 320, 390, 768, 900, 1080, 1081, 1240, 1440 and 2560px:
+no horizontal overflow, two disclaimer lines from 900px upward, and correct
+connector orientation on both sides of the breakpoint. Inspected desktop,
+tablet and phone screenshots; separately verified tablet click and emulated
+phone touch dismissal. Browser artifacts and baseline copy remain in OS temp.
+Read-only code review found no issues. `git diff --check` passed. No commit,
+push or deployment; operator launch gates and next action above remain unchanged.
+
+H-074 visual follow-up: owner rejected the first stacked connector treatment.
+Replaced text-attached arrows with arrowheads on consistently aligned dashed
+rails, spaced labels, and 84px connectors. Build passed; measured alignment and
+overflow at 320/390/820/900/1080/1081/1440px and inspected 390/820px captures.
+
+H-074 catalogue follow-up: owner requested image models before text. Reordered
+the public collection and capability menu, preserving within-modality order and
+filters. Build passed; all 8 targeted detail/filter/copy checks passed on desktop
+and mobile. This also resolves the four baseline filter/copy failures associated
+with text-first ordering. Verified collection order at 390/900/1440px. The full
+suite has not been repeated after this focused change. Modal simplification was
+discussed as a proposal only; no detail content was removed or reorganized.
+
+H-074 approved modal simplification and second flow refinement: owner approved
+the compact modal proposal. `ModelDetails` now shows one table with output/input/
+cache pricing (or image request pricing), availability, and limitations. Native
+"Technical details & sources" disclosure retains exact rates, context tiers,
+identity notices, evidence gaps, and source links. Image comparison settings are
+preserved inside it. Copy, Close, Escape and backdrop behavior remain intact.
+Owner also rejected the wide connector pair; stacked rails are now about 18px
+apart, with 68px height, outside labels and line-mounted down/up arrowheads.
+This supersedes the earlier 84px wide treatment.
+
+Frontend typecheck/build passed. Updated tests first failed against the previous
+modal, then all 10 focused desktop/mobile detail and copy checks passed. Reviewed
+320/390/820/1440px modal layouts: no internal horizontal overflow and Close remains
+visible initially. Measured the narrow rails and inspected 390/820px screenshots.
+Read-only review found no issues. Preview rebuilt/refreshed on port 4178. Full
+suite not repeated for these scoped presentation changes; earlier unrelated
+baseline failures remain documented above. All H-074 work remains uncommitted
+on `fix/website-pricing-responsive-details`, with no push or deployment.
+
+H-074 final content review: owner rejected preserving the original detail content
+under an expander, then approved a genuine plain-language rewrite. This supersedes
+the compact-table/disclosure design above. Modal content now explains billing,
+official comparison conditions, and support limits, with resolution notes for
+images. No prices, raw credit tables, internal gap codes or expander remain.
+At that point, reference-only ID/Copy and a single sourced official link remained
+visible. Unknown cache pricing, thinking tokens, official context thresholds,
+image auto-quality and excluded input costs remain clear; image comparisons are
+labelled examples.
+The underlying catalogue evidence and project research are unchanged.
+
+Verified all 29 dialogs open/close. Inspected GPT-6 Astra at 320/390/900/1440px
+without horizontal overflow; screenshots are in OS temp. Regression tests failed
+against the previous modal before the rewrite, then 10/10 targeted desktop/mobile
+detail/copy checks passed with the final build/typecheck. Full suite was not
+repeated for the scoped content rewrite. Preview remains on port 4178; all work
+is still uncommitted on the same branch, with no push or deployment.
+
+H-074 partner sync: `origin/main` advanced six commits from `4e89f6f` to
+`611d918` while this website branch was in progress. The branch is now based on
+`611d918`, preserving partner H-073 above. Its live evidence changes the current
+model-detail support copy: `gpt-6-astra`, `gpt-5.6-terra`, `gpt-5.6-sol` and
+`gpt-5.5` are enabled public model IDs with tested Responses tool calling and
+streaming; Gemini remains chat-only. Other reference IDs and variant-specific
+capabilities retain their documented uncertainty. The website work remains
+uncommitted; verification against this synced base, commit and push are pending.
+
+
+H-074 delivery verification: user authorized commit and push. Partner main was
+fetched twice and remained at `611d918`; the feature branch was fast-forwarded
+before reapplying the website work. Kept coding/chat sections, setup dialogs and
+tool marks while moving images first. Updated modal capability/ID wording and
+stale API/research-document claims for the four verified GPT models. Restored the
+named official Google image reference in the simplified explanation after the
+full suite caught that omission. Partner backend code is unchanged by this diff.
+
+Final checks: backend typecheck, build including Wrangler dry-run, and 55/55 tests
+passed. Frontend typecheck/build passed; auth fixture 56 passed / 2 skipped. Full
+frontend suite 159 passed / 16 skipped / 3 failed: the two desktop/mobile EUR
+fallback expectations and desktop query-scroll test. All three reproduced on an
+isolated clean archive of `611d918`. Review found no remaining integration issues;
+diff checks passed. The documented public preview-price/backend candidate-price
+mismatch remains unresolved and was not silently changed. Branch delivery only;
+no merge to main, hosted migration or deployment is included.

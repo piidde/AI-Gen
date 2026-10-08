@@ -902,3 +902,43 @@ Auth-provider icons remain visible on the light buttons. Price calculations,
 reference data, routes and mock/live business boundaries were not changed by this
 rollout. See [the rollout log](superpowers/plans/2026-10-07-deal-style-rollout.md)
 and H-070 for verification. No commit, push or deployment was performed.
+
+### Output savings and responsive details (2026-10-08)
+
+DECIDED: Homepage text savings use the output-token rate. The calculator, savings
+boxes, percentage bursts and ticker share that comparison; both input and output
+prices remain visible. Calculator volumes mean millions of output tokens, with
+input billed separately. Reference conditions follow the output rate, including
+Google thinking tokens and applicable input-context thresholds. Image comparisons
+and the underlying catalogue and billing rates are unchanged.
+
+The pricing disclaimer has more room for two desktop lines and wraps naturally
+on smaller screens. At the existing 1080px flow breakpoint, dashed connectors
+become vertical: requests/routes point down and results/output return upward.
+After visual review, the stacked paths use aligned rails with arrowheads on the
+lines and labels offset beside them, rather than arrow glyphs attached to text.
+Model-detail dialogs close on an outside click or tap, Close, or Escape and return
+focus to the opener. Clicks inside the panel, including padding, and drags starting
+inside do not dismiss it. Other dialogs retain their existing dismissal behavior.
+See H-074 for branch and verification evidence.
+
+Owner follow-up: Models & Pricing lists image models before text models; the
+capability menu follows the same order. After rejecting the intermediate compact
+table and expander, the owner approved a plain-language model-detail explanation.
+It adds billing distinctions, official comparison conditions and support limits
+without repeating the card's prices. Text notes preserve official context tiers,
+thinking-token conditions and unknown cache pricing. Image notes explain request
+versus image billing, resolutions, quality references and excluded input costs.
+The four enabled GPT coding models (`gpt-6-astra`, `gpt-5.6-terra`,
+`gpt-5.6-sol`, `gpt-5.5`) have live model IDs and verified Responses tool calling
+and streaming. Gemini models are chat-only in the current backend; further
+variant-specific capabilities remain subject to the evidence in MODEL_PRICING.md.
+Other reference IDs are not confirmed public API model IDs. Copy and one official
+source link (when a comparison source exists) remain visible. Raw rate tables,
+internal evidence codes and research notes stay in the catalogue data and project
+documentation. There is no price table or expander in the modal. Close, Escape
+and backdrop dismissal remain.
+
+A second flow review narrowed the stacked connectors to a central pair roughly
+18px apart, with labels outside the pair and arrowheads directly on the rails.
+This supersedes the earlier wide spacing and retains the desktop visual style.

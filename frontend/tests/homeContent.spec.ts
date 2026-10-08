@@ -17,15 +17,17 @@ test('homepage deal cards use shared catalogue prices and honest comparisons', a
   for (const deal of deals) {
     const card = cards.filter({ has: page.getByRole('heading', { name: deal.name, exact: true }) });
     const main = deal.rates[0]!;
+    const saving = deal.modality === 'text' ? deal.rates.find(rate => rate.label === 'Output')! : main;
     expect(main.percent).toBe(expected[deal.id]!.percent);
     await expect(card.locator('.deal-card-price strong')).toHaveText(usd(main.ours).replace('≈ ', '≈'));
     await expect(card.locator('.deal-card-price .deal-strike')).toContainText(expected[deal.id]!.official);
-    await expect(card.locator('.deal-card-saving')).toContainText(`Save up to ${main.percent}%`);
-    await expect(card.locator('.deal-card-saving')).toContainText(usd(subtract(main.official, main.ours), 'saving'));
+    await expect(card.locator('.deal-card-saving')).toContainText(`Save up to ${saving.percent}%`);
+    await expect(card.locator('.deal-card-saving')).toContainText(usd(subtract(saving.official, saving.ours), 'saving'));
+    if (deal.modality === 'text') await expect(card.locator('.deal-card-saving')).toContainText('per 1M output tokens');
     await expect(card.getByRole('link', { name: /Model details/ })).toHaveAttribute('href', /^\/models[/?]/);
     if (deal.modality === 'text') await expect(card.locator('.deal-strike')).toHaveCount(2);
   }
-  await expect(page.locator('.deal-ticker span')).toHaveText(deals.map(deal => `−${deal.rates[0]!.percent}% ${deal.name}`));
+  await expect(page.locator('.deal-ticker span')).toHaveText(deals.map(deal => `−${(deal.modality === 'text' ? deal.rates.find(rate => rate.label === 'Output')! : deal.rates[0]!).percent}% ${deal.name}`));
   await expect(page.getByRole('link', { name: 'Get started', exact: true }).first()).toHaveAttribute('href', '/signup');
   await expect(page.locator('.home-steps')).toContainText('Credits never expire.');
   const faq = page.locator('details').filter({ hasText: 'Are failed requests always refunded?' });
@@ -54,7 +56,8 @@ test('savings calculator compares official and AIAPI.deals bills', async ({ page
   const calculator = page.locator('.deal-calculator');
   const result = calculator.locator('.deal-calculator-result');
   const check = async (dealIndex: number, quantity: number) => {
-    const rate = deals[dealIndex]!.rates[0]!;
+    const deal = deals[dealIndex]!;
+    const rate = deal.modality === 'text' ? deal.rates.find(rate => rate.label === 'Output')! : deal.rates[0]!;
     const official = multiply(rate.official, quantity);
     const ours = multiply(rate.ours, quantity);
     await expect(result).toContainText(usdTotal(official));
@@ -73,7 +76,14 @@ test('savings calculator compares official and AIAPI.deals bills', async ({ page
   await check(textIndex, 100);
   await calculator.getByRole('button', { name: '1B', exact: true }).click();
   await check(textIndex, 1000);
-  await expect(calculator).toContainText('Input tokens only');
+  await expect(calculator).toContainText('Output tokens only; input is billed separately.');
+  await expect(calculator.getByRole('group', { name: 'Output tokens per month' })).toBeVisible();
+  await expect(result).toContainText('1B output tokens');
+  for (const [index, deal] of deals.entries()) {
+    await calculator.getByRole('button', { name: deal.name, exact: true }).click();
+    await check(index, deal.modality === 'image' ? 100000 : 1000);
+  }
+  await expect(calculator).toContainText('Standard · includes thinking');
 });
 
 test('homepage has no running animations with reduced motion', async ({ page }) => {

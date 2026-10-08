@@ -47,19 +47,93 @@ test("researched catalogue groups all variants and shows exact reference rates",
   await expect(page.getByLabel("Display currency")).toHaveText("EUR");
 });
 
-test("variant details preserve unknown cache, official settings and keyboard focus", async ({ page }) => {
+test("variant details explain unknown cache and official conditions without an expander", async ({ page }) => {
   await page.goto("/models?q=gemini-2.5-pro");
   const details = page.getByRole("button", { name: "View details for gemini-2.5-pro", exact: true });
   await details.focus();
   await page.keyboard.press("Enter");
   const dialog = page.getByRole("dialog");
-  await expect(dialog).toContainText("Cache read");
-  await expect(dialog).toContainText("Rate unavailable");
-  await expect(dialog).toContainText("input >200000 tokens");
-  await expect(dialog).toContainText("includes thinking");
-  await expect(dialog.getByRole("link", { name: "Official source" }).first()).toHaveAttribute("href", /ai.google.dev/);
+  await expect(dialog.getByRole('table')).toHaveCount(0);
+  await expect(dialog.locator('details')).toHaveCount(0);
+  await expect(dialog).toContainText(/cached[- ]input/i);
+  await expect(dialog).toContainText(/pricing is not available/i);
+  await expect(dialog).toContainText(/cached tokens should not be assumed free/i);
+  await expect(dialog).toContainText(/200,000 input tokens/);
+  await expect(dialog).toContainText(/thinking tokens/i);
+  const source = dialog.getByRole('link', { name: 'Official source' });
+  await expect(source).toHaveCount(1);
+  await expect(source).toHaveAttribute('href', /ai.google.dev/);
+  await expect(source).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(details).toBeFocused();
+});
+
+test('text model details explain billing and long-context comparison plainly', async ({ page }) => {
+  await page.goto('/models?q=gpt-6-astra');
+  const opener = page.getByRole('button', { name: 'View details for gpt-6-astra', exact: true });
+  await opener.click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('heading', { name: 'gpt-6-astra', exact: true })).toBeVisible();
+  await expect(dialog.getByRole('table')).toHaveCount(0);
+  await expect(dialog.locator('details')).toHaveCount(0);
+  await expect(dialog).toContainText(/input/i);
+  await expect(dialog).toContainText(/output/i);
+  await expect(dialog).toContainText(/cached input/i);
+  await expect(dialog).toContainText(/272,000 input tokens/);
+  await expect(dialog).toContainText(/longer requests|above that threshold/i);
+  await expect(dialog).toContainText('Tool calling and streaming are verified through the Responses API');
+  await expect(dialog).toContainText('Image and file inputs are not supported');
+  await expect(dialog.getByText('Model ID', { exact: true })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Copy model ID' })).toBeVisible();
+  const source = dialog.getByRole('link', { name: 'Official source' });
+  await expect(source).toHaveCount(1);
+  await expect(source).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(opener).toBeFocused();
+});
+
+test('image model details explain request billing and the official output comparison', async ({ page }) => {
+  await page.goto('/models?q=gpt-image-2.5');
+  await page.getByRole('button', { name: 'View details for gpt-image-2.5', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('table')).toHaveCount(0);
+  await expect(dialog.locator('details')).toHaveCount(0);
+  await expect(dialog).toContainText(/per request/i);
+  await expect(dialog).toContainText(/not per image/i);
+  await expect(dialog).not.toContainText(/\$\d/);
+  await expect(dialog).toContainText(/official 1K High/i);
+  await expect(dialog).toContainText(/quality is automatic/i);
+  await expect(dialog).toContainText(/input.*(extra|excluded)/i);
+  const source = dialog.getByRole('link', { name: 'Official source' });
+  await expect(source).toHaveCount(1);
+  await expect(source).toBeVisible();
+});
+
+test('model details dismiss on the backdrop but preserve interactions inside', async ({ page }) => {
+  await page.goto('/models?q=gemini-2.5-pro');
+  const opener = page.getByRole('button', { name: 'View details for gemini-2.5-pro', exact: true });
+  const dialog = page.getByRole('dialog');
+  await opener.click();
+  await dialog.getByRole('heading', { name: 'gemini-2.5-pro', exact: true }).click();
+  await expect(dialog).toBeVisible();
+  const bounds = (await dialog.boundingBox())!;
+  // Padding inside the native dialog is not the backdrop.
+  await page.mouse.click(bounds.x + 6, bounds.y + 6);
+  await expect(dialog).toBeVisible();
+  // A drag that begins inside must not dismiss when released outside.
+  await page.mouse.move(bounds.x + 6, bounds.y + 6);
+  await page.mouse.down();
+  await page.mouse.move(2, 2);
+  await page.mouse.up();
+  await expect(dialog).toBeVisible();
+  await page.mouse.click(2, 2);
+  await expect(dialog).toHaveCount(0);
+  await expect(opener).toBeFocused();
+  await opener.click();
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(opener).toBeFocused();
 });
 
 test("family routes deep link with metadata, original content and responsive variants", async ({ page }, info) => {
@@ -108,6 +182,7 @@ test("availability notices agree between catalogue and status without live healt
 
 test("model collection separates coding and chat models and opens Codex and tool setup in place", async ({ page }, info) => {
   await page.goto("/models");
+  await expect(page.locator('.collection-heading h2')).toHaveText(['Image models', 'Coding & agent models', 'Chat models']);
   const coding = page.getByRole("region", { name: "Coding & agent models" });
   await expect(coding).toContainText("tool calling");
   await expect(coding.locator(".model-card").first()).toHaveAttribute("data-model-id", /^gpt-/);
@@ -129,6 +204,6 @@ test("model collection separates coding and chat models and opens Codex and tool
   const bounds = await page.getByRole("dialog").boundingBox();
   expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
   await page.keyboard.press("Escape");
-  await page.screenshot({ path: info.outputPath("coding-models.png"), clip: { x: 0, y: (await coding.boundingBox())!.y - 20, width: page.viewportSize()!.width, height: 700 } });
+  await coding.screenshot({ path: info.outputPath("coding-models.png") });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

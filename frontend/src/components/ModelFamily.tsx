@@ -3,9 +3,9 @@ import { Link } from "react-router-dom";
 import type { CatalogueReference } from "../content/catalogue";
 import { snapshot } from "../content/catalogue";
 import { availabilityLabel, familyPages } from "../content/modelFamilies";
-import CopyButton from "./CopyButton";
 import Dialog from "./Dialog";
-import CatalogueRates, { type DisplayCurrency } from "./CatalogueRates";
+import type { DisplayCurrency } from "./CatalogueRates";
+import ModelDetails from "./ModelDetails";
 import ModelPrices from "./ModelPrices";
 import { ProviderLogo, ToolLogo } from "./ProviderLogo";
 import { catalogueNotices } from "../content/serviceStatus";
@@ -56,18 +56,8 @@ export default function ModelFamily({ family, variants, currency, linkPage = tru
         </footer>
       </article>)}
     </div>
-    {selected && <Dialog title={selected.upstreamId} onClose={() => setSelected(null)}>
-      <p><strong>{availabilityLabel(selected)}</strong> · checked {snapshot.checkedOn}</p>
-      <p>Reference ID: <code>{selected.upstreamId}</code></p>
-      <CopyButton text={selected.upstreamId} label="Copy reference ID" />
-      <p>Public API ID pending. This reference identifier is not a working AIAPI.deals integration ID.</p>
-      <p>{selected.identity.status === "verified" ? "Official identity documented; the served version and AIAPI.deals support remain unverified." : "Exact model or channel identity is awaiting evidence."}</p>
-      <ModelPrices model={selected} currency={currency} />
-      <CatalogueRates rates={selected.rates} currency={currency} detailed />
-      <h3>Limitations</h3>
-      <ul>{selected.limitations.map(limit => <li key={limit}>{limit}</li>)}</ul>
-      {selected.gaps.length > 0 && <p>Evidence gaps: {selected.gaps.join(", ")}. Alias mapping, channel behavior or availability needs review before use.</p>}
-      <p><Link className="text-link" to="/docs">AIAPI.deals documentation status</Link> · <Link className="text-link" to="/status">Status and notices</Link></p>
+    {selected && <Dialog title={selected.upstreamId} closeOnBackdrop onClose={() => setSelected(null)}>
+      <ModelDetails model={selected} />
     </Dialog>}
   </section>;
 }

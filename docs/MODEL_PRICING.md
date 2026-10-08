@@ -423,6 +423,14 @@ thinking/cache conditions and source links. Per-request image tariffs never beco
 per-image quotes, and no unavailable cache tariff becomes zero. No savings or
 production offer is enabled by this presentation.
 
+Update (2026-10-08): the paragraph above records the initial reference-only UI.
+The provider checks below and frontend H-073 supersede it for the four enabled
+GPT coding models: `gpt-6-astra`, `gpt-5.6-terra`, `gpt-5.6-sol` and `gpt-5.5`.
+H-074 labels these as model IDs, keeps other entries as reference IDs, and replaces
+the modal's repeated numeric tables with plain-language conditions and a source
+link. The full research evidence remains here and in the typed catalogue;
+`/v1/models` determines current API availability.
+
 D-011 is now enforced in compareRate: an exact negative difference returns a
 pricing/comparison error before percentage rounding, including subprecision
 violations. Zero remains parity when all evidence gates pass. The earlier signed

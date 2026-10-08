@@ -33,7 +33,7 @@
 .home-sectionhead p { max-width: 640px; margin-top: 22px; font-size: 19px; color: var(--text); }
 .home-bighead + p { margin-top: 24px; }
 .home-sectionnote { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 12px 24px; margin-top: 28px; }
-.home-sectionnote p { max-width: 780px; font-family: var(--font-mono); font-size: 13px; }
+.home-sectionnote p { max-width: 860px; font-family: var(--font-mono); font-size: 13px; }
 
 /* Hero with the calculator */
 .home-hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: clamp(40px, 6vw, 88px); align-items: center; padding: 56px 0 96px; }
@@ -151,6 +151,8 @@
 .flow-link { display: grid; gap: 10px; justify-items: center; font-family: var(--font-mono); font-size: 13px; color: var(--highlight); }
 .flow-link span { width: 100%; text-align: center; border-bottom: 2px dashed #6a6a64; padding-bottom: 6px; }
 .flow-link span + span { color: #c9c9c1; border-bottom: 0; border-top: 2px dashed #6a6a64; padding: 6px 0 0; }
+.flow-link span:first-child::after { content: " →"; }
+.flow-link span + span::before { content: "← "; }
 .home-steps { list-style: none; margin: 56px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
 .home-steps li { position: relative; display: flex; align-items: flex-start; gap: 18px; background: var(--panel); color: var(--text); border-radius: 18px; padding: 26px 24px; }
 .home-step-number { flex: none; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--highlight); border: 3px solid var(--text); font-weight: 900; font-stretch: 75%; font-size: 28px; }
@@ -232,8 +234,13 @@
 @media (max-width: 1080px) {
   .flow-diagram { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .flow-node { min-height: 0; }
-  .flow-link { grid-auto-flow: column; justify-content: center; gap: 24px; padding: 14px 0; }
-  .flow-link span, .flow-link span + span { width: auto; border: 0; padding: 0; }
+  .flow-link { grid-template-columns: repeat(2, minmax(0, 1fr)); justify-self: center; justify-items: stretch; width: min(240px, 100%); gap: 16px; padding: 0; }
+  .flow-link span, .flow-link span + span { position: relative; display: flex; align-items: center; justify-content: flex-end; width: 100%; min-height: 68px; border: 0; padding: 0 14px 0 0; }
+  .flow-link span + span { justify-content: flex-start; padding: 0 0 0 14px; }
+  .flow-link span::before, .flow-link span + span::before { content: ""; position: absolute; right: 0; top: 0; bottom: 0; border-left: 2px dashed #6a6a64; }
+  .flow-link span + span::before { left: 0; right: auto; }
+  .flow-link span::after, .flow-link span:first-child::after { content: ""; position: absolute; right: -4px; bottom: 3px; width: 10px; height: 10px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); }
+  .flow-link span + span::after { left: -4px; right: auto; top: 3px; bottom: auto; transform: rotate(225deg); }
   .flow-node-core { transform: none; }
   .home-steps { grid-template-columns: minmax(0, 1fr); }
 }

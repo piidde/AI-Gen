@@ -8,9 +8,12 @@ Use Authorization: Bearer <key>. Customer applications use a Takewing API key. T
 
 The dated [model evidence register](MODEL_PRICING.md) inventories 29 upstream
 image/text entries for S02.1. It separates official identities from unresolved
-aliases, channel claims and availability notices. These are internal research IDs,
-not approved public API IDs or verified adapter support. Resolve its A1–A8 gaps
-before advertising affected capabilities or publishing runnable examples.
+aliases, channel claims and availability notices. The 2026-10-08 verification
+supersedes the initial research-only status for `gpt-6-astra`, `gpt-5.6-terra`,
+`gpt-5.6-sol` and `gpt-5.5`: these IDs were enabled and verified with Responses
+tool calling and streaming. `/v1/models` is authoritative for current availability.
+Other reference entries do not establish public API availability; resolve their
+A1–A8 gaps before advertising affected capabilities or publishing examples.
 
 Every API error has this shape:
 

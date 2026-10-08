@@ -16,12 +16,12 @@ import "../styles/catalogue-overview.css";
 // GPT models take OpenAI Responses requests with tool calling (verified 2026-10-08);
 // Gemini text models are plain chat completions. Both use an ordinary API key.
 const sections: { title: string; note: string; match: (model: CatalogueReference) => boolean; actions?: ReactNode }[] = [
+  { title: "Image models", note: "Per-request pricing. Choose your model and resolution.", match: model => model.modality === "image" },
   { title: "Coding & agent models", note: "A normal API key with tool calling (OpenAI Responses API). Works in Codex CLI, Codex for VS Code and your own harness. Per 1M tokens.",
     match: model => model.modality === "text" && model.provider === "OpenAI",
     actions: <CodingSetup /> },
   { title: "Chat models", note: "A normal OpenAI-compatible API key for apps, SDKs and curl (chat completions, no tool calling). Per 1M tokens.",
     match: model => model.modality === "text" && model.provider !== "OpenAI" },
-  { title: "Image models", note: "Per-request pricing. Choose your model and resolution.", match: model => model.modality === "image" },
 ];
 
 export default function Models({ publicPage = false }: { publicPage?: boolean }) {
@@ -47,7 +47,7 @@ export default function Models({ publicPage = false }: { publicPage?: boolean })
       <div className="catalog-filter" id="model-collection">
         <div className="filter-group">
           <FilterSelect label="Filter provider" value={provider} options={[{ value: 'all', label: 'All providers' }, { value: 'OpenAI', label: 'OpenAI' }, { value: 'Google', label: 'Google' }, ...(provider === 'Gemini' ? [{ value: 'Gemini', label: 'Google (Gemini)' }] : [])]} onChange={value => setParams(updateQuery(params, 'provider', value, 'all'))} />
-          <FilterSelect label="Filter capability" value={capability} options={[{ value: 'all', label: 'All capabilities' }, { value: 'Text', label: 'Text' }, { value: 'Image', label: 'Image' }]} onChange={value => setParams(updateQuery(params, 'capability', value, 'all'))} />
+          <FilterSelect label="Filter capability" value={capability} options={[{ value: 'all', label: 'All capabilities' }, { value: 'Image', label: 'Image' }, { value: 'Text', label: 'Text' }]} onChange={value => setParams(updateQuery(params, 'capability', value, 'all'))} />
         </div>
         <input type="search" className="search" aria-label="Search models" placeholder="Search models, providers or resolutions…" value={search} onChange={event => setParams(updateQuery(params, "q", event.target.value), { replace: true })} />
       </div>

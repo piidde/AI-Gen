@@ -53,10 +53,11 @@ function dealFor(model: CatalogueReference, name: string): Deal {
       unit: image ? 'request' : '1M tokens',
     };
   });
-  const firstReference = publishedReference(model, model.rates[0]!, settings);
+  const basisRate = model.rates.find(rate => rate.component === (image ? 'image-request' : 'output'))!;
+  const comparisonReference = publishedReference(model, basisRate, settings);
   const basis = autoQuality ? '1K · Auto quality; official High reference'
     : image ? `${homepageResolution} image output`
-      : firstReference.status === 'available' ? firstReference.basis.replace(/; input$|; output$/, '') : '';
+      : comparisonReference.status === 'available' ? comparisonReference.basis.replace(/; input$|; output$/, '') : '';
   return { id: model.upstreamId, name, provider: model.provider, modality: model.modality, family: model.family, basis, rates };
 }
 
@@ -66,8 +67,16 @@ export const deals: Deal[] = featured.map(([id, name]) => {
   return dealFor(model, name);
 });
 
+/** Text savings compare output tokens; image savings retain their request basis. */
+export function comparisonRate(deal: Deal): DealRate {
+  const label = deal.modality === 'text' ? 'Output' : 'Image request';
+  const rate = deal.rates.find(rate => rate.label === label);
+  if (!rate) throw new Error(`Featured deal without a ${label} rate: ${deal.id}`);
+  return rate;
+}
+
 /** Largest headline saving among the featured deals, for "up to" claims. */
-export const maxDealPercent = Math.max(...deals.flatMap(deal => deal.rates.map(rate => Number(rate.percent))));
+export const maxDealPercent = Math.max(...deals.map(deal => Number(comparisonRate(deal).percent)));
 
 export function subtract(a: ExactAmount, b: ExactAmount): ExactAmount {
   return { numerator: a.numerator * b.denominator - b.numerator * a.denominator, denominator: a.denominator * b.denominator };
