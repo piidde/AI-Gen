@@ -1,13 +1,17 @@
 import type { CatalogueReference } from '../content/catalogue';
 import { publishedReference, publishedDifference, bestImageSettings, sellingPrice, openaiImageUsd } from '../content/publishedPrices';
 import { decimalAmount, formatAmount } from '../lib/pricing';
+import { money, useUsdToEur } from '../lib/fx';
+import type { DisplayCurrency } from './CatalogueRates';
 import '../styles/model-prices.css';
 
-export default function ModelPrices({ model, compact = false, overview = false }: { model: CatalogueReference; compact?: boolean; overview?: boolean }) {
+export default function ModelPrices({ model, compact = false, overview = false, currency = 'USD' }: { model: CatalogueReference; compact?: boolean; overview?: boolean; currency?: DisplayCurrency }) {
+  const fxRate = useUsdToEur(currency === 'EUR');
+  const m = (decimal: string) => money(decimal, currency, fxRate);
   const settings = bestImageSettings(model);
   const autoQuality = ['gpt-image-2.5', 'gpt-image-2'].includes(model.upstreamId);
   const simpleImage = model.upstreamId === 'gpt-image-2.5';
-  const officialRange = simpleImage ? ['low', 'high'].map(quality => formatAmount(decimalAmount(openaiImageUsd(model.upstreamId, '1K', quality)), 3).decimal).join('–$') : null;
+  const officialRange = simpleImage ? ['low', 'high'].map(quality => m(formatAmount(decimalAmount(openaiImageUsd(model.upstreamId, '1K', quality)), 3).decimal)).join('–') : null;
   return <div className="landing-prices">
     {model.rates.filter(rate => rate.component !== 'cached-input').map(rate => {
       const reference = publishedReference(model, rate, settings);
@@ -26,8 +30,8 @@ export default function ModelPrices({ model, compact = false, overview = false }
         const saving = simpleImage ? highComparison : difference;
         return <section className="landing-rate" key={rate.component} aria-label={`${image ? 'Image generation' : rate.component === 'input' ? 'Input' : 'Output'} price comparison`}>
           {!image && <span className="landing-rate-label">{rate.component === 'input' ? 'Input' : 'Output'}</span>}
-          <div className="landing-our-price"><span className="landing-price-label">Our price</span><div className="landing-price"><strong>{price ? <>{price.approximate && <span className="price-approx">≈ </span>}${price.decimal}</> : 'Not listed'}</strong><span>{image ? '/ request' : '/ 1M tokens'}</span></div></div>
-          {comparison && <div className="landing-official"><span className="sr-only">Official API reference: </span>{comparison.approximate && <span className="price-approx">≈ </span>}<s className="official-amount discounted">${comparison.decimal}</s><span className="landing-unit">{image ? '/ image output' : '/ 1M tokens'}</span></div>}
+          <div className="landing-our-price"><span className="landing-price-label">Our price</span><div className="landing-price"><strong>{price ? <>{price.approximate && <span className="price-approx">≈ </span>}{m(price.decimal)}</> : 'Not listed'}</strong><span>{image ? '/ request' : '/ 1M tokens'}</span></div></div>
+          {comparison && <div className="landing-official"><span className="sr-only">Official API reference: </span>{comparison.approximate && <span className="price-approx">≈ </span>}<s className="official-amount discounted">{m(comparison.decimal)}</s><span className="landing-unit">{image ? '/ image output' : '/ 1M tokens'}</span></div>}
           {saving?.direction === 'lower' && <span className="landing-saving">Save up to {saving.percent}%</span>}
           <div className="price-reference-basis"><p>{simpleImage ? '1K · Auto quality; official High reference' : image ? `${settings.resolution} image output` : reference.status === 'available' ? reference.basis.replace(/; input$|; output$/, '') : ''}</p></div>
         </section>;
@@ -35,10 +39,10 @@ export default function ModelPrices({ model, compact = false, overview = false }
       return <section className="landing-rate" key={rate.component} aria-label={`${rate.component === 'input' ? 'Input' : rate.component === 'output' ? 'Output' : 'Image generation'} price comparison`}>
         {(!overview || !image) && <div className="landing-rate-label"><span>{rate.component === 'input' ? 'Input' : rate.component === 'output' ? 'Output' : 'Image generation'}</span>{overview && savingsBadge}</div>}
         <div className="landing-our-price"><div className={overview ? 'overview-price-heading' : undefined}><span className="landing-price-label">Our price</span>{overview && image && savingsBadge}</div>
-          <div className="landing-price"><strong>{price ? <>{price.approximate && <span className="price-approx">≈ </span>}${price.decimal}</> : 'Not listed'}</strong><span>{image ? '/ request' : '/ 1M tokens'}</span></div>
+          <div className="landing-price"><strong>{price ? <>{price.approximate && <span className="price-approx">≈ </span>}{m(price.decimal)}</> : 'Not listed'}</strong><span>{image ? '/ request' : '/ 1M tokens'}</span></div>
         </div>
         <div className="landing-official"><span className="landing-price-label">Official API{image ? ' example' : ''}</span>
-          {officialRange ? <><span className="price-approx">≈ </span><span className="official-amount">${officialRange}</span><span className="landing-unit">/ image output</span></> : official ? <>{official.approximate && <span className="price-approx">≈ </span>}<span className={difference?.direction === 'lower' ? 'official-amount discounted' : 'official-amount'}>${official.decimal}</span><span className="landing-unit">{image ? '/ image output' : '/ 1M tokens'}</span></> : <p>{reference.status === 'unavailable' && reference.reason}</p>}
+          {officialRange ? <><span className="price-approx">≈ </span><span className="official-amount">{officialRange}</span><span className="landing-unit">/ image output</span></> : official ? <>{official.approximate && <span className="price-approx">≈ </span>}<span className={difference?.direction === 'lower' ? 'official-amount discounted' : 'official-amount'}>{m(official.decimal)}</span><span className="landing-unit">{image ? '/ image output' : '/ 1M tokens'}</span></> : <p>{reference.status === 'unavailable' && reference.reason}</p>}
         </div>
         {!overview && savingsBadge}
         {overview && reference.status === 'available' && <div className="price-reference-basis"><p>{simpleImage ? 'Auto quality · official 1K High savings reference' : image ? `${settings.resolution} · ${model.provider === 'OpenAI' ? `${settings.quality.charAt(0).toUpperCase() + settings.quality.slice(1)} quality · ` : ''}official image output` : reference.basis.replace(/; input$|; output$/, '')}</p></div>}

@@ -8,8 +8,7 @@ import CopyButton from "./CopyButton";
 import Dialog from "./Dialog";
 import CatalogueRates, { type DisplayCurrency } from "./CatalogueRates";
 import ModelPrices from "./ModelPrices";
-import openaiIcon from "../assets/openai.svg";
-import geminiIcon from "../assets/gemini.svg";
+import { ProviderLogo } from "./ProviderLogo";
 import { catalogueNotices, getServiceStatus, readStatusScenario, statusHref } from "../content/serviceStatus";
 import "../styles/service-status.css";
 import "../styles/catalogue-status.css";
@@ -31,17 +30,17 @@ export default function ModelFamily({ family, variants, currency, linkPage = tru
   if (!first) return null;
   return <section className={`catalogue-family${overview ? ' catalogue-collection' : ''}${reserveStatus ? ' catalogue-has-status' : ''}`} aria-label={overview ? family : `${family} family`}>
     {overview ? <header className="collection-heading"><h2>{family}</h2><span>{variants.length} models</span><p>{first.modality === 'image' ? 'Per-request pricing. Choose your model and resolution.' : 'Input and output pricing, side by side. Per 1M tokens.'}</p></header> : <header className="family-heading">
-      <div className="provider-line"><img className="provider-icon" src={first.provider === "OpenAI" ? openaiIcon : geminiIcon} alt="" width={30} height={30} /><span>{first.provider}</span><span className="capability">{first.modality === "image" ? "Image" : "Text"}</span></div>
+      <div className="provider-line"><ProviderLogo name={family === "Nano Banana Pro" ? family : first.provider} size={30} /><span>{first.provider}</span><span className="capability">{first.modality === "image" ? "Image" : "Text"}</span></div>
       <h2>{family}</h2>
       <p>{page?.description ?? (first.modality === "image" ? "Image request variants. Compare listed options; quality and speed differences remain unverified." : "Text variants with separate input, output and cache-read rates. Integration capabilities remain unverified.")}</p>
       {linkPage && page && <Link className="text-link" to={`/models/${page.slug}`}>Explore {family} →</Link>}
     </header>}
     <div className="model-grid">
       {variants.map(model => <article className="panel model-card reference-card" data-model-id={model.upstreamId} key={model.upstreamId}>
-        {overview && <div className="catalogue-card-provider"><img src={model.provider === 'OpenAI' ? openaiIcon : geminiIcon} alt="" width={18} height={18} /><span>{model.provider}</span></div>}
+        {overview && <div className="catalogue-card-provider"><ProviderLogo name={model.upstreamId.includes("banana") ? "Nano Banana" : model.provider} /><span>{model.provider}</span></div>}
         <h3>{overview ? modelDisplayName(model.upstreamId) : model.upstreamId}</h3>
         <p className="model-family">{model.modality === "image" ? `Listed resolutions: ${model.listedResolutions.join(" / ") || "not verified"}` : "Text · separately metered components"}</p>
-        <ModelPrices model={model} overview={overview} />
+        <ModelPrices model={model} overview={overview} currency={currency} />
         <footer><button className="text-link" aria-label={`View details for ${model.upstreamId}`} onClick={() => setSelected(model)}>View details<span className="sr-only"> for {model.upstreamId}</span> ↗</button>
         <div className="catalogue-status-slot">{model.availability !== "unknown" && <span className={`availability-label ${model.availability === "unavailable-notice" ? "availability-warning" : ""}`}>
           {model.availability === "unavailable-notice" ? "Temporarily unavailable" : availabilityLabel(model)}
@@ -58,7 +57,7 @@ export default function ModelFamily({ family, variants, currency, linkPage = tru
       <CopyButton text={selected.upstreamId} label="Copy reference ID" />
       <p>Public API ID pending. This reference identifier is not a working AIAPI.deals integration ID.</p>
       <p>{selected.identity.status === "verified" ? "Official identity documented; the served version and AIAPI.deals support remain unverified." : "Exact model or channel identity is awaiting evidence."}</p>
-      <ModelPrices model={selected} />
+      <ModelPrices model={selected} currency={currency} />
       <CatalogueRates rates={selected.rates} currency={currency} detailed />
       <h3>Limitations</h3>
       <ul>{selected.limitations.map(limit => <li key={limit}>{limit}</li>)}</ul>

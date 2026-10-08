@@ -27,7 +27,7 @@ function organization(): Record<string, unknown> {
     description: siteDescription,
     logo: {
       "@type": "ImageObject",
-      url: absoluteUrl("/favicon.svg"),
+      url: absoluteUrl("/icon-512.png"),
     },
     image: socialImage,
   };

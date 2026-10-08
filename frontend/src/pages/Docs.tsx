@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import Brand from "../components/Brand";
+import PublicCatalogueShell from "../components/PublicCatalogueShell";
+import { Mention } from "../components/ProviderLogo";
 import "../styles/docs.css";
 
 const BASE = "https://aiapi.deals";
@@ -25,23 +26,8 @@ function Code({ children }: { children: string }) {
 
 export default function Docs() {
   return (
+    <PublicCatalogueShell>
     <div className="docs">
-      <a className="skip-link" href="#main-content">
-        Skip to content
-      </a>
-      <header className="docs-top">
-        <Brand />
-        <nav className="docs-links" aria-label="Main navigation">
-          <Link to="/models">Models &amp; pricing</Link>
-          <Link to="/docs" aria-current="page">
-            Docs
-          </Link>
-          <Link className="button" to="/login?next=%2Fdashboard%2Fapi-keys">
-            Get an API key
-          </Link>
-        </nav>
-      </header>
-
       <div className="docs-layout">
         <nav className="docs-toc" aria-label="On this page">
           <ul>
@@ -53,7 +39,7 @@ export default function Docs() {
           </ul>
         </nav>
 
-        <main id="main-content" className="docs-main" tabIndex={-1}>
+        <div className="docs-main">
           <h1 tabIndex={-1}>Documentation</h1>
           <p className="docs-lead">
             One JSON API for text, image and video models. Base URL:{" "}
@@ -102,7 +88,7 @@ export default function Docs() {
             <h2>Chat completions</h2>
             <p>
               <code>POST /v1/chat/completions</code> is a non-streaming subset
-              of the OpenAI chat format.
+              of the <Mention name="OpenAI" /> chat format.
             </p>
             <table className="docs-table">
               <thead>
@@ -313,8 +299,9 @@ export default function Docs() {
               <a href="/v1/openapi.json">/v1/openapi.json</a>.
             </p>
           </section>
-        </main>
+        </div>
       </div>
     </div>
+    </PublicCatalogueShell>
   );
 }

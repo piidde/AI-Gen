@@ -9,7 +9,7 @@ Distributed through @fontsource/ibm-plex-mono under the SIL Open Font License 1.
 See IBM-PLEX-MONO-LICENSE.txt. Source: https://github.com/IBM/plex
 
 OpenAI and Gemini monochrome SVG provider icons
-Obtained from the LobeHub icons library through the accepted local design assets.
+Obtained from the LobeHub icons library (OpenAI, Gemini, Nano Banana marks) through the accepted local design assets.
 Copyright (c) 2023 LobeHub. MIT License; see LOBEHUB-LICENSE.txt.
 Source: https://github.com/lobehub/lobe-icons
 Original distribution: @lobehub/icons-static-svg via jsDelivr.

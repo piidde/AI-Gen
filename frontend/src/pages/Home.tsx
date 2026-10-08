@@ -7,10 +7,9 @@ import SavingsCalculator from "../components/SavingsCalculator";
 import ApiExample from "../components/ApiExample";
 import { snapshot } from "../content/catalogue";
 import { familyPages } from "../content/modelFamilies";
-import { deals, maxDealPercent, subtract, usd, type Deal } from "../content/homeDeals";
+import { deals, maxDealPercent, share, subtract, usd, type Deal } from "../content/homeDeals";
 import type { ExactAmount } from "../lib/pricing";
-import openaiIcon from "../assets/openai.svg";
-import geminiIcon from "../assets/gemini.svg";
+import { Mention, ProviderLogo } from "../components/ProviderLogo";
 import "../styles/home.css";
 
 /** Large price display: a rounded amount keeps a small, still readable "≈" marker. */
@@ -31,13 +30,14 @@ function DealCard({ deal }: { deal: Deal }) {
     <article className="deal-card">
       <span className="deal-burst" aria-hidden="true">−{main!.percent}%</span>
       <div className="deal-card-meta">{deal.provider} · {image ? "Image" : "Text"}</div>
-      <h3>{deal.name}</h3>
+      <h3><ProviderLogo name={deal.name} size={22} /> {deal.name}</h3>
       <div className="deal-card-price">
         <s className="deal-strike"><span className="sr-only">Official price </span>{usd(main!.official, "reference")}</s>
         <strong><Money amount={main!.ours} /></strong>
+        <span className="deal-card-bar" aria-hidden="true"><i style={{ width: `${Math.max(share(main!.ours, main!.official), 3)}%` }} /></span>
       </div>
       <div className="deal-card-unit">{image ? "per request" : "per 1M input tokens"}{second && <> · output {usd(second.ours)} <s className="deal-strike">{usd(second.official, "reference")}</s></>}</div>
-      <div className="deal-card-saving">Save up to {main!.percent}% · {usd(subtract(main!.official, main!.ours), "saving")} {image ? "per image" : "per 1M input"}</div>
+      <div className="deal-card-saving"><b>Save up to {main!.percent}%</b> {usd(subtract(main!.official, main!.ours), "saving")} {image ? "per image" : "per 1M input"}</div>
       <div className="deal-card-basis">{deal.basis}</div>
       <Link className="deal-card-link" to={detailsHref(deal)}>Model details ↗</Link>
     </article>
@@ -59,9 +59,9 @@ export default function Home() {
         <div className="home-wrap">
           <section className="home-hero" aria-labelledby="home-title">
             <div className="home-hero-copy">
-              <div className="deal-flag">Price drop · OpenAI &amp; Google models</div>
+              <div className="deal-flag">Price drop · <Mention name="OpenAI" /> &amp; <Mention name="Google" /> models</div>
               <h1 id="home-title">Official AI.<br /><span>Up to {maxDealPercent}% off.</span></h1>
-              <p>The same GPT Image, Nano Banana, GPT-6 and Gemini models through one API, for a fraction of the official list price.</p>
+              <p>The same <Mention name="GPT Image" />, <Mention name="Nano Banana" />, <Mention name="GPT-6" /> and <Mention name="Gemini" /> models through one API, for a fraction of the official list price.</p>
               <div className="home-actions">
                 <Link className="button" to="/signup">Get started</Link>
                 <Link className="button secondary" to="/models">See all prices</Link>
@@ -81,7 +81,7 @@ export default function Home() {
 
         <div className="deal-ticker" aria-label="Savings overview">
           <div className="home-wrap">
-            {deals.map(deal => <span key={deal.id}>−{deal.rates[0]!.percent}% {deal.name}</span>)}
+            {deals.map(deal => <span key={deal.id}><b>−{deal.rates[0]!.percent}%</b> <ProviderLogo name={deal.name} size={14} /> {deal.name}</span>)}
           </div>
         </div>
 
@@ -126,10 +126,10 @@ export default function Home() {
               <div className="flow-node">
                 <span className="flow-node-label">Official models</span>
                 <div className="flow-providers">
-                  <span><img src={openaiIcon} alt="" width={22} height={22} />OpenAI</span>
-                  <span><img src={geminiIcon} alt="" width={22} height={22} />Google</span>
+                  <span><ProviderLogo name="OpenAI" size={22} />OpenAI</span>
+                  <span><ProviderLogo name="Gemini" size={22} />Google</span>
                 </div>
-                <p>GPT Image, GPT-6, Nano Banana and Gemini.</p>
+                <p><Mention name="GPT Image" />, <Mention name="GPT-6" />, <Mention name="Nano Banana" /> and <Mention name="Gemini" />.</p>
               </div>
             </div>
             <ol className="home-steps">
@@ -144,11 +144,11 @@ export default function Home() {
           <div className="home-wrap">
             <div className="home-dev-head">
               <h2 id="home-dev-title">One API. Image and text.</h2>
-              <p>Use the OpenAI-style chat format you already know, or start image jobs and poll for the result. Swap models by changing one ID.</p>
+              <p>Use the <Mention name="OpenAI" />-style chat format you already know, or start image jobs and poll for the result. Swap models by changing one ID.</p>
             </div>
             <ApiExample />
             <ul className="home-dev-features">
-              <li><Icon name="text" /><h3>OpenAI-style chat</h3><p>Send the chat format you already use and switch models with one ID.</p></li>
+              <li><Icon name="text" /><h3><Mention name="OpenAI" />-style chat</h3><p>Send the chat format you already use and switch models with one ID.</p></li>
               <li><Icon name="image" /><h3>Image jobs</h3><p>Start a job with an idempotency key, then poll the request for the result.</p></li>
               <li><Icon name="usage" /><h3>Exact charge</h3><p>Every request shows what it cost in your usage history.</p></li>
               <li><Icon name="keys" /><h3>Keys you control</h3><p>Shown once, stored hashed and revocable any time.</p></li>

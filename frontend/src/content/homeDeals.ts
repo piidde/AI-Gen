@@ -100,3 +100,8 @@ export function usdTotal(amount: ExactAmount) {
   const [whole, fraction] = formatted.decimal.split('.');
   return `$${Number(whole).toLocaleString('en-US')}.${fraction}`;
 }
+
+/** Part as a percentage of whole (two decimals), for proportional price bars only. */
+export function share(part: ExactAmount, whole: ExactAmount) {
+  return Number((part.numerator * whole.denominator * 10000n) / (part.denominator * whole.numerator)) / 100;
+}

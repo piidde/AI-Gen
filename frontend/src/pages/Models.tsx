@@ -37,12 +37,12 @@ export default function Models({ publicPage = false }: { publicPage?: boolean })
       <div className="catalog-filter" id="model-collection">
         <div className="filter-group">
           <FilterSelect label="Filter provider" value={provider} options={[{ value: 'all', label: 'All providers' }, { value: 'OpenAI', label: 'OpenAI' }, { value: 'Google', label: 'Google' }, ...(provider === 'Gemini' ? [{ value: 'Gemini', label: 'Google (Gemini)' }] : [])]} onChange={value => setParams(updateQuery(params, 'provider', value, 'all'))} />
-          <FilterSelect label="Filter capability" value={capability} options={[{ value: 'all', label: 'All capabilities' }, { value: 'Image', label: 'Image' }, { value: 'Text', label: 'Text' }]} onChange={value => setParams(updateQuery(params, 'capability', value, 'all'))} />
+          <FilterSelect label="Filter capability" value={capability} options={[{ value: 'all', label: 'All capabilities' }, { value: 'Text', label: 'Text' }, { value: 'Image', label: 'Image' }]} onChange={value => setParams(updateQuery(params, 'capability', value, 'all'))} />
         </div>
         <input type="search" className="search" aria-label="Search models" placeholder="Search models, providers or resolutions…" value={search} onChange={event => setParams(updateQuery(params, "q", event.target.value), { replace: true })} />
       </div>
       <div className="catalog-count" role="status">{shown.length} reference variants across {groups.length} families</div>
-      {(['image', 'text'] as const).map(modality => {
+      {(['text', 'image'] as const).map(modality => {
         const variants = groups.flatMap(group => group.variants).filter(model => model.modality === modality);
         return variants.length > 0 && <ModelFamily key={modality} family={modality === 'image' ? 'Image models' : 'Text models'} variants={variants} currency={currency} overview />;
       })}

@@ -57,23 +57,79 @@
 .deal-choices button { min-height: 44px; padding: 8px 14px; border-radius: 999px; border: 2px solid var(--text); background: var(--panel); color: var(--text); font-weight: 700; font-size: 15px; }
 .deal-choices button:hover { background: #f6f3dc; }
 .deal-choices button[aria-pressed="true"] { background: var(--text); color: var(--highlight); }
-.deal-calculator-result { margin-top: 22px; background: var(--bg); border-radius: 14px; padding: 18px 20px; }
-.deal-calculator-result dl { margin: 0; display: grid; gap: 8px; padding-bottom: 14px; border-bottom: 2px solid var(--text); }
-.deal-calculator-result dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px; }
-.deal-calculator-result dt { font-weight: 600; font-size: 16px; }
-.deal-calculator-result dd { margin: 0; font-family: var(--font-mono); font-weight: 600; font-size: 20px; }
-.home .deal-calculator-label { margin-top: 14px; font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: var(--text); }
-.home .deal-calculator-saved { display: inline-block; margin-top: 6px; background: var(--highlight); color: var(--text); padding: 0 10px; font-weight: 900; font-stretch: 70%; font-size: clamp(52px, 5.4vw, 76px); line-height: 1; }
-.home .deal-calculator-percent { margin-top: 10px; font-weight: 800; font-size: 17px; color: var(--deal); }
+/* Brand marks are dark (OpenAI is black): a white disc keeps them visible on the selected ink pill. */
+.deal-choices-models button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.deal-choices .provider-logo { box-sizing: content-box; padding: 3px; border-radius: 50%; background: #ffffff; }
+.deal-choices button[aria-pressed="true"] .provider-logo { box-shadow: 0 0 0 2px var(--highlight); }
+.deal-calculator-result { margin-top: 22px; background: var(--bg); border-radius: 14px; padding: 18px 20px 20px; }
+/* Shared result pieces */
+.calc-who { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.calc-who img { flex: none; }
+.calc-money { font-family: var(--font-mono); font-weight: 600; white-space: nowrap; }
+
+/* A: receipt. Paper slip with a torn edge; the discount is a red minus line. */
+.calc-receipt { position: relative; background: var(--panel); padding: 18px 18px 26px; border-radius: 10px 10px 0 0; font-size: 15px;
+  -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 16px 100%;
+          mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 16px 100%; }
+.calc-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0; }
+.calc-row + .calc-row { border-top: 1px dashed var(--control-border); }
+.calc-row .calc-money { font-size: 18px; }
+.calc-row-discount { color: var(--deal); font-weight: 700; }
+.calc-row-discount b { background: var(--deal); color: #ffffff; font-size: 12px; padding: 2px 6px; border-radius: 6px; }
+.calc-row-discount .calc-money { font-size: 22px; font-weight: 700; }
+.calc-row.calc-row-total { border-top: 3px double var(--text); margin-top: 4px; padding-top: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; font-size: 14px; }
+.calc-row-total .calc-money { font-size: clamp(30px, 3.4vw, 40px); font-weight: 700; letter-spacing: -1px; background: var(--highlight); padding: 0 8px; text-transform: none; }
+
+/* B: one bar is the whole official bill, split into pay and keep. */
+.calc-split-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-weight: 700; color: var(--text); }
+.calc-split-head .calc-money { font-size: 18px; text-decoration: line-through; text-decoration-color: var(--deal); text-decoration-thickness: 2px; }
+.calc-split-head small { font-size: 12px; color: var(--muted); text-decoration: none; }
+.calc-split-bar { display: flex; height: 64px; margin-top: 12px; border: 3px solid var(--text); border-radius: 12px; overflow: hidden; background: var(--panel); }
+.calc-split-bar i { display: flex; align-items: center; justify-content: center; }
+.calc-split-pay { flex: none; background: var(--text); transition: width .55s cubic-bezier(.2, .8, .2, 1); }
+.calc-split-save { flex: 1; border-left: 3px solid var(--text); background: var(--highlight) repeating-linear-gradient(-45deg, #0000 0 10px, #ffffff55 10px 20px); }
+.calc-split-save b { font-weight: 900; font-stretch: 75%; font-size: 30px; font-style: normal; }
+.calc-split-legend { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; margin: 14px 0 0; }
+.calc-split-legend div { display: grid; gap: 2px; padding-left: 14px; border-left: 6px solid var(--text); }
+.calc-split-legend dt { font-size: 13px; font-weight: 700; color: var(--muted); }
+.calc-split-legend dd { margin: 0; font-family: var(--font-mono); font-weight: 700; font-size: 20px; }
+.calc-split-legend-save { border-left-color: var(--highlight) !important; text-align: right; justify-items: end; padding: 0 0 0 14px; }
+.calc-split-legend-save dd { font-family: inherit; font-weight: 900; font-stretch: 70%; font-size: clamp(40px, 4.4vw, 56px); line-height: 1; background: var(--highlight); padding: 0 8px; }
+
+/* C: answer first, then the equation that proves it. */
+.home .calc-eq-label { font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text); }
+.calc-eq-hero { display: inline-block; margin-top: 6px; font-weight: 900; font-stretch: 70%; font-size: clamp(56px, 6vw, 84px); line-height: .95; color: var(--text); background: linear-gradient(transparent 55%, var(--highlight) 55%); }
+.calc-eq { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, .8fr); align-items: stretch; gap: 6px; margin-top: 16px; }
+.calc-eq-tile { display: grid; align-content: space-between; gap: 6px; padding: 10px 12px; background: var(--panel); border: 2px solid var(--text); border-radius: 10px; min-width: 0; }
+.calc-eq-tile .calc-who { font-size: 12px; font-weight: 700; color: var(--muted); }
+.calc-eq-tile .calc-money { font-size: 16px; }
+.calc-eq-ours { background: var(--text); color: var(--highlight); }
+.calc-eq-ours .calc-who { color: #c9c9c1; }
+.calc-eq-save { background: var(--deal); border-color: var(--deal); color: #ffffff; }
+.calc-eq-save .calc-who { color: #ffffff; text-transform: uppercase; letter-spacing: 1px; }
+.calc-eq-save .calc-money { font-family: inherit; font-weight: 900; font-stretch: 75%; font-size: 26px; line-height: 1; }
+.calc-eq-op { align-self: center; font-weight: 900; font-size: 26px; }
+
+.home .deal-calculator-percent { margin-top: 14px; font-weight: 800; font-size: 17px; color: var(--deal); }
+@media (prefers-reduced-motion: no-preference) {
+  .deal-calculator-result > * { animation: calc-in .35s cubic-bezier(.2, .8, .2, 1); }
+}
+@keyframes calc-in { from { transform: translateY(6px); opacity: 0; } }
+
+/* Dev-only switcher for the three result layouts. */
+.calc-variant-switch { position: fixed; z-index: 50; left: 50%; bottom: 16px; translate: -50% 0; display: flex; gap: 4px; padding: 6px; background: var(--text); border-radius: 999px; box-shadow: 0 8px 24px #0004; }
+.calc-variant-switch a { padding: 8px 14px; border-radius: 999px; color: #ffffff; font-weight: 700; font-size: 14px; text-decoration: none; }
+.calc-variant-switch a[aria-current="true"] { background: var(--highlight); color: var(--text); }
 .home .deal-calculator-note { margin-top: 14px; font-family: var(--font-mono); font-size: 12px; line-height: 1.6; min-height: 4.8em; }
 .deal-calculator .button { display: flex; margin-top: 18px; }
 
 /* Ticker band */
 .deal-ticker { background: var(--highlight); border-block: 3px solid var(--text); padding: 16px 0; }
 .deal-ticker .home-wrap { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px 0; font-weight: 900; font-stretch: 75%; font-size: 24px; line-height: 1.2; text-transform: uppercase; }
-.deal-ticker span { display: inline-flex; align-items: center; }
+.deal-ticker span { display: inline-flex; align-items: center; gap: 10px; }
+.deal-ticker b { background: var(--deal); color: #ffffff; padding: 0 8px; border-radius: 6px; transform: rotate(-3deg); }
 /* Plain round separators: a star glyph read too much like a provider logo. */
-.deal-ticker span + span::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--text); margin: 0 28px; }
+.deal-ticker span + span::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--text); margin: 0 20px; }
 
 /* Deal cards */
 .deal-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px 20px; }
@@ -85,11 +141,21 @@
 .deal-card-meta, .deal-card-unit, .deal-card-basis { font-family: var(--font-mono); font-size: 13px; }
 .deal-card-meta { text-transform: uppercase; padding-right: 64px; }
 .deal-card-basis { color: var(--muted); }
-.deal-card h3 { font-size: 26px; font-weight: 800; }
+.deal-card h3 { display: flex; align-items: flex-start; gap: 10px; font-size: 26px; font-weight: 800; line-height: 1.15; }
+/* Logo sits in its own column so a wrapped name lines up with the first line, not under the logo. */
+.deal-card h3 .provider-logo { width: 26px; height: 26px; margin-top: .1em; }
 .deal-card-price { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .deal-card-price .deal-strike { font-family: var(--font-mono); font-size: 20px; }
 .deal-card-price strong { font-weight: 900; font-stretch: 75%; font-size: 58px; line-height: 1; }
-.deal-card-saving { display: flex; align-items: center; background: var(--highlight); font-weight: 800; font-size: 16px; padding: 8px 12px; border-radius: 8px; }
+/* What you pay as a share of the official price. */
+.deal-card-bar { align-self: stretch; display: block; height: 8px; margin-top: 4px; border-radius: 999px; background: repeating-linear-gradient(-45deg, #e1e1d9 0 5px, #ecece5 5px 10px); }
+.deal-card-bar i { display: block; height: 100%; border-radius: inherit; background: var(--deal); }
+.deal-card-saving { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; background: var(--text); color: #ffffff; font-weight: 700; font-size: 15px; padding: 10px 12px; border-radius: 8px; }
+.deal-card-saving b { color: var(--highlight); font-weight: 900; }
+.deal-card { transition: transform .2s ease, box-shadow .2s ease; }
+.deal-card:hover { transform: translate(-4px, -4px); box-shadow: 8px 8px 0 var(--text); }
+.deal-card .deal-burst { transition: transform .25s cubic-bezier(.2, 1.4, .4, 1); }
+.deal-card:hover .deal-burst { transform: rotate(-6deg) scale(1.12); }
 .deal-card-link { align-self: end; justify-self: start; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
 
 /* How it works: its own dark band with a flow diagram and step cards */
@@ -222,6 +288,12 @@
   .deal-burst-large small { font-size: 10px; }
   .home h2.deal-calculator-title { padding-right: 84px; }
   .home .deal-calculator-note { min-height: 6.4em; }
+  .calc-eq { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+  .calc-eq-save { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; }
+  .calc-eq-op:nth-of-type(2) { display: none; }
+  .calc-split-legend { grid-template-columns: minmax(0, 1fr); }
+  .calc-split-legend-save { text-align: left; justify-items: start; }
+  .calc-row { flex-wrap: wrap; }
   .deal-ticker .home-wrap { font-size: 18px; gap: 6px 0; }
   .deal-ticker span + span::before { margin: 0 14px; }
   .home-code { box-shadow: 6px 6px 0 var(--highlight); }

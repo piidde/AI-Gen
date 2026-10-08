@@ -18,6 +18,8 @@
 }
 
 .public-chrome-account { justify-self: end; }
+.public-chrome-header .button { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.public-chrome-header .key-icon { flex: none; }
 .public-chrome-nav a[aria-current="page"] {
   text-decoration: underline;
   text-decoration-thickness: 3px;
