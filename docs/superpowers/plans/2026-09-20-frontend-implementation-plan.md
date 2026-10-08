@@ -32,9 +32,9 @@ compatible prerender/content mechanism during S01 and record the decision.
 | Working branch | `main`; redesign branch `feat/deal-style-rollout` preserved and pushed |
 | Inspected code baseline | `67a8386` — frontend plan naming; baseline verified in H-004 |
 | Current implementation step | H-072 dashboard connected to the live backend (S12 code complete, uncommitted) |
-| Next action | Owner review of the working tree, then the operator steps in docs/GO_LIVE.md (apply migration 20261008120000, Stripe webhook/test purchase, Email Service onboarding, offers/models), commit/deploy only when authorized |
+| Next action | Operator steps in docs/GO_LIVE.md: Stripe secrets/webhook and test purchase, Email Service onboarding, offers and models via admin API |
 | Latest completed work | H-072: all /dashboard pages read/write /v1; demo modules removed; backend preferences, billing profile, receipts, savings, incidents and alerts added |
-| Delivery | Redesign committed as `0696d41` and pushed to main; live publication blocked by Cloudflare authentication |
+| Delivery | H-072 committed (45b7eff, 8878c06), pushed to main and deployed to aiapi.deals (Worker version a87e6337); migration dashboard_live applied to Supabase |
 | Latest verification | H-072: backend npm test 49/49, typecheck + build dry-run passed; frontend typecheck/build passed; auth fixture 56 passed / 2 skipped; main suite only the 4 pre-existing catalogue failures (also failing on HEAD cf98425) |
 | Global blocker | None for mock-first frontend work; verified API examples and real publication remain gated under B07/B08/S12/S13. |
 | Do not forget | Equal image/text acquisition; credits never expire; F-001 fixed in local artifacts only; preserve partner authentication; B09/B12/S12/S13 gates remain |
@@ -2082,3 +2082,13 @@ skipped with a mocked `/v1` backend; main suite fails only the 4 catalogue/filte
 tests that also fail on unmodified HEAD (text-first ordering and live EUR changes
 from afeb090). Not verified: real Stripe test purchase, real email delivery,
 migration on the hosted project. Nothing committed, pushed or deployed.
+
+H-072 delivery (owner authorized "alles"): migration `dashboard_live` applied to
+Supabase `pwaiidpiymmeppxebfjd` and checked (browser roles have no access).
+Committed 45b7eff, pushed main and `feat/live-dashboard`, deployed (Worker
+version a87e6337). The first deploy exposed a pre-existing rewrite bug from the
+prerender change: `.html` rewrite targets were answered with a 307 to `/spa`, so
+/login and /dashboard showed Page not found. Fixed in 8878c06 (canonical targets)
+and redeployed; /login, /dashboard/*, /blog, /models/*, /status return 200 at their
+own URLs and unknown paths 404. Stripe secrets are not yet set in the Worker.
+
