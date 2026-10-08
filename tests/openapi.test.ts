@@ -8,7 +8,7 @@ const paths = document.paths as Record<string, Record<string, any>>;
 
 test("every implemented HTTP route has an operation, responses and required path parameters", () => {
   const source = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
-  const registered = [...source.matchAll(/app\.(get|post|delete)\("([^"]+)"/g)].map((match) => [match[1], match[2].replace(/:([A-Za-z]+)/g, "{$1}")]);
+  const registered = [...source.matchAll(/app\.(get|post|put|delete)\("([^"]+)"/g)].map((match) => [match[1], match[2].replace(/:([A-Za-z]+)/g, "{$1}")]);
   assert.equal(Object.keys(paths).length, new Set(registered.map(([, route]) => route)).size);
   const ids = new Set<string>();
   for (const [method, route] of registered) {
@@ -21,7 +21,7 @@ test("every implemented HTTP route has an operation, responses and required path
     for (const match of route.matchAll(/\{([^}]+)\}/g)) {
       assert.ok(operation.parameters.some((param: any) => param.in === "path" && param.name === match[1] && param.required === true), route);
     }
-    if (method === "post") assert.ok(operation.requestBody?.content["application/json"].schema, route);
+    if (method === "post" || method === "put") assert.ok(operation.requestBody?.content["application/json"].schema, route);
   }
 });
 

@@ -158,8 +158,7 @@ export default function Settings() {
                   aria-describedby="email-hint"
                 />
                 <p id="email-hint">
-                  Changing your sign-in email requires a verified account-access
-                  flow.
+                  Change your sign-in email under Security.
                 </p>
               </div>
               <div className="form-footer">

@@ -46,6 +46,12 @@ const databaseErrors: Record<string, { status: number; message: string }> = {
   invalid_stripe_event: { status: 400, message: "The payment event is invalid." },
   unsupported_stripe_event: { status: 400, message: "The payment event type is not supported." },
   unsupported_dispute_resolution: { status: 400, message: "The dispute resolution is not supported." },
+  invalid_usage_filter: { status: 400, message: "The usage filters are invalid." },
+  invalid_preferences: { status: 400, message: "Enter a positive alert threshold to enable low-balance emails." },
+  invalid_billing_profile: { status: 400, message: "The billing details are invalid." },
+  payment_not_found: { status: 404, message: "The payment was not found." },
+  invalid_incident: { status: 400, message: "The incident update is invalid." },
+  incident_not_found: { status: 404, message: "The incident was not found." },
 };
 
 export function mapDatabaseError(message: string): HttpError {

@@ -3,8 +3,6 @@ import type { FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AuthShell from "../components/AuthShell";
 import Button from "../components/Button";
-import BillingProfileFields from "../components/BillingProfileFields";
-import { demoSnapshot } from "../data/demoSnapshot";
 import { useAuth } from "../auth/AuthProvider";
 import { getAuthCallbackUrl, getErrorMessage, getSafeNext } from "../auth/authUtils";
 import {
@@ -23,7 +21,6 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [billing, setBilling] = useState(() => ({ ...demoSnapshot.profile.billing }));
   const [confirmationEmail, setConfirmationEmail] = useState("");
   const [resending, setResending] = useState(false);
   const [confirmationMessage, setConfirmationMessage] = useState("");
@@ -189,11 +186,6 @@ export default function Signup() {
             required
           />
         </div>
-        <details className="signup-billing">
-          <summary>Optional billing details</summary>
-          <p>Sample preview only: these details are not sent with signup and reset when you leave this page. You can skip this section.</p>
-          <BillingProfileFields prefix="signup-billing" value={billing} onChange={setBilling} />
-        </details>
         {error && (
           <p className="auth-error" role="alert">
             {error}
@@ -210,8 +202,7 @@ export default function Signup() {
       </form>
 
       <p className="auth-footer">
-        With any available sign-in method, billing details can be completed later in Settings. No onboarding step is required.
-        {" "}<Link to="/dashboard/settings">Complete billing details after sign-in</Link>
+        Billing details are optional and can be added later in Settings.
       </p>
       <p className="auth-footer">
         Already have an account? <Link to={`/login?next=${encodeURIComponent(next)}`}>Sign in</Link>

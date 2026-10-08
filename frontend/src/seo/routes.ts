@@ -27,7 +27,7 @@ export type RouteMeta = {
 export const routeMeta: RouteMeta[] = [
   { path: "/blog", title: "Image and text cost guides", description: "Understand image request tariffs and text token components with dated reference guides.", indexable: true, changefreq: "monthly" },
   ...publishedBlogArticles.map(article => ({ path: `/blog/${article.slug}`, title: article.title, description: article.summary, indexable: true, changefreq: "monthly" as const })),
-  { path: "/updates", title: "Updates", description: "Sample product announcements and the AIAPI.deals updates archive preview.", indexable: false },
+  { path: "/updates", title: "Updates", description: "Product announcements from AIAPI.deals.", indexable: false },
   ...updates.map(update => ({ path: `/updates/${update.slug}`, title: update.title, description: update.summary, indexable: false })),
   ...familyPages.map(page => ({ path: `/models/${page.slug}`, title: `${page.family} models & pricing`, description: page.description, indexable: true, priority: 0.8, changefreq: "weekly" as const })),
   {
@@ -70,7 +70,7 @@ export const routeMeta: RouteMeta[] = [
     path: "/status",
     title: "Service status",
     description:
-      "Service status source availability, fictional incident previews and dated model reference notices.",
+      "Published service incidents and dated model reference notices.",
     indexable: true,
     priority: 0.5,
     changefreq: "daily",

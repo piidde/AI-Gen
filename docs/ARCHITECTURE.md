@@ -59,7 +59,10 @@ Feature stages add their specific operations. Supabase auth remains independent.
 ## Deployment and operations
 
 `wrangler.jsonc` defines the Worker, same-origin Vite assets, private R2 binding,
-media queue/consumer, five-minute cron, and an isolated staging name/bucket/queue.
+media queue/consumer, five-minute cron (recovery, cleanup and low-balance alerts),
+the `EMAIL` Cloudflare Email Sending binding (sender `ALERT_FROM_EMAIL`), and an
+isolated staging name/bucket/queue (staging has no email binding, so alerts are skipped).
+Go-live steps are listed in [GO_LIVE.md](GO_LIVE.md).
 Cloudflare observability is enabled. Sentry is an optional Worker binding via
 `SENTRY_DSN`, with request bodies, cookies, authorization headers, and default PII
 excluded. Alert destinations and retention still require operator configuration.
@@ -104,6 +107,10 @@ suspension, upstream shutdown, and platform spending limits are required directi
 for financial protection; mechanisms/thresholds remain OPEN (OD-011).
 
 ## Frontend architecture
+
+The authenticated dashboard is a client of the same-origin `/v1` API: pages load
+through `useApiResource` in `frontend/src/data/api.ts` with the Supabase access token,
+and `npm --prefix frontend run dev` proxies `/v1` to `wrangler dev` on port 8787.
 
 [Accepted ADR-005](decisions/ADR-005-public-build-time-prerendering.md) selects
 a Vite server build plus React static

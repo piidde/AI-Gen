@@ -1,97 +1,79 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
-import { useAccountDemo } from '../data/AccountDemoProvider';
-import { useBillingDemo } from '../data/BillingDemoProvider';
+import { getAuthCallbackUrl } from '../auth/authUtils';
+import { SUPABASE_CONFIG_ERROR, supabase } from '../auth/supabase';
 import { hasPasswordIdentity } from '../data/accountSettings';
-import { waitForDemo } from '../data/demoClient';
 import Button from './Button';
 import Dialog from './Dialog';
 
-type Action = 'email' | 'password' | 'identity' | 'delete' | 'done';
+type Action = 'email' | 'password' | 'done';
 
 export default function AccountAccess() {
   const { user } = useAuth();
-  const { pendingEmail, setPendingEmail } = useAccountDemo();
-  const { data } = useBillingDemo();
-  const balance = BigInt(data.balance).toLocaleString('en-US');
   const [action, setAction] = useState<Action | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
-  const [confirmed, setConfirmed] = useState(false);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const operation = useRef<AbortController | null>(null);
-  useEffect(() => () => operation.current?.abort(), []);
   const passwordAccount = user ? hasPasswordIdentity(user) : false;
+  const pendingEmail = user?.new_email;
 
   function close() {
-    operation.current?.abort(); operation.current = null;
-    setAction(null); setEmail(''); setPassword(''); setConfirmation(''); setConfirmed(false); setPending(false); setError('');
+    if (pending) return;
+    setAction(null); setEmail(''); setPassword(''); setConfirmation(''); setError('');
   }
-  function open(next: Action) { close(); setMessage(''); setAction(next); }
+  function open(next: Action) { setMessage(''); setError(''); setAction(next); }
 
   async function submit() {
-    if (operation.current || !action || action === 'done') return;
+    if (pending || !action || action === 'done') return;
     setError('');
+    if (!supabase) { setError(SUPABASE_CONFIG_ERROR); return; }
     if (action === 'email' && email.trim().toLowerCase() === user?.email?.toLowerCase()) { setError('Enter a different email address.'); return; }
-    if (action === 'password' && (password.length < 8 || password !== confirmation)) { setError('Use at least 8 sample characters and matching confirmation. Do not enter a real password.'); return; }
-    if ((action === 'identity' || action === 'delete') && !confirmed) return;
-    const controller = new AbortController(); operation.current = controller; setPending(true);
+    if (action === 'password' && password.length < 8) { setError('Use at least 8 characters.'); return; }
+    if (action === 'password' && password !== confirmation) { setError('The passwords do not match.'); return; }
+    setPending(true);
     try {
-      await waitForDemo({ signal: controller.signal, delayMs: 500 });
-      if (controller.signal.aborted) return;
-      if (action === 'identity') { setConfirmed(false); setAction('delete'); }
-      else {
-        if (action === 'email') { setPendingEmail(email.trim()); setMessage('Mock email change pending verification. No email was sent; your sign-in email is unchanged.'); }
-        if (action === 'password') setMessage('Mock password change complete. Your real password and sessions are unchanged.');
-        if (action === 'delete') setMessage('Mock deletion complete. Your real account was not deleted; your credits, API access and session are unchanged.');
-        setPassword(''); setConfirmation(''); setAction('done');
-      }
-    } catch (cause) {
-      if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Mock operation failed.');
+      const { error: updateError } = action === 'email'
+        ? await supabase.auth.updateUser({ email: email.trim() }, { emailRedirectTo: getAuthCallbackUrl('/dashboard/settings') })
+        : await supabase.auth.updateUser({ password });
+      if (updateError) { setError(updateError.message); return; }
+      setMessage(action === 'email'
+        ? `Check ${email.trim()} (and your current inbox if required) to confirm the change. Until then you keep signing in with ${user?.email}.`
+        : 'Your password has been changed.');
+      setPassword(''); setConfirmation(''); setAction('done');
+    } catch {
+      setError('The change could not be saved. Try again.');
     } finally {
-      if (!controller.signal.aborted) { operation.current = null; setPending(false); }
+      setPending(false);
     }
   }
 
-  const title = pending ? 'Mock operation pending…' : error ? 'Mock operation failed'
-    : action === 'email' ? 'Change email (mock)' : action === 'password' ? 'Change password (mock)'
-      : action === 'identity' ? 'Confirm identity (simulation)' : action === 'delete' ? 'Confirm account deletion (mock)' : 'Mock operation complete';
+  const title = action === 'email' ? 'Change email' : action === 'password' ? 'Change password' : 'Change requested';
   return <>
     <div className="panel setting-section">
       <h2>Account access</h2>
-      <p>Email and password changes are previews. They do not change your sign-in details or send email.</p>
       <div className="setting-row"><div><h3>Sign-in email</h3><p>{user?.email || 'No email available'}</p>
-        {pendingEmail && <p role="status">Mock pending verification: {pendingEmail}. Current email remains {user?.email}.</p>}</div>
+        {pendingEmail && <p role="status">Pending confirmation: {pendingEmail}. Your current email stays active until you confirm.</p>}</div>
         <Button className="secondary" onClick={() => open('email')}>Change email</Button></div>
-      <div className="setting-row"><div><h3>Password</h3><p>{passwordAccount ? 'Use sample text to preview a change.' : 'Your sign-in provider manages your password.'}</p></div>
+      <div className="setting-row"><div><h3>Password</h3><p>{passwordAccount ? 'Choose a new password of at least 8 characters.' : 'Your sign-in provider manages your password.'}</p></div>
         {passwordAccount && <Button className="secondary" onClick={() => open('password')}>Change password</Button>}</div>
       <div className="setting-row"><div><h3>API keys</h3><p>Manage your API access.</p></div><Link className="text-link" to="/dashboard/api-keys">Manage API keys ↗</Link></div>
     </div>
-    <div className="panel setting-section settings-danger-zone"><h2>Danger zone</h2><p>Deleting your account would forfeit your <strong>{balance} remaining demo credits</strong> and end API access. Credits do not expire while your account is open.</p>
-      <p>This preview does not delete your account or sign you out.</p>
-      <Button className="danger" onClick={() => open('identity')}>Preview account deletion</Button></div>
+    <div className="panel setting-section"><h2>Delete account</h2><p>To close your account, <Link className="text-link" to="/support">contact support</Link> from your sign-in email. Unused credits are forfeited when an account is deleted.</p></div>
     {action && <Dialog title={title} onClose={close}>
-      {action !== 'done' && <>
-        <form onSubmit={event => { event.preventDefault(); void submit(); }}>
-          {action === 'email' && <><p>Verification would be required before the new email becomes active. This mock sends nothing.</p><div className="field"><label htmlFor="new-account-email">New email address</label><input id="new-account-email" type="email" required value={email} disabled={pending} onChange={event => setEmail(event.target.value)} /></div></>}
-          {action === 'password' && <><p>Use made-up sample text only. No real password is checked, stored or changed.</p>
-            <div className="field"><label htmlFor="sample-password">Sample new password</label><input id="sample-password" type="password" autoComplete="off" minLength={8} required value={password} disabled={pending} onChange={event => setPassword(event.target.value)} /></div>
-            <div className="field"><label htmlFor="sample-password-confirm">Confirm sample password</label><input id="sample-password-confirm" type="password" autoComplete="off" minLength={8} required value={confirmation} disabled={pending} onChange={event => setConfirmation(event.target.value)} /></div></>}
-          {action === 'identity' && <><p>You have <strong>{balance} remaining demo credits</strong>. Credits never expire; deletion would forfeit them and terminate API access.</p><p>Real deletion would require fresh authentication. Do not enter a password: this checkbox only simulates successful identity confirmation.</p>
-            <label className="setting-row"><span>Simulate confirmed identity</span><input type="checkbox" checked={confirmed} disabled={pending} onChange={event => setConfirmed(event.target.checked)} /></label></>}
-          {action === 'delete' && <><p>Identity confirmation simulated. Deletion would forfeit all <strong>{balance} remaining demo credits</strong> and terminate API access. Credits otherwise never expire.</p>
-            <label className="setting-row"><span>I understand credit forfeiture and API-access termination</span><input type="checkbox" checked={confirmed} disabled={pending} onChange={event => setConfirmed(event.target.checked)} /></label></>}
-          {error && <p className="error" role="alert">{error}</p>}
-          <div className="form-footer"><Button type="submit" className={action === 'delete' ? 'danger' : ''} disabled={pending || ((action === 'identity' || action === 'delete') && !confirmed)}>
-            {pending ? 'Pending…' : action === 'identity' ? 'Continue with simulated identity' : action === 'delete' ? 'Confirm mock deletion' : action === 'email' ? 'Request mock email change' : 'Save mock password'}
-          </Button><Button className="secondary" onClick={close}>Cancel</Button></div>
-        </form>
-      </>}
+      {action !== 'done' && <form onSubmit={event => { event.preventDefault(); void submit(); }}>
+        {action === 'email' && <><p>We send a confirmation link before the new email becomes active.</p><div className="field"><label htmlFor="new-account-email">New email address</label><input id="new-account-email" type="email" autoComplete="email" required value={email} disabled={pending} onChange={event => setEmail(event.target.value)} /></div></>}
+        {action === 'password' && <>
+          <div className="field"><label htmlFor="new-password">New password</label><input id="new-password" type="password" autoComplete="new-password" minLength={8} required value={password} disabled={pending} onChange={event => setPassword(event.target.value)} /></div>
+          <div className="field"><label htmlFor="new-password-confirm">Confirm new password</label><input id="new-password-confirm" type="password" autoComplete="new-password" minLength={8} required value={confirmation} disabled={pending} onChange={event => setConfirmation(event.target.value)} /></div></>}
+        {error && <p className="error" role="alert">{error}</p>}
+        <div className="form-footer"><Button type="submit" disabled={pending}>{pending ? 'Saving…' : action === 'email' ? 'Send confirmation' : 'Change password'}</Button><Button className="secondary" disabled={pending} onClick={close}>Cancel</Button></div>
+      </form>}
       {action === 'done' && <p role="status">{message}</p>}
     </Dialog>}
+    {message && !action && <p role="status">{message}</p>}
   </>;
 }

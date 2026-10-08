@@ -1,54 +1,50 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
-test("status previews distinguish stale, unavailable and resolved evidence across model cards", async ({ page }, info) => {
+const incident = (resolved: string | null) => ({
+  id: "00000000-0000-4000-8000-0000000000e1", title: "Image delays", impact: "gpt-image-2 requests are slower than usual.",
+  service: "Image generation", model_ids: ["gpt-image-2"], started_at: "2026-10-08T08:00:00Z", updated_at: resolved ?? "2026-10-08T08:20:00Z", resolved_at: resolved,
+  timeline: [...(resolved ? [{ at: resolved, message: "Recovered." }] : []), { at: "2026-10-08T08:20:00Z", message: "Investigating." }],
+});
+
+async function feed(page: Page, incidents: unknown[]) {
+  await page.route("**/v1/status", route => route.fulfill({ json: { checked_at: new Date().toISOString(), updated_at: "2026-10-08T08:20:00Z", incidents } }));
+}
+
+test("status page shows published incidents and links affected model cards", async ({ page }, info) => {
+  await feed(page, [incident(null)]);
   await page.goto("/status");
-  await expect(page.getByRole("region", { name: "Overall status" })).toContainText("Current service health is unknown");
-  await expect(page.locator(".incident-record")).toHaveCount(0);
-  const scenario = page.getByLabel("Demo status scenario");
-  await scenario.focus();
-  await scenario.selectOption("incident");
-  await expect(page).toHaveURL(/statusPreview=incident/);
-  await expect(scenario).toBeFocused();
+  await expect(page.getByRole("region", { name: "Overall status" })).toContainText("Active incident");
   await expect(page.locator(".incident-record")).toContainText("gpt-image-2");
-  await expect(page.locator(".incident-record")).toContainText("No resolution recorded");
+  await expect(page.locator(".incident-record")).toContainText("Not resolved yet");
   await expect(page.locator(".incident-record time").first()).toContainText(await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone));
   await page.screenshot({ path: info.outputPath("status-incident.png"), fullPage: true });
-  await page.getByRole("link", { name: "Browse model references" }).click();
+  await page.getByRole("link", { name: "Browse models" }).click();
   const card = page.locator('[data-model-id="gpt-image-2"]');
-  await expect(card).toContainText("Sample service disruption");
-  await card.getByRole("link", { name: /incident|status/i }).click();
-  await expect(page).toHaveURL(/statusPreview=incident/);
-  await scenario.selectOption("stale");
-  await expect(page.getByRole("region", { name: "Overall status" })).toContainText("Status source is stale");
-  await expect(page.locator(".incident-record")).toContainText("current state unknown");
-  await page.reload();
-  await expect(scenario).toHaveValue("stale");
-  await scenario.selectOption("resolved");
-  await expect(page.locator(".incident-record")).toContainText("Resolved sample");
-  await expect(page.locator(".incident-record")).not.toContainText("No resolution recorded");
-  await scenario.selectOption("loading");
-  await expect(page.getByRole("region", { name: "Overall status" })).toContainText("Current service health is unknown");
-  await expect(page.locator(".incident-record")).toHaveCount(0);
-  await page.goBack();
-  await expect(scenario).toHaveValue("resolved");
+  await expect(card).toContainText("Active incident affects this model");
+  await card.getByRole("link", { name: "View status" }).click();
+  await expect(page).toHaveURL(/\/status$/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test("sample updates have ordered dates, deep links and noindex without incident confusion", async ({ page }, info) => {
-  await page.goto("/updates");
-  const dates = await page.locator(".updates-list time").evaluateAll(nodes => nodes.map(node => node.getAttribute("datetime")));
-  expect(dates).toEqual([...dates].sort().reverse());
-  await expect(page.locator("main")).toContainText("fictional editorial content");
-  await page.locator(".updates-list h2 a").first().click();
-  await expect(page).toHaveURL(/\/updates\/sample-catalogue-reference$/);
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
-  await expect(page.locator("main")).toContainText("not production news");
+test("resolved incidents stay visible as history and an empty feed claims no health", async ({ page }) => {
+  await feed(page, [incident("2026-10-08T09:10:00Z")]);
+  await page.goto("/status");
+  await expect(page.getByRole("region", { name: "Overall status" })).toContainText("No active incidents reported");
+  await expect(page.locator(".incident-record")).toContainText("Resolved");
+  await expect(page.locator(".incident-record")).toContainText("Recovered.");
+  await page.unroute("**/v1/status");
+  await feed(page, []);
   await page.reload();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Sample announcement: exploring model references");
-  await page.getByRole("link", { name: "All updates" }).click();
+  await expect(page.locator(".incident-record")).toHaveCount(0);
+  await expect(page.getByText("No incidents in the last 7 days.")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Overall status" })).toContainText("contact support");
+});
+
+test("updates archive is empty until real announcements are published", async ({ page }) => {
+  await page.goto("/updates");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Updates");
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: info.outputPath("updates.png"), fullPage: true });
+  await expect(page.getByText("No announcements yet.")).toBeVisible();
+  await expect(page.locator("main")).not.toContainText(/sample|fictional/i);
   await page.goto("/updates/unknown");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Update not found");
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);

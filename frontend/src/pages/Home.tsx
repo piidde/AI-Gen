@@ -162,7 +162,7 @@ export default function Home() {
             <div className="home-product-copy">
               <h2 id="home-dashboard-title" className="home-bighead">See every cent<br />you save.</h2>
               <p>Balance, usage over time and the cost of each single request, all in your dashboard.</p>
-              <Link className="text-link" to="/login?next=%2Fdashboard">Explore the dashboard demo ↗</Link>
+              <Link className="text-link" to="/login?next=%2Fdashboard">Open your dashboard ↗</Link>
             </div>
             <HomeDashboardPreview />
           </section>

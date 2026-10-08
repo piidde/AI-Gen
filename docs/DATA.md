@@ -30,6 +30,12 @@ access tokens and passes the authenticated account ID to ownership-filtered RPCs
   deduplicates webhook deliveries. A private transaction helper records a
   verified purchase before applying an earlier-arriving refund/dispute event.
 - `audit_log` records privileged changes and their required reason.
+- `account_preferences` (migration `20261008120000_dashboard_live.sql`) stores the
+  low-balance switch, integer-micro threshold, product-updates flag and alert
+  arming state; `billing_profiles` stores optional billing details;
+  `service_incidents` stores published incidents with a timeline.
+- `model_prices.official_*` columns hold operator-entered official list prices used
+  only for the savings comparison; they never affect charges.
 
 Media inputs are AES-GCM encrypted before private R2 storage, with the key kept in
 Worker secrets. Queue payloads carry request IDs only. Inputs are removed after
@@ -57,8 +63,10 @@ See [billing](BILLING.md), [security](SECURITY.md), and
 
 ## Frontend demo data
 
-These records belong to the frontend demo and are not server DTOs; the backend
-schema above is authoritative.
+The dashboard no longer uses demo data (2026-10-08): `frontend/src/data/api.ts`
+calls the Worker and `apiModels.ts` maps server DTOs into the view records below.
+The only remaining fixture is the clearly labelled homepage illustration
+(`homeDashboardDemo.ts`). The historical notes below describe the removed demo.
 
 ### Frontend view records (S01.2, 2026-09-20)
 

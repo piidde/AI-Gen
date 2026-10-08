@@ -27,15 +27,15 @@ compatible prerender/content mechanism during S01 and record the decision.
 
 | Field | Current value |
 | --- | --- |
-| Last updated | 2026-10-07 |
+| Last updated | 2026-10-08 |
 | Overall status | IN_PROGRESS overall; S01-S11 DONE for local/mock boundaries |
 | Working branch | `main`; redesign branch `feat/deal-style-rollout` preserved and pushed |
 | Inspected code baseline | `67a8386` — frontend plan naming; baseline verified in H-004 |
-| Current implementation step | H-070 approved homepage style extended across public/auth/account pages |
-| Next action | Authenticate Cloudflare, deploy the approved main revision, verify aiapi.deals. S12 integration remains separate. |
-| Latest completed work | H-070 site-wide styles and responsive corrections; see verification below |
+| Current implementation step | H-072 dashboard connected to the live backend (S12 code complete, uncommitted) |
+| Next action | Owner review of the working tree, then the operator steps in docs/GO_LIVE.md (apply migration 20261008120000, Stripe webhook/test purchase, Email Service onboarding, offers/models), commit/deploy only when authorized |
+| Latest completed work | H-072: all /dashboard pages read/write /v1; demo modules removed; backend preferences, billing profile, receipts, savings, incidents and alerts added |
 | Delivery | Redesign committed as `0696d41` and pushed to main; live publication blocked by Cloudflare authentication |
-| Latest verification | H-070: full frontend 204 passed / 16 skipped; isolated auth 76 passed / 2 skipped; root typecheck/build passed; final scoped checks below |
+| Latest verification | H-072: backend npm test 49/49, typecheck + build dry-run passed; frontend typecheck/build passed; auth fixture 56 passed / 2 skipped; main suite only the 4 pre-existing catalogue failures (also failing on HEAD cf98425) |
 | Global blocker | None for mock-first frontend work; verified API examples and real publication remain gated under B07/B08/S12/S13. |
 | Do not forget | Equal image/text acquisition; credits never expire; F-001 fixed in local artifacts only; preserve partner authentication; B09/B12/S12/S13 gates remain |
 
@@ -175,7 +175,7 @@ is marked complete merely because an earlier demo exists.
 | S09 | Overview and all-time savings | DONE | S09.1-S09.4; V-016/H-027; B02/B04/S12 remain live gates |
 | S10 | Homepage, repository blog and content completion | DONE | H-032 correction with approved card pricing hierarchy; publication and backend equivalence remain gated |
 | S11 | Organic discovery and conversion instrumentation | DONE | S11.1-S11.6 local preparation/verification; V-018/H-031; B09/B12/S12/S13 gates retained |
-| S12 | Replace mocks and verify production contracts | PENDING | Relevant UI slice + corresponding backend/provider gate |
+| S12 | Replace mocks and verify production contracts | IN_PROGRESS (code complete H-072; live verification pending GO_LIVE) | Relevant UI slice + corresponding backend/provider gate |
 | S13 | Integrated review and launch readiness | PENDING | Relevant stages complete; launch gates closed |
 
 Order is a dependency guide, not a mandate to idle behind partner work. S04–S08
@@ -484,13 +484,13 @@ when justified; existing view/mock boundary, auth files and affected pages;
 
 | Live slice | Status | Contract/owner/evidence |
 | --- | --- | --- |
-| Catalogue/availability/rates | PENDING | B01/B02/B04 |
-| Wallet/usage/export/savings | PENDING | B02/B04 |
-| Key management | PENDING | B05 |
-| Account/profile/deletion | PENDING | B06 |
-| Preferences/email delivery | PENDING | B06 |
-| Checkout/orders/documents/refunds | PENDING | B03 |
-| Status/announcements/support | PENDING | B07/B08 |
+| Catalogue/availability/rates | CONNECTED (dashboard /v1/models; public catalogue stays reference) | H-072 |
+| Wallet/usage/export/savings | CONNECTED | H-072; tests/dashboard.test.ts + auth fixture |
+| Key management | CONNECTED | H-072 |
+| Account/profile/deletion | CONNECTED except deletion (deferred, OD-016) | H-072 |
+| Preferences/email delivery | CONNECTED; delivery needs Email Service onboarding | H-072, ADR-007 |
+| Checkout/orders/documents/refunds | CONNECTED (receipts only, OD-003); test-mode purchase pending | H-072 |
+| Status/announcements/support | CONNECTED (incident feed); announcements are repo content | H-072 |
 | Acquisition outcomes | PENDING | Verified events from the above |
 
 **Exit:** every required slice has contract and behavioral evidence; backend
@@ -2059,3 +2059,26 @@ and title. Wrangler has no authenticated session/token and the available browser
 requires Cloudflare sign-in. Publication is therefore BLOCKED pending account
 authentication, not complete. Cloudflare sign-in was opened for the owner; no
 new credentials, permissions, secrets or deployment configuration were created.
+
+### H-072 - 2026-10-08 - Dashboard connected to the live backend (S12 code complete)
+
+Owner asked for a dashboard without any dummy data, prepared for go-live, and chose:
+build backend support for the missing features, live `/v1/models` in the dashboard,
+Cloudflare Email Sending for alerts, no account deletion for now, Stripe receipts only.
+
+Backend: migration `20261008120000_dashboard_live.sql` (filtered/paginated usage,
+UTC overview aggregates, official reference prices + savings, preferences with
+alert arming, billing profiles, payment lookup, incidents) and routes `/v1/usage`
+(filters), `/v1/usage/export.csv`, `/v1/usage/overview`, `/v1/dashboard/savings`,
+`/v1/account/preferences`, `/v1/account/billing-profile`,
+`/v1/billing/payments/{id}/receipt`, `/v1/status`, admin official prices and
+incidents, plus the cron alert step and `EMAIL` binding. Frontend: `data/api.ts`
+client, every dashboard page, Status page and incident notices use live data; all
+demo providers/fixtures removed; signup no longer shows unsaved billing fields.
+
+Verification: backend `npm test` 49/49 (7 new PGlite tests), `npm run build` incl.
+`wrangler deploy --dry-run`; frontend typecheck/build; `test:auth` 56 passed / 2
+skipped with a mocked `/v1` backend; main suite fails only the 4 catalogue/filter
+tests that also fail on unmodified HEAD (text-first ordering and live EUR changes
+from afeb090). Not verified: real Stripe test purchase, real email delivery,
+migration on the hosted project. Nothing committed, pushed or deployed.

@@ -28,9 +28,9 @@ end-to-end calls, and migration rollback.
 ## OD-003 Payment architecture
 
 Status: **DECIDED** for Stripe Checkout and signed webhooks with immutable quotes.
-EUR and USD are supported as offer currencies; no offers are configured. Test
-mode, refund/dispute ordering, receipts/invoices, tax, and payment policy remain
-launch work. See [BILLING.md](BILLING.md).
+EUR and USD are supported as offer currencies; no offers are configured.
+**DECIDED (owner, 2026-10-08):** Stripe receipts only, no invoices. Test mode, tax,
+and payment policy remain launch work. See [BILLING.md](BILLING.md).
 
 ## OD-004 Deployment architecture
 
@@ -179,6 +179,16 @@ Coordinate with OD-004 (hosting, which determines whether `_headers` and
 `_redirects` apply), OD-012 (monitoring and retention overlap with analytics), and
 OD-014 (pricing). See [FRONTEND.md](FRONTEND.md) for the launch checklist.
 
+## OD-016 Transactional email and account deletion
+
+Status: **DECIDED (owner, 2026-10-08)** for low-balance alert delivery through
+Cloudflare Email Sending (public beta, Workers Paid) via the Worker `EMAIL` binding;
+see [ADR-007](decisions/ADR-007-cloudflare-email-sending.md). Supabase Auth keeps
+sending its own auth emails. **DECIDED (owner, 2026-10-08):** self-service account
+deletion is deferred; the dashboard points to support. **OPEN:** retention-safe
+deletion (auth user, keys and profile removed; ledger/payment records kept or
+anonymized for accounting) and the financial-record retention period.
+
 ## Launch gates
 
 Before public sales, apply and review the migration, run database and financial
@@ -186,7 +196,8 @@ behavior tests, validate GrsAI text/media request and response contracts with a
 limited budget, configure and test Stripe, verify all enabled model prices and
 limits, set customer terms/tax/invoicing/retention, configure alarms and Cloudflare
 resources, and complete the focused security/billing review. The backend was
-merged into `main` on 2026-10-06; the website dashboard is not yet connected to it.
+merged into `main` on 2026-10-06. Since 2026-10-08 the dashboard is connected to it
+(no demo data); the remaining go-live steps are in [GO_LIVE.md](GO_LIVE.md).
 
 ## 2026-09-21: upstream purchasing basis confirmed
 

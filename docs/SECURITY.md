@@ -79,6 +79,15 @@ Worker secret `GRSAI_KEYS_JSON`; never store them in Postgres or expose them to 
 browser. The per-request provider key ID is persisted so already accepted jobs
 continue to use the same key; retain old key entries until their jobs finish.
 
+### Dashboard account management (2026-10-08)
+
+Preferences, billing details, receipts and CSV export require a Supabase user token
+(API keys are rejected) and are scoped to the token's account in every RPC. CSV
+cells that could be read as spreadsheet formulas are prefixed. Alert emails are
+looked up with the service role only inside the Worker cron and never logged.
+Email and password changes use Supabase Auth directly (confirmation mail for email
+changes). Receipt links come from Stripe only after an ownership check.
+
 ### Stage 7 account controls and auth recovery
 
 The existing email/password, Google and gated Discord authentication, real reset,

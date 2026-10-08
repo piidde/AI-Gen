@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Button from "../components/Button";
 import CopyButton from "../components/CopyButton";
@@ -6,18 +6,18 @@ import Dialog from "../components/Dialog";
 import FilterSelect from "../components/FilterSelect";
 import { MetricIcon } from "../components/Icon";
 import PageHeading from "../components/PageHeading";
-import { waitForDemo } from "../data/demoClient";
-import { useKeyDemo } from "../data/KeyDemoProvider";
+import { apiFetch, errorMessage, toApiKey, useApiResource, type ApiKeyDto, type CreatedApiKeyDto } from "../data/api";
 import type { ApiKey } from "../data/viewModels";
 import { formatLocalTime } from "../lib/formatting";
 
 export default function ApiKeys() {
-  const { keys, addKey, revokeKey } = useKeyDemo();
+  const list = useApiResource<{ data: ApiKeyDto[] }>("/v1/api-keys");
+  const keys = list.data?.data.map(toApiKey) ?? [];
   const [status, setStatus] = useState<"active" | "revoked" | "all">("active");
-  const [scenario, setScenario] = useState<"success" | "error" | "loading">("success");
   const [action, setAction] = useState<"create" | "created" | "revoke" | "revoked" | null>(null);
   const [name, setName] = useState("");
   const [selected, setSelected] = useState<ApiKey | null>(null);
+  // The secret exists only while the creation dialog is open; it is never stored elsewhere.
   const [secret, setSecret] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -25,6 +25,8 @@ export default function ApiKeys() {
   const listHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => () => operation.current?.abort(), []);
   function close() {
+    // A started create/revoke may still complete on the server; reload to show the truth.
+    if (operation.current) list.reload();
     operation.current?.abort(); operation.current = null;
     setAction(null); setSecret(""); setSelected(null); setName(""); setPending(false); setError("");
   }
@@ -35,37 +37,38 @@ export default function ApiKeys() {
     const controller = new AbortController(); operation.current = controller;
     setPending(true); setError("");
     try {
-      await waitForDemo({ scenario, signal: controller.signal, delayMs: 500 });
-      if (controller.signal.aborted) return;
-      if (scenario === "error") throw new Error("Simulated failure. No demo key changes were saved. Try again.");
       if (action === "create") {
-        const sample = `DEMO-ONLY-NOT-A-VALID-API-KEY-${crypto.randomUUID()}`;
-        addKey({ id: `key-demo-${crypto.randomUUID()}`, name: name.trim(), maskedIdentifier: `•••• •••• ${sample.slice(-8)}`,
-          status: "active", createdAt: new Date().toISOString(), lastUsed: { status: "never" }, revokedAt: null });
-        setSecret(sample); setStatus("active"); setAction("created");
+        const created = await apiFetch<CreatedApiKeyDto>("/v1/api-keys", { method: "POST", body: { name: name.trim() }, signal: controller.signal });
+        if (controller.signal.aborted) return;
+        setSecret(created.secret); setStatus("active"); setAction("created");
       } else if (selected) {
-        revokeKey(selected.id); setAction("revoked");
+        await apiFetch(`/v1/api-keys/${encodeURIComponent(selected.id)}`, { method: "DELETE", signal: controller.signal });
+        if (controller.signal.aborted) return;
+        setAction("revoked");
       }
+      list.reload();
     } catch (cause) {
-      if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Demo operation failed. No demo key changes were saved.");
+      if (!controller.signal.aborted) setError(errorMessage(cause, "The operation could not be completed. Reload the list to check the current state."));
     } finally {
       if (!controller.signal.aborted) { operation.current = null; setPending(false); }
     }
   }
-  const title = pending ? action === "create" ? "Creating sample key…" : "Revoking sample key…"
+  const title = pending ? action === "create" ? "Creating key…" : "Revoking key…"
     : error ? action === "create" ? "Creation failed" : "Revocation failed"
-    : action === "create" ? "Create a sample API key" : action === "created" ? "Sample key created"
-    : action === "revoke" ? `Revoke ${selected?.name}?` : "Sample key revoked";
+    : action === "create" ? "Create an API key" : action === "created" ? "API key created"
+    : action === "revoke" ? `Revoke ${selected?.name}?` : "API key revoked";
   const timezone = new Intl.DateTimeFormat().resolvedOptions().timeZone;
   const visibleKeys = keys.filter(key => status === "all" || key.status === status);
   return <>
     <PageHeading title="API keys" description="Manage access for your apps and integrations.">
       <Button onClick={create}>Create API key +</Button>
     </PageHeading>
-    {keys.length === 0 ? <section className="empty">
+    {list.loading && !list.data && <p role="status">Loading API keys…</p>}
+    {list.error && <section className="notice error" role="alert"><p>{list.error}</p><Button className="secondary" onClick={list.reload}>Try again</Button></section>}
+    {list.data && (keys.length === 0 ? <section className="empty">
       <h2>Create your first API key</h2>
-      <p>A named key helps identify an integration. This preview does not issue credentials.</p>
-      <div className="empty-action"><Button onClick={create}>Create sample key +</Button></div>
+      <p>A named key helps identify an integration. Use it as a Bearer token from your server.</p>
+      <div className="empty-action"><Button onClick={create}>Create API key +</Button></div>
     </section> : <section className="panel">
         <div className="table-head"><h2 ref={listHeading} tabIndex={-1}>Your API keys</h2>
           <span className="small muted">{keys.filter(key => key.status === "active").length} active · {keys.filter(key => key.status === "revoked").length} revoked</span></div>
@@ -86,35 +89,32 @@ export default function ApiKeys() {
             </tr>)}</tbody></table>
         </div>
         {!visibleKeys.length && <p className="section-note">No {status === "all" ? "" : status} keys in this view.</p>}
-        <p className="section-note">Keep keys in your server environment. Use a separate, recognizable name for each integration. Demo metadata lasts until reload or sign-out.</p>
-      </section>}
+        <p className="section-note">Keep keys in your server environment, never in browser or mobile code. Use a separate, recognizable name for each integration.</p>
+      </section>)}
       <section className="notice"><h2><MetricIcon name="keys" />Connecting your first integration?</h2>
-        <p>A verified API base URL and runnable quickstart are not available yet. No sample key on this page authenticates requests.</p>
+        <p>Send the key as <code>Authorization: Bearer &lt;key&gt;</code> to the endpoints in the documentation.</p>
         <p>Lost a secret? Create a replacement, update your integration, then revoke the old key. Secrets cannot be retrieved after closing the creation dialog.</p>
-        <Link className="text-link" to="/docs">Documentation status</Link>
+        <Link className="text-link" to="/docs">API documentation</Link>
       </section>
     {action && <Dialog title={title} onClose={close} fallbackFocus={() => listHeading.current}>
-      {(action === "create" || action === "revoke") && <div className="field"><span>Key operation preview</span><FilterSelect id="key-operation-preview" label="Key operation preview" disabled={pending} value={scenario} onChange={value => setScenario(value as typeof scenario)}
-        options={[{ value: "success", label: "Success" }, { value: "error", label: "Operation error" }, { value: "loading", label: "Keep pending" }]} /></div>}
       {action === "create" && <form onSubmit={event => { event.preventDefault(); void submit(); }}>
-        <p>Name this nonfunctional sample for the integration that would use it. No real credential will be issued.</p>
+        <p>Name the key after the integration that will use it.</p>
         <div className="field"><label htmlFor="key-name">Key name</label><input id="key-name" autoFocus required maxLength={60} pattern=".*\S.*"
           disabled={pending} placeholder="For example, Production" value={name} onChange={event => setName(event.target.value)} /></div>
-        <Button type="submit" disabled={pending}>{pending ? "Creating…" : "Create demo key"}</Button>
+        <Button type="submit" disabled={pending}>{pending ? "Creating…" : "Create key"}</Button>
       </form>}
       {action === "created" && <>
-        <p>Created a sample for “{name.trim()}”. NONFUNCTIONAL demo only: this is not a valid API credential.</p>
-        <div className="demo-key">{secret}</div><CopyButton text={secret} label="Copy sample key" />
-        <p>Save the sample before closing if you want to try copying it. This is the only time it is shown. Closing, navigating away or reloading clears the full sample; only masked metadata remains until reload or sign-out.</p>
+        <p>Created “{name.trim()}”. Copy the secret now and store it in your server environment.</p>
+        <div className="demo-key" data-testid="new-api-key">{secret}</div><CopyButton text={secret} label="Copy API key" />
+        <p>This is the only time the full key is shown. Closing this dialog, navigating away or reloading removes it from this page.</p>
       </>}
       {action === "revoke" && <>
-        <p>Revoking “{selected?.name}” removes it from the active demo list and keeps its history. This cannot be undone in this demo session.</p>
-        <p>For a live integration, revocation stops new requests using that key. Create a replacement and update the integration first to avoid interruption. Effective server revocation and in-flight request behavior still require backend verification.</p>
-        <p>Demo only: no real credential or integration is affected.</p>
-        <Button className="danger" disabled={pending} onClick={() => void submit()}>{pending ? "Revoking…" : "Confirm demo revocation"}</Button>
+        <p>Revoking “{selected?.name}” immediately stops new requests that use it. Its history stays visible. This cannot be undone.</p>
+        <p>Create a replacement and update the integration first to avoid interruption.</p>
+        <Button className="danger" disabled={pending} onClick={() => void submit()}>{pending ? "Revoking…" : "Revoke key"}</Button>
       </>}
-      {action === "revoked" && <p>“{selected?.name}” is revoked in this demo. Its metadata and usage link remain in revoked history. No real key was changed.</p>}
-      {pending && <p role="status">Demo operation pending. Close to cancel.</p>}
+      {action === "revoked" && <p>“{selected?.name}” is revoked. Requests using it are now rejected.</p>}
+      {pending && <p role="status">Working… Closing does not undo a request that already reached the server.</p>}
       {error && <p role="alert">{error}</p>}
     </Dialog>}
   </>;

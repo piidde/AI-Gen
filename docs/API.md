@@ -32,16 +32,23 @@ The response includes X-Request-Id. Generation responses also include X-Takewing
 | GET /v1/files/{requestId}/{index} | Account token or API key | Download a private generated file after ownership and expiry checks. |
 | GET /v1/credits | Account token or API key | Available and reserved USD-value credits. |
 | GET /v1/dashboard/summary | Account token or API key | Customer dashboard aggregates. |
-| GET /v1/usage | Account token or API key | Summary and latest 100 requests. |
+| GET /v1/usage | Account token or API key | Summary plus a filtered page of requests, newest first. Query: from, to (ISO instants), model, key, outcome (completed/failed/pending/unknown), search (ID prefix or model), limit (≤100), offset. Returns total, limit, offset. Rows include tokens/units, price version and API key. |
+| GET /v1/usage/export.csv | Supabase user token | The same filters as CSV, newest 5000 rows; X-Export-Truncated reports omitted rows. Formula-like cells are neutralized. |
+| GET /v1/usage/overview | Account token or API key | period=today/7d/30d/6m/1y/all (UTC, default 30d): totals, UTC daily series and top models, computed server-side. |
+| GET /v1/dashboard/savings | Account token or API key | period (default all): settled charges versus operator-entered official prices; reports compared and excluded request counts. |
+| GET, PUT /v1/account/preferences | Supabase user token | Low-balance alert switch, threshold_micros and product-updates flag. |
+| GET, PUT /v1/account/billing-profile | Supabase user token | Optional billing name, company, address, two-letter country code and VAT ID. |
+| GET /v1/status | None | Published incidents: open ones and those resolved within 7 days. Empty means nothing reported, not verified health. Cached 60 s. |
 | GET /v1/api-keys | Supabase user token | List key metadata. |
 | POST /v1/api-keys | Supabase user token | Create a key and return its secret once. |
 | DELETE /v1/api-keys/{id} | Supabase user token | Revoke one of the user's keys. |
 | GET /v1/billing/offers | Supabase user token | Active EUR/USD top-up offers. The initial database has none. |
 | POST /v1/billing/checkout | Supabase user token | Create or resume an idempotent Stripe Checkout session. |
 | GET /v1/billing/payments | Supabase user token | Payment history and current status. |
+| GET /v1/billing/payments/{id}/receipt | Supabase user token | Stripe receipt link for an owned, confirmed payment; 409 until Stripe issues one. No invoices are generated. |
 | POST /stripe/webhook | Stripe-Signature | Process trusted payment, refund, and dispute events, including closed disputes. |
 
-Administrator routes are under /v1/internal. They require a verified Supabase user ID listed in ADMIN_USER_IDS. They provide operational summaries, account inspection/suspension, API-key revocation, audited credit adjustment, platform/provider controls, model configuration, and purchase-offer configuration. There is no Operations frontend yet.
+Administrator routes are under /v1/internal. They require a verified Supabase user ID listed in ADMIN_USER_IDS. They provide operational summaries, account inspection/suspension, API-key revocation, audited credit adjustment, platform/provider controls, model configuration, official reference prices for savings (`POST /v1/internal/models/{id}/official-prices`), incident publishing (`POST /v1/internal/incidents`), and purchase-offer configuration. There is no Operations frontend yet.
 
 ## Chat request contract
 
@@ -69,10 +76,19 @@ Common codes include authentication_required, api_key_required, model_unavailabl
 
 examples/takewing.http is runnable with the VS Code REST Client extension after setting its base URL and API key variables. It shows chat, media job creation, polling, result retrieval, and authorized downloads. It uses no valid provider credentials.
 
+## Dashboard integration
+
+Since 2026-10-08 every `/dashboard` page reads and writes these routes through
+`frontend/src/data/api.ts` (same-origin, Supabase access token). No demo data,
+simulated outcomes or local-only saves remain in the dashboard. Account deletion is
+not offered yet (support handles it), and receipts come from Stripe; invoices are
+out of scope. The public `/models` catalogue stays a dated reference page.
+
 ## Frontend stage boundaries
 
 These sections record the frontend demo boundaries from the Frontend Implementation
-Plan. They predate the backend contract above, which is now authoritative.
+Plan. They predate the backend contract above, which is now authoritative; the
+dashboard integration above supersedes their mock-only notes.
 
 ### Stage 3 catalogue boundary
 

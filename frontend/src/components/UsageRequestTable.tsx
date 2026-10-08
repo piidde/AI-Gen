@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { UsageRequest } from "../data/viewModels";
-import { billingLabel, requestNetCredits } from "../data/usageDemo";
+import { billingLabel, requestNetCredits, usd } from "../lib/usage";
 import { formatLocalTime } from "../lib/formatting";
 import { requestSupportDetails, safeRequestError } from "../lib/supportDetails";
 import Dialog from "./Dialog";
@@ -29,12 +29,12 @@ export default function UsageRequestTable({ requests, overview = false }: { requ
           <td>{request.durationMs === null ? "Unavailable" : `${request.durationMs} ms`}</td><td>{billingLabel(request)}</td><td>{request.id}</td>
           <td><button className="row-button" aria-label={`Details for ${request.id}`} onClick={() => setSelected(request)}>↗</button></td>
         </tr>)}{requests.length === 0 && <tr><td colSpan={8}>No requests match these filters.</td></tr>}</tbody>
-      </table> : <table><thead><tr>{["Model", "Credits used", "Duration", "Status", "Date and time", ""].map((label, index) => <th scope="col" key={index}>{label || <span className="sr-only">Details</span>}</th>)}</tr></thead>
+      </table> : <table><thead><tr>{["Model", "Charged", "Duration", "Status", "Date and time", ""].map((label, index) => <th scope="col" key={index}>{label || <span className="sr-only">Details</span>}</th>)}</tr></thead>
         <tbody>{requests.map(request => {
           const credits = requestNetCredits(request);
           return <tr key={request.id}>
             <td className="request-model">{request.modelName}</td>
-            <td className="request-credits">{credits === null ? <span className="muted">{request.billing.status === "pending" ? "Pending" : "Unavailable"}</span> : <>{credits}<span className="small muted"> credits</span>{request.billing.status === "refunded" && <span className="request-refunded">Refunded</span>}</>}</td>
+            <td className="request-credits">{credits === null ? <span className="muted">{request.billing.status === "pending" ? "Pending" : "Unavailable"}</span> : <>{usd(credits)}{request.billing.status === "refunded" && <span className="request-refunded">Refunded</span>}</>}</td>
             <td>{durationLabel(request.durationMs)}</td>
             <td><span className={`request-status request-status-${request.outcome}`}>{outcomeLabels[request.outcome]}</span></td>
             <td><time dateTime={request.startedAt}>{shortLocalTime.format(new Date(request.startedAt))}</time></td>
@@ -48,6 +48,7 @@ export default function UsageRequestTable({ requests, overview = false }: { requ
       <dl className="detail-grid">
         {Object.entries({ "Request ID": selected.id, "Started (local)": formatLocalTime(selected.startedAt), "Started (UTC)": selected.startedAt,
           "Completed (local)": formatLocalTime(selected.completedAt), Model: `${selected.modelName} · ${selected.modelId}`, "API key": selected.keyName,
+          ...(selected.error ? { "Error code": selected.error.code } : {}),
           Execution: selected.outcome, Duration: selected.durationMs === null ? "Unavailable" : `${selected.durationMs} ms`, Billing: billingLabel(selected),
           "Rate version": "rateVersion" in selected.billing ? selected.billing.rateVersion : "Unavailable",
           "Input tokens": selected.inputTokens ?? "Not applicable / unavailable", "Output tokens": selected.outputTokens ?? "Not applicable / unavailable",
@@ -56,7 +57,7 @@ export default function UsageRequestTable({ requests, overview = false }: { requ
       </dl>
       {error && <div className="notice"><p><strong>{error.code}</strong>: {error.message}</p><p>{error.advice}</p></div>}
       {(selected.billing.status === "unknown" || selected.billing.status === "pending") && <p>Awaiting billing confirmation. Do not resubmit automatically; the original request may have incurred a charge.</p>}
-      <p className="small">Metadata only. No prompt or generated output is stored in this demo. Charges and refunds shown here are fictional.</p>
+      <p className="small">Metadata only. Prompts are not logged; generated results are kept only for the configured retention period.</p>
       <CopyButton label="Copy support details" text={requestSupportDetails(selected)} />
       <p><Link className="text-link" to="/support">Get help</Link>{" · "}<Link className="text-link" to="/docs">API documentation</Link>{" · "}<Link className="text-link" to="/status">Service status</Link></p>
     </Dialog>}

@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { deals, maxDealPercent, multiply, subtract, usd, usdTotal } from '../src/content/homeDeals';
 import { findRouteMeta } from '../src/seo/routes';
-import { overviewSummary } from '../src/data/overviewDemo';
-import { homeDashboardRequests } from '../src/data/homeDashboardDemo';
+import { homeDashboardPreview } from '../src/data/homeDashboardDemo';
+import { usd as amountLabel } from '../src/lib/usage';
 
 test('homepage deal cards use shared catalogue prices and honest comparisons', async ({ page }, testInfo) => {
   await page.goto('/');
@@ -86,15 +86,15 @@ test('dashboard excerpt uses the actual request table and consistent chart total
   await page.goto('/');
   const preview = page.locator('.home-dashboard-preview');
   const now = new Date();
-  const summary = overviewSummary(homeDashboardRequests(now), '7d', now);
+  const summary = homeDashboardPreview(now);
   await expect(preview.locator('.home-request-trail')).toHaveCount(0);
   await expect(preview.getByRole('heading', { name: 'Recent requests' })).toBeVisible();
   await expect(preview.locator('tbody tr')).toHaveCount(2);
   await expect(preview.getByRole('tabpanel')).toContainText(String(summary.totals.requests));
   await expect(preview.locator('.axis')).toHaveText('3020100');
   await expect(preview.locator('svg desc')).toContainText(': 28');
-  await preview.getByRole('tab', { name: 'Credits used', exact: true }).click();
-  await expect(preview.getByRole('tabpanel')).toContainText(summary.totals.credits);
+  await preview.getByRole('tab', { name: 'Charged', exact: true }).click();
+  await expect(preview.getByRole('tabpanel')).toContainText(amountLabel(summary.totals.credits));
   expect(await preview.evaluate(element => element.getAnimations({ subtree: true }).length)).toBe(0);
 });
 

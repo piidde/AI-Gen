@@ -1,7 +1,4 @@
 import RequireAuth from "./auth/RequireAuth";
-import BillingDemoProvider from "./data/BillingDemoProvider";
-import KeyDemoProvider from "./data/KeyDemoProvider";
-import AccountDemoProvider from "./data/AccountDemoProvider";
 import DashboardLayout from "./components/DashboardLayout";
 import AuthCallback from "./pages/AuthCallback";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -16,8 +13,8 @@ import UpdatePassword from "./pages/UpdatePassword";
 import { Route } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthProvider';
 import App from './App';
-import Models from './pages/Models';
-export default function BrowserApp() { return <AuthProvider><BillingDemoProvider><KeyDemoProvider><AccountDemoProvider><App>
+import DashboardModels from './pages/DashboardModels';
+export default function BrowserApp() { return <AuthProvider><App>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -32,10 +29,10 @@ export default function BrowserApp() { return <AuthProvider><BillingDemoProvider
           }
         >
           <Route index element={<Overview />} />
-          <Route path="models" element={<Models />} />
+          <Route path="models" element={<DashboardModels />} />
           <Route path="usage" element={<Usage />} />
           <Route path="billing" element={<Billing />} />
           <Route path="api-keys" element={<ApiKeys />} />
           <Route path="settings" element={<Settings />} />
         </Route>
-</App></AccountDemoProvider></KeyDemoProvider></BillingDemoProvider></AuthProvider>; }
+</App></AuthProvider>; }

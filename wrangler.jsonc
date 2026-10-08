@@ -17,6 +17,7 @@
     "MAX_RESULT_BYTES": "268435456",
     "ALLOWED_ORIGINS": "https://aiapi.deals",
     "PUBLIC_SITE_URL": "https://aiapi.deals",
+    "ALERT_FROM_EMAIL": "alerts@aiapi.deals",
     "SUPABASE_URL": "https://pwaiidpiymmeppxebfjd.supabase.co",
     "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_ei5kOG-ZzeA-cE43s_fuxw_dhEGqBTe"
   },
@@ -44,6 +45,8 @@
     ]
   },
   "triggers": { "crons": ["*/5 * * * *"] },
+  // Cloudflare Email Sending (Workers Paid). The domain must be onboarded to Email Service.
+  "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["alerts@aiapi.deals"] }],
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1,

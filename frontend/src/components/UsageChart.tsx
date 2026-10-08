@@ -1,10 +1,10 @@
 import { useId, useRef, useState } from "react";
 import type { KeyboardEvent, PointerEvent } from "react";
-import { chartMetrics } from "../demo/fixtures";
 import Tabs from "./Tabs";
+import { usd } from "../lib/usage";
 import "./UsageChart.css";
 
-type Metric = keyof typeof chartMetrics;
+type Metric = "Requests" | "Charged";
 type Point = { x: number; y: number };
 
 // Cubic Hermite tangents flatten at extrema, so the curve cannot overshoot a daily value.
@@ -27,34 +27,37 @@ function smoothPath(points: Point[]): string {
   }, `M${points[0]!.x} ${points[0]!.y}`);
 }
 
-export default function UsageChart({ daily, totals, granularity = "day" }: {
+// Charged amounts are decimal USD strings; the series is plotted in the given timezone.
+export default function UsageChart({ daily, totals, granularity = "day", timezone }: {
   granularity?: "day" | "month";
-  daily?: { day: string; requests: number; credits: string }[];
-  totals?: { requests: number; credits: string };
+  daily: { day: string; requests: number; credits: string }[];
+  totals: { requests: number; credits: string };
+  timezone: string;
 }) {
   const [metric, setMetric] = useState<Metric>("Requests");
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const gradientId = useId().replaceAll(":", "");
-  const values = daily?.map(day => metric === "Requests" ? day.requests : Number(day.credits));
-  const observedMax = values ? Math.max(...values) || 1 : 1;
+  const values = daily.map(day => metric === "Requests" ? day.requests : Number(day.credits));
+  const observedMax = Math.max(0, ...values) || 1;
   const max = metric === "Requests" ? Math.ceil(observedMax / 3) * 3 : observedMax;
-  const data = values && totals ? {
-    values, max, total: metric === "Requests" ? String(totals.requests) : totals.credits,
-    unit: metric === "Requests" ? "requests" : "credits used",
-    axis: [max, max * 2 / 3, max / 3, 0].map(value => value.toLocaleString("en-US", { maximumFractionDigits: 2 })),
-  } : chartMetrics[metric];
-  const labels = daily?.map(day => new Date(`${day.day}T12:00:00`).toLocaleDateString("en", granularity === "month" ? { month: "short", year: "2-digit" } : { month: "short", day: "numeric" }))
-    ?? ["Sep 10", "Sep 11", "Sep 12", "Sep 13", "Sep 14", "Sep 15", "Sep 16"];
+  const data = {
+    values, max, total: metric === "Requests" ? String(totals.requests) : usd(totals.credits),
+    unit: metric === "Requests" ? "requests" : "charged",
+    axis: [max, max * 2 / 3, max / 3, 0].map(value => metric === "Requests"
+      ? value.toLocaleString("en-US", { maximumFractionDigits: 2 })
+      : value.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: value < 1 ? 4 : 2 })),
+  };
+  const labels = daily.map(day => new Date(`${day.day}T12:00:00Z`).toLocaleDateString("en", { timeZone: "UTC", ...(granularity === "month" ? { month: "short", year: "2-digit" } : { month: "short", day: "numeric" }) }));
   const points = data.values.map((value, index) => ({
     x: index * 660 / Math.max(1, data.values.length - 1),
     y: 180 - (value / data.max) * 180,
   }));
   const line = smoothPath(points);
   const active = activeIndex === null ? null : points[activeIndex] ?? null;
-  const activeValue = activeIndex === null ? null : daily && metric === "Credits used"
-    ? daily[activeIndex]?.credits : data.values[activeIndex]?.toLocaleString("en-US");
-  const dailyUnit = metric === "Requests" ? "requests" : "credits used";
+  const activeValue = activeIndex === null ? null : metric === "Charged"
+    ? usd(daily[activeIndex]?.credits ?? "0") : data.values[activeIndex]?.toLocaleString("en-US");
+  const dailyUnit = metric === "Requests" ? "requests" : "charged";
   const activeLabel = active ? `${labels[activeIndex!]}: ${activeValue} ${dailyUnit}` : "";
 
   const selectPointerDay = (event: PointerEvent<SVGSVGElement>) => {
@@ -80,7 +83,7 @@ export default function UsageChart({ daily, totals, granularity = "day" }: {
     <section className="usage-chart">
       <div className="section-title">
         <h2>Usage over time</h2>
-        <Tabs label="Chart metric" options={["Requests", "Credits used"]}
+        <Tabs label="Chart metric" options={["Requests", "Charged"]}
           value={metric} onChange={setMetric} panelId="usage-chart" />
       </div>
       <div id="usage-chart" role="tabpanel" aria-label={metric} tabIndex={0}>
@@ -92,12 +95,12 @@ export default function UsageChart({ daily, totals, granularity = "day" }: {
           <div className="usage-chart__canvas">
             <svg ref={svgRef} viewBox="0 0 660 180" preserveAspectRatio="none"
               role="img" tabIndex={0}
-              aria-label={`Sample ${granularity === "month" ? "monthly" : "daily"} ${metric.toLowerCase()}, ${labels[0]} to ${labels.at(-1)}. Use arrow keys to inspect period values.`}
+              aria-label={`${granularity === "month" ? "Monthly" : "Daily"} ${metric.toLowerCase()}, ${labels[0]} to ${labels.at(-1)}. Use arrow keys to inspect period values.`}
               onPointerMove={selectPointerDay} onPointerDown={selectPointerDay}
               onPointerLeave={event => { if (event.pointerType !== "touch") setActiveIndex(null); }}
               onBlur={() => setActiveIndex(null)}
               onKeyDown={selectKeyboardDay}>
-              <desc>{data.values.map((value, index) => `${labels[index]}: ${daily && metric === "Credits used" ? daily[index]!.credits : value}`).join("; ")}</desc>
+              <desc>{data.values.map((value, index) => `${labels[index]}: ${metric === "Charged" ? usd(daily[index]!.credits) : value}`).join("; ")}</desc>
               <defs>
                 <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                   <stop stopColor="#FFDD33" stopOpacity=".55" />
@@ -132,7 +135,7 @@ export default function UsageChart({ daily, totals, granularity = "day" }: {
         <div className="legend">
           <i className="dot" />
           <span>{metric === "Requests" ? "All requests" : metric}</span>
-          <span>{granularity === "month" ? "Monthly" : "Daily"} totals · {daily ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC"}</span>
+          <span>{granularity === "month" ? "Monthly" : "Daily"} totals · {timezone}</span>
         </div>
         <span className="usage-chart__sr-only" role="status" aria-live="polite">{activeLabel}</span>
       </div>

@@ -19,6 +19,8 @@ Accepted records:
   follow-up work. No partner acceptance or deployment is implied.
 - [ADR-006: Cloudflare backend runtime and service boundaries](ADR-006-backend-runtime-and-boundaries.md) —
   Worker API, Supabase/PostgreSQL, queues, private result storage, and Stripe.
+- [ADR-007: Cloudflare Email Sending for account alerts](ADR-007-cloudflare-email-sending.md) —
+  low-balance emails from the Worker cron through the `EMAIL` binding.
 
 Track unresolved choices and evidence in [OPEN_DECISIONS.md](../OPEN_DECISIONS.md).
 An assumption or investigation is not an accepted ADR. When the team explicitly

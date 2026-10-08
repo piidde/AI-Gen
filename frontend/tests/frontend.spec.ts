@@ -159,50 +159,20 @@ test("catalogue filters, neutral detail links, modal Escape and focus return", a
   await expect(page.locator(".model-card")).toHaveCount(10);
 });
 
-test("request filters combine, details are metadata only, and table scroll stays local", async ({
-  page,
-}) => {
-  await signIn(page, "/dashboard/usage?period=all&model=A");
+test("live request history loads from the backend and filters through the URL", async ({ page }) => {
+  await signIn(page, "/dashboard/usage?period=all");
+  await expect(page.getByTestId("request-count")).toBeVisible();
   await page.getByRole("combobox", { name: "Filter status" }).click();
   await page.getByRole("option", { name: "Failed", exact: true }).click();
-  await expect(page.locator("tbody tr")).toHaveCount(1);
-  await page.getByRole("button", { name: "Details for req_9c10" }).click();
-  await expect(page.getByRole("dialog")).toContainText("Awaiting billing confirmation");
-  await expect(page.getByRole("dialog")).toContainText(
-    "No prompt or generated output",
-  );
-  await page.keyboard.press("Escape");
-  await page.getByRole("combobox", { name: "Filter model" }).click();
-  await page.getByRole("option", { name: "Sample model B", exact: true }).click();
-  await expect(page.locator("tbody")).toContainText("No requests match");
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
+  await expect(page).toHaveURL(/status=failed/);
+  await expect(page.getByTestId("request-count")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test("sample key results retain modal focus and update only demo metadata", async ({ page }) => {
+test("live API keys page lists metadata without revealing secrets", async ({ page }) => {
   await signIn(page, "/dashboard/api-keys");
-  const requests: string[] = [];
-  page.on("request", request => { if (request.method() !== "GET") requests.push(request.url()); });
-  const create = page.getByRole("button", { name: "Create API key +", exact: true });
-  await create.click();
-  await page.getByLabel("Key name", { exact: true }).fill("Example integration");
-  await page.getByRole("button", { name: "Create demo key", exact: true }).click();
-  await expect(page.getByRole("dialog")).toContainText("DEMO-ONLY-NOT-A-VALID-API-KEY");
-  await expect(page.getByRole("dialog").getByRole("heading")).toBeFocused();
-  expect(await page.getByRole("dialog").evaluate(element => element.matches(":modal"))).toBe(true);
-  await page.keyboard.press("Escape");
-  await expect(create).toBeFocused();
-  await expect(page.locator("tbody tr")).toHaveCount(3);
-  await page.getByRole("button", { name: "Revoke Production", exact: true }).click();
-  await page.getByRole("button", { name: "Confirm demo revocation", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Sample key revoked", exact: true })).toBeFocused();
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("heading", { name: "Your API keys", exact: true })).toBeFocused();
-  await expect(page.locator("tbody tr")).toHaveCount(2);
-  expect(requests).toEqual([]);
+  await expect(page.getByRole("heading", { name: /Your API keys|Create your first API key/ })).toBeVisible();
+  await expect(page.locator("body")).not.toContainText(/tw_live_[A-Za-z0-9_-]{20,}/);
 });
 test("account menu stays in the viewport and settings use the live profile", async ({
   page,
@@ -247,28 +217,9 @@ test("account menu stays in the viewport and settings use the live profile", asy
   await expect(page.getByRole("status")).toContainText(/saved/i);
 });
 
-test("billing cannot accept payments and chart tabs expose updated data", async ({
-  page,
-}) => {
+test("live billing shows the server balance and overview chart exposes charged amounts", async ({ page }) => {
   await signIn(page, "/dashboard/billing");
-  await page.getByRole("button", { name: "Review $5 package", exact: true }).click();
-  await expect(page.getByRole("dialog")).toContainText(
-    "No charge will be made",
-  );
-  await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Details for demo-order-sample-1" }).click();
-  await expect(page.getByRole("dialog")).toContainText(
-    "no real payment, refund or document",
-  );
-  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("billing-balance")).toContainText("$");
   await signIn(page, "/dashboard");
-  await page.getByRole("tab", { name: "Requests", exact: true }).focus();
-  await page.keyboard.press("ArrowRight");
-  await expect(
-    page.getByRole("tab", { name: "Credits used", exact: true }),
-  ).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("tabpanel")).toContainText(await page.getByTestId("overview-credits").innerText());
-  await expect(
-    page.getByRole("img", { name: /Sample daily credits used/ }),
-  ).toBeVisible();
+  await expect(page.getByTestId("overview-balance")).toContainText("$");
 });

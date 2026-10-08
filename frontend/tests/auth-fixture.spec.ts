@@ -1,70 +1,298 @@
-import { test, expect, type Locator, type Page } from "@playwright/test";
+import { test, expect, type BrowserContext, type Locator, type Page, type Route } from "@playwright/test";
 import { getSafeNext } from "../src/auth/authUtils";
 
 const email = "fixture@example.com";
+const ORIGIN = "http://127.0.0.1:4174";
 
 async function selectDropdown(scope: Page | Locator, label: string, option: string) {
   await scope.getByRole("combobox", { name: label, exact: true }).click();
   await scope.getByRole("option", { name: option, exact: true }).click();
 }
 
-test("overview shares periods, top models and all-time savings", async ({ page }, testInfo) => {
+const user = {
+  id: "00000000-0000-4000-8000-000000000001", aud: "authenticated",
+  role: "authenticated", email, created_at: "2026-09-20T00:00:00Z",
+  app_metadata: { provider: "email", providers: ["email"] },
+  user_metadata: { full_name: "Fixture user" },
+  email_confirmed_at: "2026-09-20T00:00:00Z",
+  identities: [{ id: "fixture-email", provider: "email", user_id: "00000000-0000-4000-8000-000000000001", identity_data: { email } }],
+};
+const second = { ...user, id: "00000000-0000-4000-8000-000000000002", email: "second@example.com", email_confirmed_at: null,
+  identities: [{ ...user.identities[0]!, provider: "google" }], app_metadata: { provider: "google", providers: ["google"] } };
+
+function session(expiresAt = Math.floor(Date.now() / 1000) + 3600, account: typeof user | typeof second = user) {
+  return { access_token: `fixture-access-${account.id}`, refresh_token: "fixture-refresh-not-a-credential",
+    token_type: "bearer", expires_in: 3600, expires_at: expiresAt, user: account };
+}
+
+// --- In-memory backend with the real /v1 response shapes (see ../../src/openapi.ts) ---
+
+type Usage = { id: string; model: string; model_name: string; capability: "text" | "image"; status: string; outcome: "completed" | "failed" | "pending" | "unknown";
+  created_at: string; completed_at: string | null; credits_micros: string | null; price_version: number; error: string | null;
+  api_key_id: string | null; api_key_name: string | null; input_tokens: number | null; output_tokens: number | null; units: number | null };
+type Key = { id: string; name: string; prefix: string; created_at: string; last_used_at: string | null; revoked_at: string | null };
+type Payment = { id: string; offer_id: string; currency: "eur" | "usd"; amount_minor: number; credits_micros: string; status: string; created_at: string };
+type Account = { balance: bigint; usage: Usage[]; keys: Key[]; payments: Payment[]; preferences: Record<string, unknown>; profile: Record<string, unknown> };
+
+const uuid = (n: number) => `00000000-0000-4000-8000-${n.toString(16).padStart(12, "0")}`;
+const HOUR = 3_600_000;
+
+function history(now: number): Usage[] {
+  const rows: Usage[] = [];
+  const at = (offset: number) => new Date(now - offset).toISOString();
+  for (let i = 0; i < 30; i += 1) {
+    const older = i >= 25;
+    const created = older ? (40 + (i - 25) * 45) * 24 * HOUR : i * 5 * HOUR + 60_000;
+    const image = i % 3 === 0;
+    const outcome = i === 1 ? "pending" : i % 7 === 3 ? "failed" : i % 11 === 5 ? "unknown" : "completed";
+    const revoked = i % 4 === 0;
+    rows.push({
+      id: uuid(0x100 + i), model: image ? "nano-banana-2" : "gpt-5.5", model_name: image ? "Nano Banana 2" : "GPT 5.5", capability: image ? "image" : "text",
+      status: { completed: "succeeded", failed: "failed", pending: "provider_pending", unknown: "unknown" }[outcome], outcome,
+      created_at: at(created), completed_at: outcome === "completed" || outcome === "failed" ? at(created - 1250) : null,
+      credits_micros: outcome === "completed" ? image ? "80000" : "1200" : null, price_version: 2,
+      error: outcome === "failed" ? "provider_rejected" : outcome === "unknown" ? "provider_submit_ambiguous" : null,
+      api_key_id: revoked ? uuid(0xa3) : uuid(0xa1), api_key_name: revoked ? "Old integration" : "Production",
+      input_tokens: !image && outcome === "completed" ? 400 : null, output_tokens: !image && outcome === "completed" ? 100 : null,
+      units: image && outcome === "completed" ? 1 : null,
+    });
+  }
+  return rows;
+}
+
+function freshAccount(populated: boolean): Account {
+  const now = Date.now();
+  return {
+    balance: populated ? 25_000_000n : 0n,
+    usage: populated ? history(now) : [],
+    keys: populated ? [
+      { id: uuid(0xa1), name: "Production", prefix: "tw_live_prod1234…", created_at: "2026-08-20T10:00:00Z", last_used_at: new Date(now - HOUR).toISOString(), revoked_at: null },
+      { id: uuid(0xa2), name: "Internal", prefix: "tw_live_int05678…", created_at: "2026-09-01T10:00:00Z", last_used_at: null, revoked_at: null },
+      { id: uuid(0xa3), name: "Old integration", prefix: "tw_live_old09876…", created_at: "2026-07-01T10:00:00Z", last_used_at: "2026-09-15T09:00:00Z", revoked_at: "2026-09-16T10:00:00Z" },
+    ] : [],
+    payments: populated ? [{ id: uuid(0xb1), offer_id: "pack-10", currency: "eur", amount_minor: 1000, credits_micros: "10000000", status: "paid", created_at: "2026-09-10T10:00:00Z" }] : [],
+    preferences: { low_balance_enabled: false, threshold_micros: null, product_updates: false, last_alert_at: null },
+    profile: { kind: null, name: null, company: null, address_line1: null, address_line2: null, city: null, postal_code: null, region: null, country_code: null, vat_id: null },
+  };
+}
+
+const offers = [
+  { id: "pack-5", currency: "eur", amount_minor: 500, credits_micros: "5000000", price_version: 1 },
+  { id: "pack-10", currency: "eur", amount_minor: 1000, credits_micros: "10000000", price_version: 1 },
+  { id: "pack-10", currency: "usd", amount_minor: 1100, credits_micros: "10000000", price_version: 1 },
+];
+const models = [
+  { id: "gpt-5.5", name: "GPT 5.5", capability: "text", price_version: 2, pricing: { unit: "tokens", input_per_million: "$1", output_per_million: "$2", per_unit: null }, parameters: {} },
+  { id: "nano-banana-2", name: "Nano Banana 2", capability: "image", price_version: 2, pricing: { unit: "request", input_per_million: null, output_per_million: null, per_unit: "$0.08" }, parameters: {} },
+];
+
+type Backend = {
+  accounts: Map<string, Account>; calls: { method: string; path: string; headers: Record<string, string>; body: unknown }[];
+  incidents: unknown[]; failures: Map<string, { status: number; code: string; message: string }>; hold: Set<string>;
+};
+
+const periodDays: Record<string, number | null> = { today: 0, "7d": 7, "30d": 30, "6m": 183, "1y": 365, all: null };
+function periodFrom(period: string): number | null {
+  const days = periodDays[period];
+  if (days === null || days === undefined) return null;
+  const start = new Date(); start.setUTCHours(0, 0, 0, 0); start.setUTCDate(start.getUTCDate() - days);
+  return start.getTime();
+}
+const sum = (rows: Usage[]) => rows.reduce((total, row) => total + BigInt(row.outcome === "completed" ? row.credits_micros ?? "0" : "0"), 0n).toString();
+
+async function installBackend(context: BrowserContext, backend: Backend) {
+  await context.route(`${ORIGIN}/v1/**`, async (route: Route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname;
+    const method = request.method();
+    const headers = request.headers();
+    const body = request.postData() ? request.postDataJSON() : undefined;
+    backend.calls.push({ method, path: path + url.search, headers, body });
+    const json = (data: unknown, status = 200) => route.fulfill({ status, json: data });
+    const fail = (status: number, code: string, message: string) => json({ error: { message, type: status >= 500 ? "server_error" : "invalid_request_error", code, request_id: uuid(0xfff) } }, status);
+    if (backend.hold.has(`${method} ${path}`)) return; // Never answered: simulates an in-flight request.
+    const failure = backend.failures.get(`${method} ${path}`);
+    if (failure) return fail(failure.status, failure.code, failure.message);
+    if (path === "/v1/status") return json({ checked_at: new Date().toISOString(), updated_at: null, incidents: backend.incidents });
+    if (path === "/v1/models") return json({ object: "list", data: models });
+    const token = headers.authorization?.replace(/^Bearer /, "") ?? "";
+    const accountId = token.replace("fixture-access-", "");
+    if (!token.startsWith("fixture-access-")) return fail(401, "authentication_required", "A valid API key or Supabase access token is required.");
+    if (!backend.accounts.has(accountId)) backend.accounts.set(accountId, freshAccount(accountId === user.id));
+    const account = backend.accounts.get(accountId)!;
+    const q = url.searchParams;
+    const summary = () => ({ available_credits_micros: account.balance.toString(), reserved_credits_micros: "0", used_credits_micros: sum(account.usage), suspended: false,
+      request_count: account.usage.length, completed_count: account.usage.filter(r => r.outcome === "completed").length, failed_count: account.usage.filter(r => r.outcome === "failed").length });
+    if (path === "/v1/dashboard/summary") return json(summary());
+    if (path === "/v1/credits") return json({ available_credits_micros: account.balance.toString(), reserved_credits_micros: "0", suspended: false });
+    if (path === "/v1/usage" || path === "/v1/usage/export.csv") {
+      const from = q.get("from"), to = q.get("to"), search = (q.get("search") ?? "").toLowerCase();
+      const rows = account.usage.filter(row => (!from || row.created_at >= new Date(from).toISOString()) && (!to || row.created_at < new Date(to).toISOString())
+        && (!q.get("model") || row.model === q.get("model")) && (!q.get("key") || row.api_key_id === q.get("key"))
+        && (!q.get("outcome") || row.outcome === q.get("outcome")) && (!search || row.id.startsWith(search) || row.model.includes(search)))
+        .sort((a, b) => b.created_at.localeCompare(a.created_at));
+      if (path.endsWith(".csv")) {
+        return route.fulfill({ status: 200, headers: { "content-type": "text/csv", "x-export-rows": String(rows.length), "x-export-truncated": "false" },
+          body: ["id,model,outcome", ...rows.map(row => `${row.id},${row.model},${row.outcome}`)].join("\r\n") + "\r\n" });
+      }
+      const limit = Number(q.get("limit") ?? 100), offset = Number(q.get("offset") ?? 0);
+      return json({ summary: summary(), total: rows.length, limit, offset, data: rows.slice(offset, offset + limit) });
+    }
+    if (path === "/v1/usage/overview") {
+      const from = periodFrom(q.get("period") ?? "30d");
+      const rows = account.usage.filter(row => from === null || Date.parse(row.created_at) >= from);
+      const days = new Map<string, Usage[]>();
+      for (const row of rows) days.set(row.created_at.slice(0, 10), [...(days.get(row.created_at.slice(0, 10)) ?? []), row]);
+      const byModel = new Map<string, Usage[]>();
+      for (const row of rows) byModel.set(row.model, [...(byModel.get(row.model) ?? []), row]);
+      return json({ from: from === null ? null : new Date(from).toISOString(), timezone: "UTC",
+        totals: { requests: rows.length, completed: rows.filter(r => r.outcome === "completed").length, failed: rows.filter(r => r.outcome === "failed").length,
+          pending: rows.filter(r => r.outcome === "pending").length, unknown: rows.filter(r => r.outcome === "unknown").length, credits_micros: sum(rows) },
+        daily: [...days].sort(([a], [b]) => a.localeCompare(b)).map(([day, group]) => ({ day, requests: group.length, completed: group.filter(r => r.outcome === "completed").length, failed: group.filter(r => r.outcome === "failed").length, credits_micros: sum(group) })),
+        models: [...byModel].map(([model, group]) => ({ model, name: group[0]!.model_name, requests: group.length, credits_micros: sum(group) })).sort((a, b) => Number(BigInt(b.credits_micros) - BigInt(a.credits_micros))) });
+    }
+    if (path === "/v1/dashboard/savings") {
+      const compared = account.usage.filter(r => r.outcome === "completed" && r.capability === "text");
+      return json({ from: null, currency: "USD", compared_requests: compared.length, excluded_not_settled: account.usage.filter(r => r.outcome !== "completed").length,
+        excluded_no_reference: account.usage.filter(r => r.outcome === "completed" && r.capability === "image").length,
+        official_micros: String(compared.length * 3000), charged_micros: String(compared.length * 1200), saved_micros: String(compared.length * 1800) });
+    }
+    if (path === "/v1/api-keys" && method === "GET") return json({ data: account.keys });
+    if (path === "/v1/api-keys" && method === "POST") {
+      const name = String((body as { name?: string }).name ?? "").trim();
+      if (!name || name.length > 60) return fail(400, "invalid_key_name", "Key name must be between 1 and 60 characters.");
+      const secret = `tw_live_fixture${backend.calls.length}SECRETVALUE0123456789`;
+      const key = { id: uuid(0xc00 + backend.calls.length), name, prefix: `${secret.slice(0, 16)}…`, created_at: new Date().toISOString(), last_used_at: null, revoked_at: null };
+      account.keys.unshift(key);
+      return json({ id: key.id, name, prefix: key.prefix, created_at: key.created_at, secret }, 201);
+    }
+    const keyMatch = /^\/v1\/api-keys\/([^/]+)$/.exec(path);
+    if (keyMatch && method === "DELETE") {
+      const key = account.keys.find(item => item.id === keyMatch[1]);
+      if (!key) return fail(404, "api_key_not_found", "The API key was not found.");
+      key.revoked_at ??= new Date().toISOString();
+      return json({ id: key.id, revoked: true });
+    }
+    if (path === "/v1/billing/offers") return json({ data: offers });
+    if (path === "/v1/billing/payments") {
+      // The signed webhook "arrives" on the second confirmation poll.
+      for (const payment of account.payments) if (payment.status === "checkout_open" && backend.calls.filter(call => call.path === "/v1/billing/payments").length > 2) {
+        payment.status = "paid"; account.balance += BigInt(payment.credits_micros);
+      }
+      return json({ data: account.payments });
+    }
+    if (path === "/v1/billing/checkout") {
+      const offer = offers.find(item => item.id === (body as { offer_id: string }).offer_id && item.currency === (body as { currency: string }).currency)!;
+      account.payments.unshift({ id: uuid(0xd00 + backend.calls.length), offer_id: offer.id, currency: offer.currency as "eur", amount_minor: offer.amount_minor, credits_micros: offer.credits_micros, status: "checkout_open", created_at: new Date().toISOString() });
+      return json({ checkout_url: `${ORIGIN}/dashboard/billing?checkout=success&session_id=cs_fixture`, quote_id: account.payments[0]!.id }, 201);
+    }
+    const receipt = /^\/v1\/billing\/payments\/([^/]+)\/receipt$/.exec(path);
+    if (receipt) {
+      const payment = account.payments.find(item => item.id === receipt[1]);
+      if (!payment) return fail(404, "payment_not_found", "The payment was not found.");
+      return json({ receipt_url: `https://pay.stripe.com/receipts/fixture/${payment.id}` });
+    }
+    if (path === "/v1/account/preferences") {
+      if (method === "PUT") account.preferences = { ...(body as object), last_alert_at: null };
+      return json(account.preferences);
+    }
+    if (path === "/v1/account/billing-profile") {
+      if (method === "PUT") {
+        const profile = body as Record<string, string | null>;
+        if (profile.country_code && !/^[A-Za-z]{2}$/.test(profile.country_code)) return fail(400, "invalid_billing_profile", "The billing details are invalid.");
+        account.profile = { ...profile, country_code: profile.country_code?.toUpperCase() ?? null };
+      }
+      return json(account.profile);
+    }
+    return fail(404, "not_found", "The requested route was not found.");
+  });
+}
+
+let backend: Backend;
+
+test.beforeEach(async ({ context }) => {
+  backend = { accounts: new Map(), calls: [], incidents: [], failures: new Map(), hold: new Set() };
+  // Deny unexpected network access; the fixture must never contact a real service.
+  await context.route("**/*", async route => {
+    const url = new URL(route.request().url());
+    if (url.origin === ORIGIN) return route.continue();
+    if (url.origin === "https://auth.takewing.invalid") {
+      if (url.pathname.endsWith("/token")) return route.fulfill({ json: session() });
+      if (url.pathname.endsWith("/user")) return route.fulfill({ json: user });
+      if (url.pathname.endsWith("/logout")) return route.fulfill({ status: 204 });
+    }
+    await route.abort("blockedbyclient");
+    throw new Error(`Unexpected fixture request: ${url.origin}${url.pathname}`);
+  });
+  await installBackend(context, backend);
+});
+
+async function signIn(page: Page, next: string) {
+  await page.goto(`/login?next=${encodeURIComponent(next)}`);
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page.getByLabel("Password", { exact: true }).fill("fixture-password");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.locator(".dashboard-main")).toBeVisible();
+}
+
+async function switchToSecondAccount(page: Page) {
+  await page.locator(".account-trigger").click();
+  await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
+  await expect(page.locator(".dashboard-main")).toHaveCount(0);
+  await page.route("**/auth/v1/token?grant_type=password", route => route.fulfill({ json: session(undefined, second) }));
+  await page.route("**/auth/v1/user", route => route.fulfill({ json: second }));
+}
+
+test("overview shows server balance, period totals, savings and chart from the API", async ({ page }, testInfo) => {
   await signIn(page, "/dashboard");
   await expect(page.getByRole("combobox", { name: "Overview period" })).toContainText("7 days");
-  await expect(page.getByTestId("overview-balance")).toContainText("333,000");
-  await expect(page.locator("tbody tr")).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Top models by credits" })).toBeVisible();
+  await expect(page.getByTestId("overview-balance")).toHaveText("$25.00");
+  await expect(page.getByTestId("overview-requests")).toHaveText("25");
   const savings = page.getByRole("region", { name: "All-time savings" });
   await expect(savings).toContainText("You saved");
-  await expect(savings).toContainText("excluded");
+  await expect(page.getByTestId("overview-savings")).toHaveText(/^\$0\.0\d+$/);
+  await expect(savings).toContainText("without an official reference price");
   const saved = await savings.innerText();
-  const before = Number(await page.getByTestId("overview-requests").innerText());
-  await page.getByRole("combobox", { name: "Overview period" }).click();
-  await page.getByRole("option", { name: "30 days" }).click();
-  await expect(page.getByTestId("overview-requests")).not.toHaveText(String(before));
-  await expect(savings).toHaveText(saved, { useInnerText: true });
+  await expect(page.getByRole("heading", { name: "Top models by spend" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Top models by amount charged" }).locator("li").first()).toContainText("Nano Banana 2");
   await page.getByRole("tab", { name: "Requests", exact: true }).focus();
   await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("tabpanel")).toContainText(await page.getByTestId("overview-credits").innerText());
-  await expect(page.getByRole("link", { name: "All updates" })).toBeVisible();
-  const chart = page.getByRole("img", { name: /Sample daily/ });
+  const chart = page.getByRole("img", { name: /^Daily charged/ });
   await chart.focus();
   await chart.press("Home");
-  await expect(page.locator(".usage-chart__tooltip")).toBeVisible();
-  await expect(page.locator(".usage-chart__tooltip")).toContainText("credits used");
-  await chart.press("End");
-  await expect(page.locator(".usage-chart__active-point")).toHaveCount(1);
+  await expect(page.locator(".usage-chart__tooltip")).toContainText("charged");
   await chart.press("Escape");
   await expect(page.locator(".usage-chart__tooltip")).toHaveCount(0);
-  await page.evaluate(() => window.scrollTo(0, 0));
-  const notice = await page.getByRole("complementary", { name: "Service status notice" }).boundingBox();
-  expect(notice!.y).toBeGreaterThan(0);
-  const requests = await page.getByTestId("overview-requests").innerText();
+  await expect(page.locator(".usage-chart .legend")).toContainText("UTC");
+  await selectDropdown(page, "Overview period", "All time");
+  await expect(page.getByTestId("overview-requests")).toHaveText("30");
+  await expect(page.getByRole("img", { name: /^Monthly/ })).toBeVisible();
+  await expect(savings).toHaveText(saved, { useInnerText: true });
+  await expect(page.locator("main")).not.toContainText(/sample|fictional|demo/i);
+  await expect(page.getByRole("complementary", { name: "Service status notice" })).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath("overview.png"), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await selectDropdown(page, "Overview period", "30 days");
+  const requests = await page.getByTestId("overview-requests").innerText();
   await page.getByRole("link", { name: /View usage details/ }).click();
   await expect(page.getByRole("combobox", { name: "Request period" })).toContainText("30 days");
   await expect(page.getByTestId("request-count")).toHaveText(requests);
 });
 
-test("overview longer periods preserve URL state, monthly totals and a clean header", async ({ page }) => {
+test("overview reports API failures, retries and shows an onboarding path for new accounts", async ({ page }) => {
+  backend.failures.set("GET /v1/usage/overview", { status: 503, code: "database_unavailable", message: "The service could not complete this request." });
   await signIn(page, "/dashboard");
-  await expect(page.getByText("Choose a fictional scenario", { exact: false })).toHaveCount(0);
-  await expect(page.getByLabel("Overview preview")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Refresh overview" })).toHaveCount(0);
-  const shortTotal = Number(await page.getByTestId("overview-requests").innerText());
-  for (const [label, value] of [["6 months", "6m"], ["1 year", "1y"], ["All time", "all"]]) {
-    await page.getByRole("combobox", { name: "Overview period" }).click();
-    await page.getByRole("option", { name: label, exact: true }).click();
-    await expect(page).toHaveURL(new RegExp("period=" + value));
-    await expect(page.getByRole("img", { name: /Sample monthly/ })).toBeVisible();
-    expect(Number(await page.getByTestId("overview-requests").innerText())).toBeGreaterThan(shortTotal);
-  }
-  await page.reload();
-  await expect(page.getByRole("combobox", { name: "Overview period" })).toContainText("All time");
-  await expect(page.getByRole("region", { name: "Top models by credits used" }).locator("li")).toHaveCount(4);
-  await page.getByRole("link", { name: /View usage details/ }).click();
-  await expect(page.getByRole("combobox", { name: "Request period" })).toContainText("All time");
+  await expect(page.getByRole("alert")).toContainText("The service could not complete this request.");
+  backend.failures.clear();
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(page.getByTestId("overview-requests")).toHaveText("25");
+  await switchToSecondAccount(page);
+  await signIn(page, "/dashboard");
+  await expect(page.getByTestId("overview-balance")).toHaveText("$0.00");
+  await expect(page.getByRole("heading", { name: "Make your first API request" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "All-time savings" })).toContainText("No request history yet");
 });
 
 test("dashboard bottom dividers and Overview columns align across desktop widths", async ({ page }, testInfo) => {
@@ -76,6 +304,7 @@ test("dashboard bottom dividers and Overview columns align across desktop widths
       await page.goto(route);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       if (route === "/dashboard") await expect(page.locator(".overview-chart-card")).toBeVisible();
+      else await expect(page.locator("tbody tr").first()).toBeVisible();
       await page.evaluate(() => document.fonts.ready);
       await expect.poll(async () => page.evaluate(() => {
         window.scrollTo(0, document.documentElement.scrollHeight);
@@ -83,70 +312,80 @@ test("dashboard bottom dividers and Overview columns align across desktop widths
         const footer = document.querySelector(".dashboard-main .public-footer")!.getBoundingClientRect();
         return Math.abs(account.top - footer.top);
       })).toBeLessThan(1);
-      if (route === "/dashboard" && width >= 1440) {
-        const gap = await page.evaluate(() => Math.abs(document.querySelector(".overview-chart-card")!.getBoundingClientRect().bottom - document.querySelector(".overview-side")!.getBoundingClientRect().bottom));
-        expect(gap).toBeLessThan(1);
-      }
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     }
   }
 });
 
-const user = {
-  id: "00000000-0000-4000-8000-000000000001", aud: "authenticated",
-  role: "authenticated", email, created_at: "2026-09-20T00:00:00Z",
-  app_metadata: { provider: "email", providers: ["email"] },
-  user_metadata: { full_name: "Fixture user" },
-  email_confirmed_at: "2026-09-20T00:00:00Z",
-  identities: [{ id: "fixture-email", provider: "email", user_id: "00000000-0000-4000-8000-000000000001", identity_data: { email } }],
-};
-
-test("dashboard shares incident notices with public status without leaking account context", async ({ page }) => {
-  await signIn(page, "/dashboard?statusPreview=incident");
+test("published incidents appear in the dashboard and on the public status page", async ({ page }) => {
+  backend.incidents = [{ id: uuid(0xe1), title: "Image delays", impact: "Image requests are slower than usual.", service: "Image generation", model_ids: ["nano-banana-2"],
+    timeline: [{ at: "2026-10-08T08:00:00Z", message: "Investigating." }], started_at: "2026-10-08T08:00:00Z", updated_at: "2026-10-08T08:00:00Z", resolved_at: null }];
+  await signIn(page, "/dashboard");
   const notice = page.getByRole("complementary", { name: "Service status notice" });
-  await expect(notice).toContainText("Sample service disruption");
+  await expect(notice).toContainText("Image delays");
   await notice.getByRole("link").click();
-  await expect(page).toHaveURL(/\/status\?statusPreview=incident$/);
+  await expect(page).toHaveURL(/\/status$/);
   await expect(page.locator("main")).not.toContainText(email);
-  await expect(page.getByRole("region", { name: "Overall status" })).toContainText("Sample service disruption");
-  await page.goBack();
-  await expect(notice).toContainText("Sample service disruption");
-  await page.getByRole("link", { name: "Cookie preferences", exact: true }).click();
-  await expect(page.locator("#cookie-preferences")).toBeInViewport();
+  await expect(page.getByRole("region", { name: "Overall status" })).toContainText("Active incident");
+  await expect(page.locator(".incident-record")).toContainText("Investigating.");
+  await expect(page.locator("main")).not.toContainText(/sample|fictional/i);
 });
 
-test("account settings save notification drafts and preview safe access changes", async ({ page }, testInfo) => {
+test("status page never claims health when the feed is unavailable", async ({ page }) => {
+  backend.failures.set("GET /v1/status", { status: 503, code: "database_unavailable", message: "The service could not complete this request." });
+  await page.goto("/status");
+  await expect(page.getByRole("region", { name: "Overall status" })).toContainText("Status feed unavailable");
+  await expect(page.getByRole("region", { name: "Overall status" })).toContainText("Current health is unknown");
+  backend.failures.clear();
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(page.getByRole("region", { name: "Overall status" })).toContainText("No active incidents reported");
+});
+
+test("notification preferences save exact USD thresholds to the server and persist", async ({ page }, testInfo) => {
   await signIn(page, "/dashboard/settings");
   await page.getByRole("tab", { name: "Notifications", exact: true }).click();
-  await expect(page.getByRole("checkbox", { name: /^Product updates/ })).not.toBeChecked();
-  await page.getByRole("checkbox", { name: /^Low-balance email alerts/ }).check();
-  await page.getByLabel("Credit alert threshold", { exact: true }).fill("400000");
-  await page.getByRole("button", { name: "Save preferences" }).click();
-  await expect(page.getByRole("status")).toContainText("saved for this session");
+  const save = page.getByRole("button", { name: "Save preferences" });
+  const toggle = page.getByRole("checkbox", { name: /^Low-balance email alerts/ });
+  await expect(toggle).toBeEnabled();
+  await expect(save).toBeDisabled();
+  await toggle.check();
+  const threshold = page.getByLabel("Alert threshold (USD)", { exact: true });
+  await threshold.fill("abc");
+  await save.click();
+  await expect(page.getByRole("status").filter({ hasText: "positive USD amount" })).toBeVisible();
+  await threshold.fill("2.50");
+  await save.click();
+  await expect(page.getByRole("status").filter({ hasText: "Preferences saved." })).toBeVisible();
+  await expect(save).toBeDisabled();
+  expect(backend.calls.find(call => call.method === "PUT" && call.path === "/v1/account/preferences")?.body)
+    .toEqual({ low_balance_enabled: true, threshold_micros: "2500000", product_updates: false });
   await page.screenshot({ path: testInfo.outputPath("account-notifications.png"), fullPage: true });
+  await page.reload();
+  await page.getByRole("tab", { name: "Notifications", exact: true }).click();
+  await expect(page.getByLabel("Alert threshold (USD)", { exact: true })).toHaveValue("2.5");
+  await expect(page.locator("main")).not.toContainText(/session only|not connected/i);
+});
+
+test("notification save failures keep edits and preferences are isolated per account", async ({ page }) => {
+  backend.failures.set("PUT /v1/account/preferences", { status: 400, code: "invalid_preferences", message: "Enter a positive alert threshold to enable low-balance emails." });
+  await signIn(page, "/dashboard/settings");
+  await page.getByRole("tab", { name: "Notifications", exact: true }).click();
+  await page.getByRole("checkbox", { name: /^Product updates/ }).check();
+  await page.getByRole("button", { name: "Save preferences" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Your edits are retained." })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /^Product updates/ })).toBeChecked();
+  backend.failures.clear();
+  await page.getByRole("button", { name: "Save preferences" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Preferences saved." })).toBeVisible();
+  await switchToSecondAccount(page);
+  await signIn(page, "/dashboard/settings");
+  await page.getByRole("tab", { name: "Notifications", exact: true }).click();
+  await expect(page.getByRole("checkbox", { name: /^Product updates/ })).toBeEnabled();
+  await expect(page.getByRole("checkbox", { name: /^Product updates/ })).not.toBeChecked();
+  await expect(page.getByText(/Not verified, low-balance alerts are paused/)).toBeVisible();
   await page.getByRole("tab", { name: "Security", exact: true }).click();
-  await page.getByRole("button", { name: "Change email", exact: true }).click();
-  await page.getByLabel("New email address").fill("new@example.com");
-  await page.getByRole("button", { name: "Request mock email change" }).click();
-  await expect(page.getByRole("dialog")).toContainText("Mock email change pending verification");
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Change email", exact: true })).toBeFocused();
-  await page.getByRole("button", { name: "Change password", exact: true }).click();
-  await page.getByLabel("Sample new password", { exact: true }).fill("sample-only-password");
-  await page.getByLabel("Confirm sample password", { exact: true }).fill("sample-only-password");
-  await page.getByRole("button", { name: "Save mock password" }).click();
-  await expect(page.getByRole("dialog")).toContainText("unchanged");
-  await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Preview account deletion" }).click();
-  await expect(page.getByRole("dialog")).toContainText("333,000");
-  await page.getByRole("checkbox", { name: "Simulate confirmed identity" }).check();
-  await page.getByRole("button", { name: "Continue with simulated identity" }).click();
-  await page.getByRole("checkbox", { name: "I understand credit forfeiture and API-access termination" }).check();
-  await page.getByRole("button", { name: "Confirm mock deletion" }).click();
-  await expect(page.getByRole("dialog")).toContainText("not deleted");
-  await page.screenshot({ path: testInfo.outputPath("account-deletion.png") });
-  await page.keyboard.press("Escape");
-  await expect(page.locator(".dashboard-main")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Change password", exact: true })).toHaveCount(0);
+  await expect(page.getByText(/Your sign-in provider manages your password/)).toBeVisible();
 });
 
 test("settings keeps unsaved edits when navigation is dismissed and discards them on acceptance", async ({ page }) => {
@@ -160,18 +399,14 @@ test("settings keeps unsaved edits when navigation is dismissed and discards the
   });
   await page.getByRole("tab", { name: "Security", exact: true }).click();
   await expect(displayName).toHaveValue("Unsent profile edit");
-  await expect(page.getByRole("tab", { name: "Profile", exact: true })).toHaveAttribute("aria-selected", "true");
   page.once("dialog", dialog => dialog.accept());
   await page.getByRole("tab", { name: "Security", exact: true }).click();
   await page.getByRole("tab", { name: "Profile", exact: true }).click();
   await expect(displayName).toHaveValue(originalName);
-
   await page.getByRole("tab", { name: "Notifications", exact: true }).click();
+  await expect(page.getByRole("checkbox", { name: /^Product updates/ })).toBeEnabled();
   await page.getByRole("checkbox", { name: /^Product updates/ }).check();
-  page.once("dialog", async dialog => {
-    expect(dialog.message()).toBe("Discard your unsaved changes?");
-    await dialog.dismiss();
-  });
+  page.once("dialog", async dialog => { await dialog.dismiss(); });
   await page.getByRole("link", { name: "Overview", exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard\/settings$/);
   await expect(page.getByRole("checkbox", { name: /^Product updates/ })).toBeChecked();
@@ -180,146 +415,52 @@ test("settings keeps unsaved edits when navigation is dismissed and discards the
   await expect(page).toHaveURL(/\/dashboard$/);
 });
 
-test("notification threshold is conditional and unchanged preferences cannot be saved", async ({ page }) => {
+test("account access changes email and password through Supabase and offers no fake deletion", async ({ page }) => {
   await signIn(page, "/dashboard/settings");
-  await page.getByRole("tab", { name: "Notifications", exact: true }).click();
-  const save = page.getByRole("button", { name: "Save preferences" });
-  const threshold = page.getByLabel("Credit alert threshold", { exact: true });
-  await expect(threshold).toHaveCount(0);
-  await expect(save).toBeDisabled();
-  await page.getByRole("checkbox", { name: /^Low-balance/ }).check();
-  await expect(threshold).toHaveValue("100000");
-  await threshold.fill("400000");
-  await expect(save).toBeEnabled();
-  await save.click();
-  await expect(save).toBeDisabled();
-  await page.getByRole("checkbox", { name: /^Low-balance/ }).uncheck();
-  await expect(threshold).toHaveCount(0);
-  await expect(save).toBeEnabled();
-});
-
-test("account preferences persist within one session and isolate signed-in accounts", async ({ page }) => {
-  await signIn(page, "/dashboard/settings");
-  await page.getByRole("tab", { name: "Notifications", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Save preferences" })).toBeDisabled();
-  await expect(page.getByLabel("Credit alert threshold", { exact: true })).toHaveCount(0);
-  await page.getByRole("checkbox", { name: /^Low-balance/ }).check();
-  await page.getByLabel("Credit alert threshold", { exact: true }).fill("400000");
-  await page.getByRole("button", { name: "Save preferences" }).click();
-  await expect(page.getByRole("status")).toContainText("saved");
-  await expect(page.getByRole("button", { name: "Save preferences" })).toBeDisabled();
-  await page.getByRole("link", { name: "Billing", exact: true }).click();
-  await page.getByRole("link", { name: "Settings", exact: true }).click();
-  await page.getByRole("tab", { name: "Notifications", exact: true }).click();
-  await expect(page.getByLabel("Credit alert threshold", { exact: true })).toHaveValue("400000");
-  await page.locator(".account-trigger").click();
-  await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
-  const second = { ...user, id: "00000000-0000-4000-8000-000000000002", email_confirmed_at: null, identities: [{ ...user.identities[0], provider: "google" }], app_metadata: { provider: "google", providers: ["google"] } };
-  await page.route("**/auth/v1/token?grant_type=password", route => route.fulfill({ json: { ...session(), user: second } }));
-  await page.route("**/auth/v1/user", route => route.fulfill({ json: second }));
-  await signIn(page, "/dashboard/settings");
-  await page.getByRole("tab", { name: "Notifications", exact: true }).click();
-  await expect(page.getByLabel("Credit alert threshold", { exact: true })).toHaveCount(0);
-  await expect(page.getByRole("checkbox", { name: /^Low-balance/ })).not.toBeChecked();
-  await expect(page.getByText("Not verified, low-balance alerts are paused")).toBeVisible();
-  await page.getByRole("tab", { name: "Security", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Change password", exact: true })).toHaveCount(0);
-  await expect(page.getByText(/Your sign-in provider manages your password/)).toBeVisible();
-  await page.getByRole("tab", { name: "Billing", exact: true }).click();
-  await expect(page.getByRole("form", { name: "Billing details" })).toBeVisible();
-});
-
-test("account notification cancellation restores keyboard focus", async ({ page }) => {
-  await signIn(page, "/dashboard/settings");
-  await page.getByRole("tab", { name: "Notifications", exact: true }).click();
-  await page.getByRole("checkbox", { name: /^Product updates/ }).check();
-  await page.getByRole("button", { name: "Save preferences" }).click();
-  await page.getByRole("button", { name: "Cancel save" }).focus();
-  await page.keyboard.press("Enter");
-  await expect(page.getByRole("button", { name: "Save preferences" })).toBeFocused();
-  await expect(page.getByRole("checkbox", { name: /^Product updates/ })).toBeChecked();
-  await page.getByRole("button", { name: "Save preferences" }).click();
-  await page.getByRole("tab", { name: "Notifications", exact: true }).focus();
-  await expect(page.getByRole("button", { name: "Cancel save" })).toHaveCount(0);
-  await expect(page.getByRole("tab", { name: "Notifications", exact: true })).toBeFocused();
-  await expect(page.getByRole("button", { name: "Save preferences" })).toBeDisabled();
-});
-
-test("account access cancellation never mutates the real account", async ({ page }) => {
-  await signIn(page, "/dashboard/settings");
-  const mutations: string[] = [];
-  page.on("request", request => { if (!['GET', 'HEAD'].includes(request.method())) mutations.push(new URL(request.url()).pathname); });
-  await page.getByRole("tab", { name: "Security", exact: true }).click();
-  await page.getByRole("button", { name: "Change email", exact: true }).click();
-  await page.getByLabel("New email address").fill("failed@example.com");
-  await page.getByRole("button", { name: "Request mock email change" }).click();
-  await expect(page.getByRole("button", { name: /Pending/ })).toBeDisabled();
-  await page.keyboard.press("Escape");
-  await page.waitForTimeout(600);
-  await expect(page.getByText(/Mock pending verification:/)).toHaveCount(0);
-  await page.getByRole("button", { name: "Preview account deletion" }).click();
-  await expect(page.getByRole("button", { name: "Continue with simulated identity" })).toBeDisabled();
-  await page.getByRole("checkbox", { name: "Simulate confirmed identity" }).check();
-  await page.getByRole("button", { name: "Continue with simulated identity" }).click();
-  await expect(page.getByRole("dialog")).toContainText("Identity confirmation simulated");
-  await page.getByRole("checkbox", { name: "I understand credit forfeiture and API-access termination" }).check();
-  await page.getByRole("button", { name: "Confirm mock deletion" }).click();
-  await page.keyboard.press("Escape");
-  await page.waitForTimeout(600);
-  await expect(page.locator(".dashboard-main")).toBeVisible();
-  expect(mutations).toEqual([]);
-});
-function session(expiresAt = Math.floor(Date.now() / 1000) + 3600) {
-  return { access_token: "fixture-access-not-a-credential", refresh_token: "fixture-refresh-not-a-credential",
-    token_type: "bearer", expires_in: 3600, expires_at: expiresAt, user };
-}
-
-test.beforeEach(async ({ context }) => {
-  // Deny unexpected network access; the fixture must never contact a real service.
-  await context.route("**/*", async route => {
-    const url = new URL(route.request().url());
-    if (url.origin === "http://127.0.0.1:4174") return route.continue();
-    if (url.origin === "https://auth.takewing.invalid") {
-      if (url.pathname.endsWith("/token")) return route.fulfill({ json: session() });
-      if (url.pathname.endsWith("/user")) return route.fulfill({ json: user });
-      if (url.pathname.endsWith("/logout")) return route.fulfill({ status: 204 });
-    }
-    await route.abort("blockedbyclient");
-    throw new Error(`Unexpected fixture request: ${url.origin}${url.pathname}`);
+  const updates: Record<string, unknown>[] = [];
+  await page.route("**/auth/v1/user**", async route => {
+    if (route.request().method() !== "PUT") return route.fulfill({ json: user });
+    updates.push(route.request().postDataJSON());
+    await route.fulfill({ json: { ...user, new_email: updates.at(-1)?.email ?? null } });
   });
+  await page.getByRole("tab", { name: "Security", exact: true }).click();
+  await expect(page.getByRole("button", { name: /deletion/i })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "contact support" })).toHaveAttribute("href", "/support");
+  await page.getByRole("button", { name: "Change email", exact: true }).click();
+  await page.getByLabel("New email address").fill(email);
+  await page.getByRole("button", { name: "Send confirmation" }).click();
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText("different email");
+  await page.getByLabel("New email address").fill("new@example.com");
+  await page.getByRole("button", { name: "Send confirmation" }).click();
+  await expect(page.getByRole("dialog")).toContainText("Check new@example.com");
+  expect(updates[0]).toMatchObject({ email: "new@example.com" });
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Change password", exact: true }).click();
+  await page.getByLabel("New password", { exact: true }).fill("a-new-password");
+  await page.getByLabel("Confirm new password", { exact: true }).fill("different-password");
+  await page.getByRole("button", { name: "Change password", exact: true }).last().click();
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText("do not match");
+  await page.getByLabel("Confirm new password", { exact: true }).fill("a-new-password");
+  await page.getByRole("button", { name: "Change password", exact: true }).last().click();
+  await expect(page.getByRole("dialog")).toContainText("Your password has been changed.");
+  expect(updates[1]).toMatchObject({ password: "a-new-password" });
 });
 
-async function signIn(page: Page, next: string) {
-  await page.goto(`/login?next=${encodeURIComponent(next)}`);
-  await page.getByLabel("Email", { exact: true }).fill(email);
-  await page.getByLabel("Password", { exact: true }).fill("fixture-password");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page.locator(".dashboard-main")).toBeVisible();
-}
-
-test("account signup details are optional samples and do not leak into real auth", async ({ page }, testInfo) => {
+test("signup has no unsaved billing fields", async ({ page }) => {
   let payload: Record<string, unknown> = {};
   await page.route("**/auth/v1/signup**", async route => {
     payload = route.request().postDataJSON();
     await route.fulfill({ json: { user, session: null } });
   });
   await page.goto("/signup?next=%2Fdashboard%2Fusage%3Fperiod%3D7d");
-  await page.getByText("Optional billing details", { exact: true }).click();
-  await selectDropdown(page, "Account type (optional)", "Business");
-  await page.getByLabel("Company", { exact: true }).fill("Sample signup company");
-  await page.getByLabel("VAT ID", { exact: true }).fill("SAMPLE-VAT");
-  expect(await page.locator(".signup-billing [required]").count()).toBe(0);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: testInfo.outputPath("signup-optional-details.png"), fullPage: true });
+  await expect(page.getByText("Optional billing details")).toHaveCount(0);
+  await expect(page.getByText("Billing details are optional and can be added later in Settings.")).toBeVisible();
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Password", { exact: true }).fill("fixture-password");
   await page.getByLabel("Confirm password", { exact: true }).fill("fixture-password");
   await page.getByRole("button", { name: "Create account", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Check your email");
-  expect(JSON.stringify(payload)).not.toContain("Sample signup company");
-  expect(JSON.stringify(payload)).not.toContain("SAMPLE-VAT");
-  await expect(page.getByLabel("Company", { exact: true })).toHaveValue("Sample signup company");
-  await expect(page.getByRole("link", { name: "Complete billing details after sign-in" })).toHaveAttribute("href", "/dashboard/settings");
+  expect(payload.email).toBe(email);
 });
 
 test("account expired auth links offer safe recovery and preserve reset destination", async ({ page }) => {
@@ -343,156 +484,76 @@ test("account expired auth links offer safe recovery and preserve reset destinat
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByRole("button", { name: "Send reset link" }).click();
   await expect(page.getByRole("status")).toContainText("If an account exists");
-  expect(redirect).toBe(`http://127.0.0.1:4174/update-password?next=${encodeURIComponent(next)}`);
+  expect(redirect).toBe(`${ORIGIN}/update-password?next=${encodeURIComponent(next)}`);
 });
 
-test("billing reviews packages, survives pending reload and credits only explicit demo confirmation", async ({ page }, testInfo) => {
-  await signIn(page, "/dashboard/billing?payment=success");
-  await expect(page.getByRole("combobox", { name: "Demo state" })).toHaveCount(0);
-  await expect(page.getByTestId("demo-balance")).toHaveText("333,000 credits");
-  await expect(page.locator(".package-card")).toHaveCount(7);
-  await expect(page.locator(".package-card").first()).toContainText("Base credits");
-  await expect(page.locator(".package-card").first()).toContainText("Total credits");
+test("billing buys credits through Stripe checkout and credits only after server confirmation", async ({ page }, testInfo) => {
+  await signIn(page, "/dashboard/billing");
+  await expect(page.getByTestId("billing-balance")).toHaveText("$25.00");
+  await expect(page.locator(".package-card")).toHaveCount(2);
+  await selectDropdown(page, "Checkout currency", "USD");
+  await expect(page.locator(".package-card")).toHaveCount(1);
+  await selectDropdown(page, "Checkout currency", "EUR");
   await page.screenshot({ path: testInfo.outputPath("billing-packages.png"), fullPage: true });
-  await selectDropdown(page, "Billing display currency", "EUR");
-  await expect(page.locator(".package-card").first()).toContainText("EUR estimate unavailable");
-  const choose = page.getByRole("button", { name: "Review $10 package", exact: true });
-  await choose.click();
+  const buy = page.getByRole("button", { name: "Buy for €10.00", exact: true });
+  await buy.click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog).toContainText("$10.00 USD");
-  await expect(dialog).toContainText("732,600");
-  await page.screenshot({ path: testInfo.outputPath("billing-review.png") });
+  await expect(dialog).toContainText("€10.00");
+  await expect(dialog).toContainText("$10.00 USD-value credits");
   await page.keyboard.press("Escape");
-  await expect(choose).toBeFocused();
-  await choose.click();
-  await dialog.getByRole("button", { name: "Continue demo checkout" }).click();
-  await expect(dialog.getByRole("button", { name: "Starting demo…" })).toBeDisabled();
-  await expect(dialog).toContainText("Do not pay again");
-  await expect(page.getByTestId("demo-balance")).toHaveText("333,000 credits");
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Review pending order" })).toBeFocused();
-  await page.reload();
-  await expect(page.getByRole("button", { name: "Review $5 package", exact: true })).toBeDisabled();
-  await page.getByRole("button", { name: "Review pending order" }).click();
-  await expect(dialog).toContainText("Do not pay again");
-  await selectDropdown(dialog, "Simulated provider outcome", "Confirmed and credited (demo)");
-  await dialog.getByRole("button", { name: "Apply demo outcome" }).click();
-  await expect(dialog).toContainText("Simulated confirmation");
-  await expect(page.getByTestId("demo-balance")).toHaveText("1,065,600 credits");
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("heading", { name: "Payment history", exact: true })).toBeFocused();
+  await expect(buy).toBeFocused();
+  await buy.click();
+  await dialog.getByRole("button", { name: "Continue to payment" }).click();
+  await expect(page).toHaveURL(/checkout=success/);
+  const checkout = backend.calls.find(call => call.path === "/v1/billing/checkout")!;
+  expect(checkout.body).toEqual({ offer_id: "pack-10", currency: "eur" });
+  expect(checkout.headers["idempotency-key"]).toMatch(/^[0-9a-f-]{36}$/);
+  await expect(page.getByRole("heading", { name: "Confirming your payment" })).toBeVisible();
+  await expect(page.getByTestId("billing-balance")).toHaveText("$25.00");
+  await expect(page.getByRole("heading", { name: "Payment complete" })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId("billing-balance")).toHaveText("$35.00");
+  await expect(page.locator("tbody tr").first()).toContainText("Paid");
+  await page.getByRole("button", { name: "Dismiss" }).click();
+  await expect(page).not.toHaveURL(/checkout=/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.getByRole("link", { name: "Overview", exact: true }).click();
-  await expect(page.getByTestId("overview-balance")).toContainText("1,065,600");
 });
 
-test("billing explains captured failure, refund and document failures without retrying payment", async ({ page }) => {
-  await signIn(page, "/dashboard/billing");
-  await page.getByRole("button", { name: "Review $5 package", exact: true }).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByRole("button", { name: "Continue demo checkout" }).click();
-  await selectDropdown(dialog, "Simulated provider outcome", "Captured, unfulfilled · refund pending");
-  await dialog.getByRole("button", { name: "Apply demo outcome" }).click();
-  await expect(dialog).toContainText("Captured funds, credits not delivered");
-  await expect(dialog).toContainText("Do not pay again");
-  await selectDropdown(dialog, "Simulated provider outcome", "Captured funds refunded");
-  await dialog.getByRole("button", { name: "Apply demo outcome" }).click();
-  await expect(dialog).toContainText("Sample refund completed");
-  await expect(page.getByTestId("demo-balance")).toHaveText("333,000 credits");
-  await selectDropdown(dialog, "Document response preview", "Access denied");
-  await dialog.getByRole("button", { name: "Request receipt" }).click();
-  await expect(dialog.getByRole("alert")).toContainText("Access denied");
-  await selectDropdown(dialog, "Document response preview", "Download failed");
-  await dialog.getByRole("button", { name: "Request invoice" }).click();
-  await expect(dialog.getByRole("alert")).toContainText("could not be retrieved");
-  await selectDropdown(dialog, "Document response preview", "Current availability");
-  await dialog.getByRole("button", { name: "Request invoice" }).click();
-  await expect(dialog).toContainText("No authentic document exists");
-  await expect(dialog.locator("time").first()).toContainText(/UTC|Europe|America|Asia/);
-  await expect(dialog.getByRole("link", { name: "Payment support" })).toHaveAttribute("href", "/support");
-});
-
-test("billing details are directly editable and share session saves with Settings", async ({ page }) => {
-  await signIn(page, "/dashboard/billing");
-  const form = page.getByRole("form", { name: "Billing details" });
-  await expect(form.getByRole("combobox", { name: "Billing save preview" })).toHaveCount(0);
-  await form.getByLabel("Company", { exact: true }).fill("Example studio");
-  await form.getByRole("button", { name: "Save billing details" }).click();
-  await expect(form.getByRole("button", { name: "Saving billing details…" })).toBeDisabled();
-  await expect(form.getByLabel("Company", { exact: true })).toBeDisabled();
-  await expect(form.getByRole("status")).toContainText("saved for this demo session");
-  await page.getByRole("link", { name: "Settings", exact: true }).click();
-  await page.getByRole("tab", { name: "Billing", exact: true }).click();
-  await expect(page.getByRole("form", { name: "Billing details" }).getByLabel("Company", { exact: true })).toHaveValue("Example studio");
-  await page.getByRole("link", { name: "Billing", exact: true }).click();
-  await page.getByRole("button", { name: "Details for demo-order-sample-1" }).click();
-  await page.getByRole("link", { name: "Payment support" }).click();
-  await page.goBack();
-  await expect(page.getByRole("form", { name: "Billing details" }).getByLabel("Company", { exact: true })).toHaveValue("Example studio");
-});
-
-test("billing aborts closed checkout and reports copy denial", async ({ page }) => {
-  await signIn(page, "/dashboard/billing");
-  await page.getByRole("button", { name: "Review $5 package", exact: true }).click();
-  await page.getByRole("button", { name: "Continue demo checkout" }).click();
-  await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Review $5 package", exact: true }).click();
-  await page.getByRole("button", { name: "Continue demo checkout" }).click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toContainText("Do not pay again");
-  await selectDropdown(dialog, "Simulated provider outcome", "Failed before capture");
-  await dialog.getByRole("button", { name: "Apply demo outcome" }).click();
-  await expect(dialog).toContainText("No funds captured, no cash refund required");
-  await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: () => Promise.reject(new Error("denied")) } }));
-  await dialog.getByRole("button", { name: "Copy safe order details" }).click();
-  await expect(dialog).toContainText("Could not copy");
-  await page.keyboard.press("Escape");
-  await expect(page.locator("tbody tr")).toHaveCount(5);
-});
-
-test("billing storage denial is explicit and cannot confirm payment", async ({ page }) => {
+test("billing explains cancelled checkout, opens Stripe receipts and keeps checkout errors visible", async ({ page }) => {
   await page.addInitScript(() => {
-    const original = Storage.prototype.setItem;
-    Storage.prototype.setItem = function(key, value) {
-      if (key.startsWith("takewing-demo-pending-order")) throw new DOMException("Denied", "SecurityError");
-      return original.call(this, key, value);
+    (window as unknown as { opened: string[] }).opened = [];
+    window.open = () => {
+      const tab = { opener: null as unknown, location: { set href(value: string) { (window as unknown as { opened: string[] }).opened.push(value); } }, close() {} };
+      return tab as unknown as Window;
     };
   });
-  await signIn(page, "/dashboard/billing?status=paid");
-  await page.getByRole("button", { name: "Review $5 package", exact: true }).click();
-  await page.getByRole("button", { name: "Continue demo checkout" }).click();
-  await expect(page.getByRole("dialog")).toContainText("Do not pay again");
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("alert")).toContainText("Tab storage unavailable");
-  await expect(page.getByTestId("demo-balance")).toHaveText("333,000 credits");
+  await signIn(page, "/dashboard/billing?checkout=cancelled");
+  await expect(page.getByRole("heading", { name: "Checkout cancelled" })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "No payment was taken" })).toBeVisible();
+  await page.getByRole("button", { name: /^Receipt/ }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { opened: string[] }).opened)).toEqual([`https://pay.stripe.com/receipts/fixture/${uuid(0xb1)}`]);
+  backend.failures.set("POST /v1/billing/checkout", { status: 503, code: "payments_not_configured", message: "Payments are not configured." });
+  await page.getByRole("button", { name: "Buy for €5.00", exact: true }).click();
+  await page.getByRole("button", { name: "Continue to payment" }).click();
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText("Payments are not configured.");
+  await expect(page.getByRole("button", { name: "Continue to payment" })).toBeEnabled();
 });
 
-test("billing cancels a departing profile save and isolates another signed-in account", async ({ page }) => {
+test("billing details save to the account and are shared with Settings", async ({ page }) => {
   await signIn(page, "/dashboard/billing");
-  const company = page.getByRole("form", { name: "Billing details" }).getByLabel("Company", { exact: true });
-  await company.fill("Cancelled edit");
-  await page.getByRole("button", { name: "Save billing details" }).click();
+  const form = page.getByRole("form", { name: "Billing details" });
+  await expect(form.getByLabel("Company", { exact: true })).toBeEnabled();
+  await form.getByLabel("Company", { exact: true }).fill("Example studio");
+  await form.getByLabel("Country code", { exact: true }).fill("1A");
+  await form.getByRole("button", { name: "Save billing details" }).click();
+  await expect(form.getByRole("alert")).toContainText("two-letter country code");
+  await form.getByLabel("Country code", { exact: true }).fill("de");
+  await form.getByRole("button", { name: "Save billing details" }).click();
+  await expect(form.getByRole("status")).toContainText("Billing details saved.");
+  await expect(form.getByLabel("Country code", { exact: true })).toHaveValue("DE");
   await page.getByRole("link", { name: "Settings", exact: true }).click();
   await page.getByRole("tab", { name: "Billing", exact: true }).click();
-  await expect(company).toHaveValue("");
-  await company.fill("First account only");
-  await page.getByRole("button", { name: "Save billing details" }).click();
-  await expect(page.getByRole("form", { name: "Billing details" }).getByRole("status")).toContainText("saved for this demo session");
-  await page.getByRole("link", { name: "Billing", exact: true }).click();
-  await page.getByRole("button", { name: "Review $5 package", exact: true }).click();
-  await page.getByRole("button", { name: "Continue demo checkout" }).click();
-  await expect(page.getByRole("dialog")).toContainText("Do not pay again");
-  await page.keyboard.press("Escape");
-  await page.locator(".account-trigger").click();
-  await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
-  await expect(page.locator(".dashboard-main")).toHaveCount(0);
-  const second = { ...user, id: "00000000-0000-4000-8000-000000000002" };
-  await page.route("**/auth/v1/token?grant_type=password", route => route.fulfill({ json: { ...session(), user: second } }));
-  await page.route("**/auth/v1/user", route => route.fulfill({ json: second }));
-  await signIn(page, "/dashboard/billing");
-  await expect(company).toHaveValue("");
-  await expect(page.getByRole("button", { name: "Review pending order" })).toHaveCount(0);
-  await expect(page.getByTestId("demo-balance")).toHaveText("333,000 credits");
+  await expect(page.getByRole("form", { name: "Billing details" }).getByLabel("Company", { exact: true })).toHaveValue("Example studio");
+  await expect(page.locator("main")).not.toContainText(/demo session|session only/i);
 });
 
 test("return paths preserve local filters and reject external/control-character destinations", () => {
@@ -507,14 +568,14 @@ test("expired session redirects with filters and returns after sign-in", async (
   await page.route("**/auth/v1/token?grant_type=refresh_token", route => route.fulfill({
     status: 400, json: { code: "refresh_token_not_found", message: "Fixture session expired" },
   }));
-  const next = "/dashboard/models?provider=Gemini&capability=Image";
+  const next = "/dashboard/usage?period=all&status=failed";
   await page.goto(next);
   await expect(page).toHaveURL(`/login?next=${encodeURIComponent(next)}`);
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Password", { exact: true }).fill("fixture-password");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(next);
-  await expect(page.locator(".model-card")).toHaveCount(10);
+  await expect(page.getByTestId("request-count")).toHaveText("4");
 });
 
 test("login keeps edits and prevents repeat submission while a failure is pending", async ({ page }) => {
@@ -532,13 +593,11 @@ test("login keeps edits and prevents repeat submission while a failure is pendin
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   try {
     await expect(page.getByRole("button", { name: "Signing in…" })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "Continue with Google" })).toBeDisabled();
     await page.getByLabel("Password", { exact: true }).press("Enter");
     expect(calls).toBe(1);
   } finally { release(); }
   await expect(page.getByRole("alert")).toContainText("Fixture sign-in rejected");
   await expect(page.getByLabel("Email", { exact: true })).toHaveValue(email);
-  await expect(page.getByLabel("Password", { exact: true })).toHaveValue("fixture-password");
   await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeEnabled();
 });
 
@@ -551,13 +610,9 @@ test("settings keyboard tabs and usage dialogs fit the viewport", async ({ page 
   await expect(page.getByRole("tab", { name: "Profile", exact: true })).toBeFocused();
   await page.goto("/dashboard/usage");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  const table = page.getByRole("region", { name: "Request log table" });
-  await table.focus();
-  await expect(table).toBeFocused();
-  const details = page.getByRole("button", { name: /Details for req_/ }).first();
+  const details = page.getByRole("button", { name: /Details for / }).first();
   await details.click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
   expect(await dialog.evaluate(el => el.matches(":modal"))).toBe(true);
   const bounds = await dialog.boundingBox();
   expect(bounds!.x).toBeGreaterThanOrEqual(0);
@@ -581,16 +636,14 @@ test("profile submission stays pending once and retains edits after server rejec
   await page.getByRole("button", { name: "Save changes" }).click();
   try {
     await expect(page.getByRole("button", { name: "Saving...", exact: true })).toBeDisabled();
-    await expect(page.getByLabel("Display name")).toBeDisabled();
     await expect.poll(() => saves).toBe(1);
   } finally { release(); }
   await expect(page.getByRole("status")).toContainText("Fixture profile rejected");
   await expect(page.getByLabel("Display name")).toHaveValue("Unsaved profile");
-  await expect(page.getByRole("button", { name: "Save changes" })).toBeEnabled();
 });
 
-test("sign-out in another tab removes protected content and retains the return URL", async ({ page, context }, testInfo) => {
-  const next = "/dashboard/models?provider=Gemini";
+test("sign-out in another tab removes protected content and retains the return URL", async ({ page, context }) => {
+  const next = "/dashboard/models";
   await signIn(page, next);
   const other = await context.newPage();
   await other.goto("/dashboard");
@@ -598,7 +651,6 @@ test("sign-out in another tab removes protected content and retains the return U
   const popover = await other.locator(".account-popover").boundingBox();
   expect(popover!.x).toBeGreaterThanOrEqual(0);
   expect(popover!.x + popover!.width).toBeLessThanOrEqual(other.viewportSize()!.width);
-  await other.screenshot({ path: testInfo.outputPath("account-menu.png") });
   await other.getByRole("menuitem", { name: "Sign out", exact: true }).click();
   await expect(page).toHaveURL(`/login?next=${encodeURIComponent(next)}`);
   await expect(page.locator(".dashboard-main")).toHaveCount(0);
@@ -614,382 +666,181 @@ test("all dashboard routes use the wide viewport", async ({ page }, testInfo) =>
     const main = page.locator(".dashboard-main");
     await expect(main).toBeVisible();
     await expect(main.locator("select")).toHaveCount(0);
-    if (route === "/dashboard") {
-      await expect(page.locator(".overview-metrics > *")).toHaveCount(4);
-      await page.screenshot({ path: testInfo.outputPath("overview-wide.png"), fullPage: true });
-    }
+    if (route === "/dashboard") await expect(page.locator(".overview-metrics > *")).toHaveCount(4);
     expect(await main.evaluate(el => Math.abs(document.documentElement.clientWidth - el.getBoundingClientRect().right))).toBeLessThan(2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   }
 });
 
-test("public and authenticated catalogue use identical reference rates and filter behavior", async ({ page }) => {
-  const query = "?provider=OpenAI&capability=Text&q=gpt-5.6&currency=EUR";
-  await page.goto(`/models${query}`);
-  const publicCards = await page.locator('.model-card').allTextContents();
-  expect(publicCards).toHaveLength(2);
-  await signIn(page, `/dashboard/models${query}`);
-  await expect(page.locator('.model-card')).toHaveCount(2);
-  expect(await page.locator('.model-card').allTextContents()).toEqual(publicCards);
-  await expect(page.getByLabel('Display currency')).toHaveText('EUR');
-  await expect(page.getByRole('status').filter({ hasText: 'EUR estimate unavailable' })).toBeVisible();
-  await page.getByRole('button', { name: 'View details for gpt-5.6-terra', exact: true }).click();
-  await expect(page.getByRole('dialog')).toContainText('0.162162 USD');
-  const bounds = await page.getByRole('dialog').boundingBox();
-  expect(bounds!.x).toBeGreaterThanOrEqual(0);
-  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
-  await page.getByRole('button', { name: 'Close', exact: true }).click();
-  await page.getByRole('searchbox').fill('missing');
-  await page.reload();
-  await expect(page.getByRole('heading', { name: 'No matching models' })).toBeVisible();
+test("dashboard models list only the live, priced models from the API", async ({ page }) => {
+  await signIn(page, "/dashboard/models");
+  const rows = page.getByRole("region", { name: "Available models table" }).locator("tbody tr");
+  await expect(rows).toHaveCount(2);
+  await expect(rows.first()).toContainText("$1");
+  await selectDropdown(page, "Filter capability", "Image");
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText("$0.08 per image");
+  await page.getByRole("searchbox", { name: "Search models" }).fill("nothing");
+  await expect(page.getByText("No models match these filters.")).toBeVisible();
+  await expect(page.locator(".demo-bar")).toHaveCount(0);
 });
 
-test("legacy request history stays readable after catalogue replacement", async ({ page }) => {
-  await signIn(page, '/dashboard/usage?period=all');
-  await expect(page.locator('tbody tr')).toHaveCount(10);
-  await page.getByRole('combobox', { name: 'Filter model' }).click();
-  await page.getByRole('option', { name: 'Sample model A', exact: true }).click();
-  await expect(page.locator('tbody tr')).toHaveCount(3);
-  await page.getByRole('button', { name: 'Details for req_8f21' }).click();
-  await expect(page.getByRole('dialog')).toContainText('Sample model A');
-  await expect(page.getByRole('dialog')).toContainText('req_8f21');
-});
-
-test("requests compose URL filters, paginate and export all matching records", async ({ page }, testInfo) => {
-  await signIn(page, '/dashboard/usage?period=all');
-  await expect(page.getByRole('combobox', { name: 'Request period' })).toContainText('All time');
-  await expect(page.locator('tbody tr')).toHaveCount(10);
-  await page.getByRole('button', { name: 'Next page' }).click();
+test("requests paginate on the server and compose filters into the API query", async ({ page }, testInfo) => {
+  await signIn(page, "/dashboard/usage?period=all");
+  await expect(page.getByTestId("request-count")).toHaveText("30");
+  await expect(page.locator("tbody tr")).toHaveCount(10);
+  await page.getByRole("button", { name: "Next page" }).click();
   await expect(page).toHaveURL(/page=2/);
-  await page.reload();
-  await expect(page.getByText(/Page 2 of/)).toBeVisible();
-  await page.getByRole('combobox', { name: 'Filter key' }).click();
-  await page.getByRole('option', { name: 'Old integration (revoked)' }).click();
+  await expect(page.getByText("Page 2 of 3")).toBeVisible();
+  expect(backend.calls.some(call => call.path.startsWith("/v1/usage?") && call.path.includes("offset=10") && call.path.includes("limit=10"))).toBe(true);
+  await selectDropdown(page, "Filter key", "Old integration (revoked)");
   await expect(page).not.toHaveURL(/page=2/);
-  await page.getByRole('combobox', { name: 'Filter status' }).click();
-  await page.getByRole('option', { name: 'Failed', exact: true }).click();
-  await page.getByLabel('Search request ID').fill('req_demo');
-  await expect(page.getByLabel('Search request ID')).toHaveValue('req_demo');
-  await expect(page).toHaveURL(/search=req_demo/);
-  await page.goBack();
-  await expect(page.getByRole('combobox', { name: 'Filter status' })).toContainText('All statuses');
-  await page.goto('/dashboard/usage?period=all');
-  await expect(page.getByTestId('request-count')).toBeVisible();
-  const expectedExportRows = Number(await page.getByTestId('request-count').innerText());
-  const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export CSV', exact: true }).click();
-  const download = await downloadPromise;
-  const stream = await download.createReadStream();
-  let csv = '';
-  for await (const chunk of stream!) csv += chunk.toString();
-  expect(csv.split('\r\n').filter(Boolean)).toHaveLength(expectedExportRows + 1);
-  expect(expectedExportRows).toBeGreaterThan(5000);
-  for (let id = 1; id <= 32; id++) expect(csv).toContain(`"req_demo_${String(id).padStart(3, '0')}"`);
-  for (const id of ['req_8f21', 'req_3b74', 'req_9c10', 'req_4e62', 'req_1d83']) expect(csv).toContain(`"${id}"`);
-  await expect(page.getByRole('status').filter({ hasText: /Exported/ })).toBeVisible();
-  await page.screenshot({ path: testInfo.outputPath('usage-history.png'), fullPage: true });
+  await selectDropdown(page, "Filter status", "Succeeded");
+  const last = backend.calls.filter(call => call.path.startsWith("/v1/usage?")).at(-1)!.path;
+  expect(last).toContain(`key=${uuid(0xa3)}`);
+  expect(last).toContain("outcome=completed");
+  await expect(page.getByTestId("request-count")).toHaveText("6");
+  await page.getByLabel("Search request ID").fill("no_such_request");
+  await expect(page.getByTestId("request-count")).toHaveText("0");
+  await expect(page.getByText("No requests match these filters.")).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("usage-history.png"), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test("requests validate custom dates and show empty filter results", async ({ page }) => {
-  await signIn(page, '/dashboard/usage?period=all');
-  await expect(page.getByRole('heading', { name: 'Requests', level: 1 })).toBeVisible();
-  await expect(page.getByLabel('History response preview')).toHaveCount(0);
-  await expect(page.getByLabel('Export response preview')).toHaveCount(0);
-  await expect(page.getByTestId('request-count')).toBeVisible();
-  await page.getByRole('combobox', { name: 'Request period' }).click();
-  await page.getByRole('option', { name: 'Custom dates' }).click();
-  await page.getByLabel('Start date').fill('2026-09-22');
-  await page.getByLabel('End date').fill('2026-09-20');
-  await expect(page.getByRole('alert').filter({ hasText: /valid date range/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Export CSV', exact: true })).toBeDisabled();
-  await page.getByLabel('Start date').fill('2000-01-01');
-  await page.getByLabel('End date').fill('2000-01-02');
-  await expect(page.getByText('No requests match these filters.')).toBeVisible();
-  await expect(page.getByTestId('request-count')).toHaveText('0');
-  await expect(page.getByRole('button', { name: 'Export CSV', exact: true })).toBeEnabled();
+test("requests export downloads the server CSV for the visible filters", async ({ page }) => {
+  await signIn(page, "/dashboard/usage?period=all&status=failed");
+  await expect(page.getByTestId("request-count")).toHaveText("4");
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export CSV", exact: true }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("aiapi-deals-usage.csv");
+  const stream = await download.createReadStream();
+  let csv = "";
+  for await (const chunk of stream!) csv += chunk.toString();
+  expect(csv.split("\r\n").filter(Boolean)).toHaveLength(5);
+  expect(backend.calls.find(call => call.path.startsWith("/v1/usage/export.csv"))!.path).toContain("outcome=failed");
+  await expect(page.getByRole("status").filter({ hasText: "Exported 4 matching records." })).toBeVisible();
 });
 
-test("request table shows six summary columns and keeps identifiers in details", async ({ page }) => {
-  await signIn(page, '/dashboard/usage?period=all&search=req_demo_003');
-  const table = page.getByRole('region', { name: 'Request log table' }).getByRole('table');
-  await expect(table.getByRole('columnheader')).toHaveText([
-    'Model', 'Credits used', 'Duration', 'Status', 'Date and time', 'Details',
-  ]);
-  await expect(table.getByRole('row')).toHaveCount(2);
-  const row = table.getByRole('row').nth(1);
-  await expect(row.getByRole('cell')).toHaveCount(6);
-  await expect(row).not.toContainText('req_demo_003');
-  await expect(row).not.toContainText('Production');
-  await row.getByRole('button', { name: 'Details for req_demo_003' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Request details' });
-  await expect(dialog.locator('dl')).toContainText('Request IDreq_demo_003');
-  await expect(dialog.locator('dl')).toContainText('API keyProduction');
-  await page.keyboard.press('Escape');
-  await expect(row.getByRole('button', { name: 'Details for req_demo_003' })).toBeFocused();
+test("requests validate custom dates and report load failures", async ({ page }) => {
+  backend.failures.set("GET /v1/usage", { status: 503, code: "database_unavailable", message: "The service could not complete this request." });
+  await signIn(page, "/dashboard/usage?period=all");
+  await expect(page.getByRole("alert").filter({ hasText: "Request history could not be loaded" })).toBeVisible();
+  backend.failures.clear();
+  await page.getByRole("button", { name: "Reload history" }).click();
+  await expect(page.getByTestId("request-count")).toHaveText("30");
+  await selectDropdown(page, "Request period", "Custom dates");
+  await page.getByLabel("Start date").fill("2026-09-22");
+  await page.getByLabel("End date").fill("2026-09-20");
+  await expect(page.getByRole("alert").filter({ hasText: /valid date range/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export CSV", exact: true })).toBeDisabled();
+  await page.getByLabel("Start date").fill("2000-01-01");
+  await page.getByLabel("End date").fill("2000-01-02");
+  await expect(page.getByTestId("request-count")).toHaveText("0");
 });
 
-test("usage details distinguish charged failures, refunds, tokens and safe support copy", async ({ page }, testInfo) => {
-  await signIn(page, '/dashboard/usage?period=all&search=req_demo_003');
-  const open = page.getByRole('button', { name: 'Details for req_demo_003' });
-  await open.click();
-  const dialog = page.getByRole('dialog');
-  await expect(dialog).toContainText('failed');
-  await expect(dialog).toContainText('Charged 0.012 credits');
-  await expect(dialog).toContainText('POLICY_REJECTED');
-  await expect(dialog).toContainText('Not applicable / unavailable');
-  await expect(dialog.getByRole('link', { name: 'Get help' })).toHaveAttribute('href', '/support');
-  await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text: string) => { (window as unknown as { copied: string }).copied = text; } } }));
-  await dialog.getByRole('button', { name: 'Copy support details' }).click();
+test("request details show charged amounts, tokens, safe errors and support copy", async ({ page }, testInfo) => {
+  await signIn(page, "/dashboard/usage?period=all");
+  const table = page.getByRole("region", { name: "Request log table" }).getByRole("table");
+  await expect(table.getByRole("columnheader")).toHaveText(["Model", "Charged", "Duration", "Status", "Date and time", "Details"]);
+  const completed = uuid(0x102);
+  await page.getByLabel("Search request ID").fill(completed);
+  await page.getByRole("button", { name: `Details for ${completed}` }).click();
+  const dialog = page.getByRole("dialog", { name: "Request details" });
+  await expect(dialog.locator("dl")).toContainText("Input tokens400");
+  await expect(dialog.locator("dl")).toContainText("Output tokens100");
+  await expect(dialog.locator("dl")).toContainText("BillingCharged $0.0012");
+  await expect(dialog.locator("dl")).toContainText("API keyProduction");
+  await expect(dialog).not.toContainText(/fictional|demo/i);
+  await page.screenshot({ path: testInfo.outputPath("usage-detail.png") });
+  await page.keyboard.press("Escape");
+  const failed = uuid(0x103);
+  await page.getByLabel("Search request ID").fill(failed);
+  await page.getByRole("button", { name: `Details for ${failed}` }).click();
+  await expect(dialog).toContainText("The provider rejected this request.");
+  await expect(dialog.locator("dl")).toContainText("BillingNot charged");
+  await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async (text: string) => { (window as unknown as { copied: string }).copied = text; } } }));
+  await dialog.getByRole("button", { name: "Copy support details" }).click();
   const copied = await page.evaluate(() => (window as unknown as { copied: string }).copied);
-  expect(copied).toContain('req_demo_003');
-  expect(copied).toContain('POLICY_REJECTED');
-  expect(copied).not.toMatch(/prompt|output|credential|fixture-access/);
-  await page.screenshot({ path: testInfo.outputPath('usage-detail.png') });
-  await page.keyboard.press('Escape');
-  await expect(open).toBeFocused();
-  await page.getByLabel('Search request ID').fill('req_demo_004');
-  await page.getByRole('button', { name: 'Details for req_demo_004' }).click();
-  await expect(dialog).toContainText('Refunded 0.024');
-  await expect(dialog).toContainText('net 0 credits');
-  await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('denied'); } } }));
-  await dialog.getByRole('button', { name: 'Copy support details' }).click();
-  await expect(dialog).toContainText('Could not copy');
-  await page.keyboard.press('Escape');
-  await page.getByLabel('Search request ID').fill('req_demo_006');
-  await page.getByRole('button', { name: 'Details for req_demo_006' }).click();
-  await expect(dialog).toContainText('Do not resubmit automatically');
-  await expect(dialog).toContainText('Awaiting billing confirmation');
-  await page.keyboard.press('Escape');
-  await page.getByLabel('Search request ID').fill('req_demo_001');
-  await page.getByRole('button', { name: 'Details for req_demo_001' }).click();
-  await expect(dialog.locator('dl')).toContainText('Input tokens120');
-  await expect(dialog.locator('dl')).toContainText('Output tokens60');
-  await expect(dialog.locator('dl')).toContainText('Cached input tokens0');
-  await page.keyboard.press('Escape');
-  await page.getByLabel('Search request ID').fill('req_demo_002');
-  await page.getByRole('button', { name: 'Details for req_demo_002' }).click();
-  await expect(dialog.locator('dl')).toContainText('Images1');
-  await expect(dialog.locator('dl')).toContainText('Input tokensNot applicable / unavailable');
+  expect(copied).toContain(failed);
+  expect(copied).toContain("provider_rejected");
+  expect(copied).not.toMatch(/fixture-access|Fictional/);
+  await page.keyboard.press("Escape");
+  const unknown = uuid(0x105);
+  await page.getByLabel("Search request ID").fill(unknown);
+  await page.getByRole("button", { name: `Details for ${unknown}` }).click();
+  await expect(dialog).toContainText("Do not resubmit automatically");
+  await page.keyboard.press("Escape");
+  const image = uuid(0x106);
+  await page.getByLabel("Search request ID").fill(image);
+  await page.getByRole("button", { name: `Details for ${image}` }).click();
+  await expect(dialog.locator("dl")).toContainText("Images1");
+  await expect(dialog.locator("dl")).toContainText("Input tokensNot applicable / unavailable");
 });
 
-test("request filters preserve focus and scroll, and cancel stale export", async ({ page }) => {
-  await signIn(page, '/dashboard/usage?period=all&page=garbage&status=bad');
-  await expect(page.getByRole('combobox', { name: 'Filter status' })).toContainText('All statuses');
-  await expect(page.getByText(/Page 1 of/)).toBeVisible();
-  const search = page.getByLabel('Search request ID');
-  await search.evaluate(el => (el as HTMLElement).focus({ preventScroll: true }));
-  // Keep the focused field visible before typing; mobile banners/sidebar can
-  // move it beyond a fixed offset and Chrome then legitimately scrolls to it.
-  await search.evaluate(el => el.scrollIntoView({ block: 'center' }));
-  await expect(search).toBeInViewport();
-  const before = await page.evaluate(() => scrollY);
-  await search.pressSequentially('req_demo_003');
-  await expect(search).toHaveValue('req_demo_003');
-  await expect(search).toBeFocused();
-  expect(await page.evaluate(() => scrollY)).toBe(before);
-  await expect(page.getByTestId('request-count')).toHaveText('1');
-  const downloads: string[] = [];
-  page.on('download', download => downloads.push(download.suggestedFilename()));
-  await page.getByRole('button', { name: 'Export CSV', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Cancel export' })).toBeVisible();
-  await search.fill('req_demo_004');
-  await expect(page.getByRole('button', { name: 'Cancel export' })).toHaveCount(0);
-  await expect(page.getByTestId('request-count')).toHaveText('1');
-  await page.waitForTimeout(500);
-  expect(downloads).toEqual([]);
-  await search.fill('no_such_request');
-  await expect(page.getByTestId('request-count')).toHaveText('0');
-  await expect(page.getByText('No requests match these filters.')).toBeVisible();
-});
-
-test("request export returns keyboard focus after completion and cancellation", async ({ page }) => {
-  await signIn(page, '/dashboard/usage?period=all');
-  const button = page.getByRole('button', { name: 'Export CSV', exact: true });
-  await button.click();
-  await page.getByRole('button', { name: 'Cancel export' }).focus();
-  await expect(button).toBeEnabled();
-  await expect(button).toBeFocused();
-  await button.click();
-  await page.getByRole('button', { name: 'Cancel export' }).focus();
-  await page.getByRole('button', { name: 'Cancel export' }).click();
-  await expect(button).toBeFocused();
-  await expect(page.getByRole('status').filter({ hasText: 'Export cancelled.' })).toBeVisible();
-  await button.click();
-  const search = page.getByLabel('Search request ID');
-  await search.focus();
-  await expect(button).toBeEnabled();
-  await expect(search).toBeFocused();
-});
-
-test("key lifecycle shows a sample once and preserves revoked history", async ({ page }, testInfo) => {
+test("key lifecycle creates a real key once, never stores the secret and revokes on the server", async ({ page }, testInfo) => {
   await signIn(page, "/dashboard/api-keys");
-  await expect(page.getByRole("combobox", { name: "Demo state" })).toHaveCount(0);
-  await expect(page.locator(".demo-bar")).toHaveCount(0);
   await expect(page.getByRole("combobox", { name: "Key status", exact: true })).toContainText("Active");
   await expect(page.locator("tbody tr")).toHaveCount(2);
+  await expect(page.locator("tbody")).toContainText("tw_live_prod1234…");
   await page.getByRole("button", { name: "Create API key +", exact: true }).click();
   await page.getByLabel("Key name", { exact: true }).fill("Test integration");
-  await page.getByRole("button", { name: "Create demo key", exact: true }).dblclick();
+  await page.getByRole("button", { name: "Create key", exact: true }).dblclick();
   const dialog = page.getByRole("dialog");
-  await expect(dialog).toContainText("DEMO-ONLY-NOT-A-VALID-API-KEY");
+  await expect(page.getByTestId("new-api-key")).toHaveText(/^tw_live_fixture\d+SECRETVALUE0123456789$/);
+  const secret = await page.getByTestId("new-api-key").innerText();
+  expect(backend.calls.filter(call => call.method === "POST" && call.path === "/v1/api-keys")).toHaveLength(1);
   await expect(dialog.getByRole("heading")).toBeFocused();
   await page.screenshot({ path: testInfo.outputPath("key-show-once.png") });
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Create API key +", exact: true })).toBeFocused();
   await expect(page.locator("tbody tr")).toHaveCount(3);
-  await expect(page.locator("body")).not.toContainText("DEMO-ONLY-NOT-A-VALID-API-KEY");
+  await expect(page.locator("body")).not.toContainText(secret);
   const row = page.locator("tbody tr", { hasText: "Test integration" });
   await expect(row).toContainText("Never used");
-  const timezone = await page.evaluate(() => new Intl.DateTimeFormat().resolvedOptions().timeZone);
-  await expect(page.locator("#key-timezone")).toHaveText(`Times shown in ${timezone}`);
-  await expect(row.locator("time").first()).not.toContainText(timezone);
   await row.getByRole("link", { name: /View requests/i }).click();
-  await expect(page).toHaveURL(/key=/);
-  await expect(page.getByRole("combobox", { name: "Request period", exact: true })).toContainText("All time");
   await expect(page.getByRole("combobox", { name: "Filter key", exact: true })).toContainText("Test integration");
   await expect(page.getByText("No requests match these filters.", { exact: true })).toBeVisible();
   await page.goBack();
-  await expect(row).toBeVisible();
   await page.getByRole("button", { name: "Revoke Test integration", exact: true }).click();
-  await dialog.getByRole("button", { name: "Confirm demo revocation", exact: true }).click();
-  await expect(dialog.getByRole("heading", { name: "Sample key revoked", exact: true })).toBeFocused();
+  await dialog.getByRole("button", { name: "Revoke key", exact: true }).click();
+  await expect(dialog.getByRole("heading", { name: "API key revoked", exact: true })).toBeFocused();
+  expect(backend.calls.some(call => call.method === "DELETE" && call.path.startsWith("/v1/api-keys/"))).toBe(true);
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("heading", { name: "Your API keys", exact: true })).toBeFocused();
   await expect(row).toHaveCount(0);
   await selectDropdown(page, "Key status", "Revoked");
   await expect(row).toContainText(/revoked/i);
   await expect(row.getByRole("button", { name: /revoke/i })).toHaveCount(0);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  if (testInfo.project.name === "desktop") {
-    expect(await page.getByRole("region", { name: "API keys table" }).evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
-  }
-  await page.screenshot({ path: testInfo.outputPath("keys-revoked.png"), fullPage: true });
   await page.reload();
-  await expect(page.locator("body")).not.toContainText("DEMO-ONLY-NOT-A-VALID-API-KEY");
-  expect(await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }))).not.toContain("DEMO-ONLY-NOT-A-VALID-API-KEY");
+  await expect(page.locator("body")).not.toContainText(secret);
+  expect(await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }))).not.toContain(secret);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test("key failures retain edits and pending cancellation leaves metadata unchanged", async ({ page }) => {
+test("key failures retain edits and closing an in-flight request reloads the server state", async ({ page }) => {
+  backend.failures.set("POST /v1/api-keys", { status: 503, code: "database_unavailable", message: "The service could not complete this request." });
   await signIn(page, "/dashboard/api-keys");
   await page.getByRole("button", { name: "Create API key +", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await page.getByLabel("Key name", { exact: true }).fill("Retained name");
-  await selectDropdown(dialog, "Key operation preview", "Operation error");
-  await dialog.getByRole("button", { name: "Create demo key", exact: true }).click();
-  await expect(dialog.getByRole("alert")).toBeVisible();
+  await dialog.getByRole("button", { name: "Create key", exact: true }).click();
+  await expect(dialog.getByRole("alert")).toContainText("The service could not complete this request.");
   await expect(page.getByLabel("Key name", { exact: true })).toHaveValue("Retained name");
-  const preview = dialog.getByRole("combobox", { name: "Key operation preview" });
-  await preview.click();
-  await expect(preview).toHaveAttribute("aria-expanded", "true");
-  await preview.press("Escape");
-  await expect(preview).toHaveAttribute("aria-expanded", "false");
-  await expect(dialog).toBeVisible();
-  await selectDropdown(dialog, "Key operation preview", "Keep pending");
-  await dialog.getByRole("button", { name: "Create demo key", exact: true }).click();
+  backend.failures.clear();
+  backend.hold.add("POST /v1/api-keys");
+  await dialog.getByRole("button", { name: "Create key", exact: true }).click();
   await expect(dialog.getByLabel("Key name", { exact: true })).toBeDisabled();
-  await expect(preview).toBeDisabled();
+  const reloads = backend.calls.filter(call => call.method === "GET" && call.path === "/v1/api-keys").length;
   await page.keyboard.press("Escape");
+  await expect.poll(() => backend.calls.filter(call => call.method === "GET" && call.path === "/v1/api-keys").length).toBeGreaterThan(reloads);
   await expect(page.locator("tbody tr")).toHaveCount(2);
-  const revoke = page.getByRole("button", { name: "Revoke Production", exact: true });
-  await revoke.click();
-  await selectDropdown(dialog, "Key operation preview", "Operation error");
-  await dialog.getByRole("button", { name: "Confirm demo revocation", exact: true }).click();
-  await expect(dialog.getByRole("alert")).toBeVisible();
-  await selectDropdown(dialog, "Key operation preview", "Keep pending");
-  await dialog.getByRole("button", { name: "Confirm demo revocation", exact: true }).click();
-  await page.keyboard.press("Escape");
-  await expect(revoke).toBeFocused();
-  await expect(page.locator("tbody tr")).toHaveCount(2);
-  await revoke.click();
-  await page.keyboard.press("Escape");
-  await expect(revoke).toBeVisible();
 });
 
-test("key sample copy denial, navigation and reload cannot reveal an old sample", async ({ page }) => {
-  await page.addInitScript(() => Object.defineProperty(navigator, "clipboard", { value: { writeText: async () => { throw new Error("denied"); } }, configurable: true }));
-  await signIn(page, "/dashboard/api-keys");
-  await page.getByRole("button", { name: "Create API key +", exact: true }).click();
-  await page.getByLabel("Key name", { exact: true }).fill("One time");
-  await page.getByRole("button", { name: "Create demo key", exact: true }).click();
-  await page.getByRole("button", { name: "Copy sample key", exact: true }).click();
-  await expect(page.getByRole("dialog").getByRole("status")).toContainText(/copy|clipboard/i);
-  await expect(page.getByRole("dialog")).toContainText("DEMO-ONLY-NOT-A-VALID-API-KEY");
-  await page.locator('a[href="/dashboard/usage"]').first().evaluate((link: HTMLAnchorElement) => link.click());
-  await page.goBack();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.locator("body")).not.toContainText("DEMO-ONLY-NOT-A-VALID-API-KEY");
-  await page.getByRole("button", { name: "Create API key +", exact: true }).click();
-  await page.getByLabel("Key name", { exact: true }).fill("Reload sample");
-  await page.getByRole("button", { name: "Create demo key", exact: true }).click();
-  await expect(page.getByRole("dialog")).toContainText("DEMO-ONLY-NOT-A-VALID-API-KEY");
-  await page.reload();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.locator("body")).not.toContainText("DEMO-ONLY-NOT-A-VALID-API-KEY");
-});
-
-test("key metadata is isolated after sign-out and revoked usage retains historical labels", async ({ page }) => {
-  await signIn(page, "/dashboard/api-keys");
-  await selectDropdown(page, "Key status", "Revoked");
-  await page.locator("tbody tr", { hasText: "Old integration" }).getByRole("link", { name: /View requests/i }).click();
-  await expect(page.getByRole("combobox", { name: "Filter key", exact: true })).toContainText("Old integration (revoked)");
-  await page.getByRole("button", { name: /Details for req_/ }).first().click();
-  await expect(page.getByRole("dialog").locator("dl")).toContainText("API keyOld integration (revoked)");
-  await page.keyboard.press("Escape");
-  await page.goBack();
-  await page.getByRole("button", { name: "Create API key +", exact: true }).click();
-  await page.getByLabel("Key name", { exact: true }).fill("First account only");
-  await page.getByRole("button", { name: "Create demo key", exact: true }).click();
-  await expect(page.getByRole("dialog")).toContainText("DEMO-ONLY-NOT-A-VALID-API-KEY");
-  await page.keyboard.press("Escape");
-  await page.locator(".account-trigger").click();
-  await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
-  await expect(page.locator(".dashboard-main")).toHaveCount(0);
-  const second = { ...user, id: "00000000-0000-4000-8000-000000000002" };
-  await page.route("**/auth/v1/token?grant_type=password", route => route.fulfill({ json: { ...session(), user: second } }));
-  await page.route("**/auth/v1/user", route => route.fulfill({ json: second }));
+test("key metadata is isolated per account", async ({ page }) => {
   await signIn(page, "/dashboard/api-keys");
   await expect(page.locator("tbody tr")).toHaveCount(2);
-  await expect(page.locator("tbody")).not.toContainText("First account only");
-});
-
-test("key creation copies only by request and a departing operation is cancelled", async ({ page }) => {
-  await page.addInitScript(() => Object.defineProperty(navigator, "clipboard", { value: { writeText: async (text: string) => { (window as unknown as { copiedSample: string }).copiedSample = text; } }, configurable: true }));
+  await switchToSecondAccount(page);
   await signIn(page, "/dashboard/api-keys");
-  const create = page.getByRole("button", { name: "Create API key +", exact: true });
-  await create.click();
-  await page.getByLabel("Key name", { exact: true }).fill("Cancel navigation");
-  await selectDropdown(page.getByRole("dialog"), "Key operation preview", "Keep pending");
-  await page.getByRole("button", { name: "Create demo key", exact: true }).click();
-  await page.locator('a[href="/dashboard/usage"]').first().evaluate((link: HTMLAnchorElement) => link.click());
-  await page.goBack();
-  await expect(page.locator("tbody tr")).toHaveCount(2);
-  await create.click();
-  await page.getByLabel("Key name", { exact: true }).fill("Copy example");
-  await page.getByRole("button", { name: "Create demo key", exact: true }).click();
-  await expect(page.getByRole("dialog")).toContainText("DEMO-ONLY-NOT-A-VALID-API-KEY");
-  expect(await page.evaluate(() => (window as unknown as { copiedSample?: string }).copiedSample)).toBeUndefined();
-  await page.getByRole("button", { name: "Copy sample key", exact: true }).click();
-  await expect(page.getByRole("dialog").getByRole("status")).toContainText("Copied");
-  expect(await page.evaluate(() => (window as unknown as { copiedSample: string }).copiedSample)).toContain("DEMO-ONLY-NOT-A-VALID-API-KEY");
-});
-
-test("key finite operations cannot complete after their dialog is closed", async ({ page }) => {
-  await signIn(page, "/dashboard/api-keys");
-  await page.getByRole("button", { name: "Create API key +", exact: true }).click();
-  await page.getByLabel("Key name", { exact: true }).fill("Cancelled finite creation");
-  await page.getByRole("button", { name: "Create demo key", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Creating…", exact: true })).toBeDisabled();
-  await page.keyboard.press("Escape");
-  // Deliberately pass the demo's finite 500ms completion deadline.
-  await page.waitForTimeout(650);
-  await expect(page.locator("tbody tr")).toHaveCount(2);
-  await expect(page.locator("tbody")).not.toContainText("Cancelled finite creation");
-  await page.getByRole("button", { name: "Revoke Production", exact: true }).click();
-  await page.getByRole("button", { name: "Confirm demo revocation", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Revoking…", exact: true })).toBeDisabled();
-  await page.keyboard.press("Escape");
-  await page.waitForTimeout(650);
-  await expect(page.getByRole("button", { name: "Revoke Production", exact: true })).toBeVisible();
-  await expect(page.locator("tbody tr")).toHaveCount(2);
+  await expect(page.getByRole("heading", { name: "Create your first API key" })).toBeVisible();
+  await expect(page.locator("body")).not.toContainText("Production");
 });

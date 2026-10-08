@@ -17,3 +17,6 @@ test-results/
 .DS_Store
 Thumbs.db
 supabase/.temp/
+
+# Personal Claude Code settings
+.claude/settings.local.json

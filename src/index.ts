@@ -6,7 +6,7 @@ import { z } from "zod";
 import Stripe from "stripe";
 import * as Sentry from "@sentry/cloudflare";
 import { requireAccount, requireUser, type AppContext, type AppEnv } from "./auth.js";
-import { database, rpc } from "./database.js";
+import { adminAuth, database, rpc } from "./database.js";
 import { HttpError, safeErrorMessage } from "./errors.js";
 import { chooseProviderKey, fetchProviderResult, pollMedia, submitChat, submitMedia } from "./provider.js";
 import { decryptPayload, encryptPayload, formatCredits, formatUsdMicros, hex, hmacSha256, newApiKey, requireConfiguredInt, sha256, stableJson } from "./security.js";
@@ -89,7 +89,7 @@ app.use("/*", cors({
     return sameOrigin || configured.has(origin) ? origin : "";
   },
   allowHeaders: ["Authorization", "Content-Type", "Idempotency-Key", "Stripe-Signature"],
-  allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
+  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   maxAge: 600,
 }));
 
@@ -124,6 +124,12 @@ app.get("/v1/models", async (c) => {
     },
     parameters: model.parameters,
   })) });
+});
+
+app.get("/v1/status", async (c) => {
+  const status = await rpc<unknown>(database(c.env), "tw_public_status");
+  c.header("cache-control", "public, max-age=60");
+  return c.json(status);
 });
 
 app.post("/v1/chat/completions", requireAccount(), async (c) => {
@@ -353,19 +359,137 @@ app.get("/v1/dashboard/summary", requireAccount(), async (c) => {
     used_credits: formatCredits(summary.used_credits_micros), currency: "USD" });
 });
 
+const usagePeriods = { today: 0, "7d": 7, "30d": 30, "6m": 183, "1y": 365, all: null } as const;
+
+// Period starts are UTC midnights; "today" is the current UTC day.
+function periodStart(value: string | undefined, fallback: keyof typeof usagePeriods): string | null {
+  const period = value ?? fallback;
+  if (!Object.hasOwn(usagePeriods, period)) throw new HttpError(400, "invalid_usage_filter", "Choose a supported period.");
+  const days = usagePeriods[period as keyof typeof usagePeriods];
+  if (days === null) return null;
+  const start = new Date();
+  start.setUTCHours(0, 0, 0, 0);
+  start.setUTCDate(start.getUTCDate() - days);
+  return start.toISOString();
+}
+
+const usageQuery = z.object({
+  from: z.iso.datetime({ offset: true }).optional(), to: z.iso.datetime({ offset: true }).optional(),
+  model: z.string().min(1).max(120).optional(), key: z.uuid().optional(),
+  outcome: z.enum(["completed", "failed", "pending", "unknown"]).optional(), search: z.string().max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(), offset: z.coerce.number().int().min(0).max(100_000).optional(),
+});
+type UsageFilters = z.infer<typeof usageQuery>;
+type UsageRow = Record<string, unknown> & { credits_micros: string | null };
+type UsagePage = { total: number; limit: number; offset: number; data: UsageRow[] };
+
+function readUsageFilters(c: AppContext): UsageFilters {
+  const parsed = usageQuery.safeParse(c.req.query());
+  if (!parsed.success) throw new HttpError(400, "invalid_usage_filter", "The usage filters are invalid.");
+  return parsed.data;
+}
+
+function listUsage(env: Env, accountId: string, filters: UsageFilters, limit: number, offset: number): Promise<UsagePage> {
+  return rpc<UsagePage>(database(env), "tw_list_usage_page", {
+    p_account_id: accountId, p_from: filters.from ?? null, p_to: filters.to ?? null, p_model: filters.model ?? null,
+    p_key_id: filters.key ?? null, p_outcome: filters.outcome ?? null, p_search: filters.search ?? null,
+    p_limit: limit, p_offset: offset,
+  });
+}
+
 app.get("/v1/usage", requireAccount(), async (c) => {
-  const db = database(c.env);
+  const filters = readUsageFilters(c);
   const accountId = c.get("account").id;
-  const [summary, data] = await Promise.all([
-    rpc<DashboardSummary>(db, "tw_dashboard_summary", { p_account_id: accountId }),
-    rpc<unknown>(db, "tw_list_usage", { p_account_id: accountId, p_limit: 100, p_before: null }),
+  const [summary, page] = await Promise.all([
+    rpc<DashboardSummary>(database(c.env), "tw_dashboard_summary", { p_account_id: accountId }),
+    listUsage(c.env, accountId, filters, filters.limit ?? 100, filters.offset ?? 0),
   ]);
-  const records = Array.isArray(data) ? data as Array<Record<string, unknown>> : [];
   return c.json({ summary: { ...summary,
     available_credits: formatCredits(summary.available_credits_micros),
     reserved_credits: formatCredits(summary.reserved_credits_micros),
     used_credits: formatCredits(summary.used_credits_micros) },
-    data: records.map((record) => ({ ...record, credits: formatCredits(record.credits_micros as string | number | null) })) });
+    total: page.total, limit: page.limit, offset: page.offset,
+    data: page.data.map((record) => ({ ...record, credits: formatCredits(record.credits_micros) })) });
+});
+
+// Neutralizes spreadsheet formulas in user-controlled cells such as key names.
+function csvCell(value: unknown): string {
+  let text = value === null || value === undefined ? "" : String(value);
+  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+  return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+const EXPORT_ROW_LIMIT = 5000;
+
+app.get("/v1/usage/export.csv", requireAccount(), async (c) => {
+  const user = requireUser(c);
+  const filters = readUsageFilters(c);
+  const rows: UsageRow[] = [];
+  let total = 0;
+  while (rows.length < EXPORT_ROW_LIMIT) {
+    const page = await listUsage(c.env, user.id, filters, 100, rows.length);
+    total = page.total;
+    rows.push(...page.data);
+    if (page.data.length < 100 || rows.length >= total) break;
+  }
+  const columns = ["id", "created_at", "completed_at", "model", "outcome", "status", "api_key_name", "input_tokens", "output_tokens", "units", "credits", "price_version", "error"];
+  const lines = [columns.join(","), ...rows.map((row) => columns.map((column) =>
+    csvCell(column === "credits" ? (row.credits_micros === null ? "" : formatCredits(row.credits_micros)) : row[column])).join(","))];
+  return new Response(`${lines.join("\r\n")}\r\n`, { headers: {
+    "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="aiapi-deals-usage.csv"',
+    "cache-control": "private, no-store", "x-export-rows": String(rows.length), "x-export-truncated": String(total > rows.length),
+  } });
+});
+
+app.get("/v1/usage/overview", requireAccount(), async (c) => {
+  const from = periodStart(c.req.query("period"), "30d");
+  const overview = await rpc<Record<string, unknown>>(database(c.env), "tw_usage_overview", { p_account_id: c.get("account").id, p_from: from });
+  return c.json({ ...overview, from, timezone: "UTC" });
+});
+
+app.get("/v1/dashboard/savings", requireAccount(), async (c) => {
+  const from = periodStart(c.req.query("period"), "all");
+  const savings = await rpc<Record<string, unknown>>(database(c.env), "tw_savings_summary", { p_account_id: c.get("account").id, p_from: from });
+  return c.json({ ...savings, from, currency: "USD" });
+});
+
+app.get("/v1/account/preferences", requireAccount(), async (c) => {
+  const user = requireUser(c);
+  return c.json(await rpc<unknown>(database(c.env), "tw_get_preferences", { p_account_id: user.id }));
+});
+
+app.put("/v1/account/preferences", requireAccount(), async (c) => {
+  const user = requireUser(c);
+  const parsed = z.object({
+    low_balance_enabled: z.boolean(), product_updates: z.boolean(),
+    threshold_micros: z.string().regex(/^[1-9]\d{0,15}$/).nullable(),
+  }).strict().safeParse(await readJson(c, c.env));
+  if (!parsed.success || (parsed.data.low_balance_enabled && parsed.data.threshold_micros === null)) {
+    throw new HttpError(400, "invalid_preferences", "Enter a positive alert threshold to enable low-balance emails.");
+  }
+  return c.json(await rpc<unknown>(database(c.env), "tw_save_preferences", {
+    p_account_id: user.id, p_low_balance_enabled: parsed.data.low_balance_enabled,
+    p_threshold_micros: parsed.data.threshold_micros, p_product_updates: parsed.data.product_updates,
+  }));
+});
+
+const profileText = (max: number) => z.string().trim().max(max).nullable();
+const billingProfileSchema = z.object({
+  kind: z.enum(["personal", "business"]).nullable(), name: profileText(120), company: profileText(160),
+  address_line1: profileText(160), address_line2: profileText(160), city: profileText(100), postal_code: profileText(20),
+  region: profileText(100), country_code: z.string().trim().regex(/^[A-Za-z]{2}$/).nullable(), vat_id: profileText(32),
+}).strict();
+
+app.get("/v1/account/billing-profile", requireAccount(), async (c) => {
+  const user = requireUser(c);
+  return c.json(await rpc<unknown>(database(c.env), "tw_get_billing_profile", { p_account_id: user.id }));
+});
+
+app.put("/v1/account/billing-profile", requireAccount(), async (c) => {
+  const user = requireUser(c);
+  const parsed = billingProfileSchema.safeParse(await readJson(c, c.env));
+  if (!parsed.success) throw new HttpError(400, "invalid_billing_profile", "The billing details are invalid.");
+  return c.json(await rpc<unknown>(database(c.env), "tw_save_billing_profile", { p_account_id: user.id, p_profile: parsed.data }));
 });
 
 app.get("/v1/api-keys", requireAccount(), async (c) => {
@@ -404,6 +528,18 @@ app.get("/v1/billing/payments", requireAccount(), async (c) => {
   const user = requireUser(c);
   const payments = await rpc<Array<{ id: string; currency: string; amount_minor: number; credits_micros: string | number }>>(database(c.env), "tw_list_payments", { p_account_id: user.id });
   return c.json({ data: payments.map((payment) => ({ ...payment, credits: formatCredits(payment.credits_micros) })) });
+});
+
+app.get("/v1/billing/payments/:id/receipt", requireAccount(), async (c) => {
+  const user = requireUser(c);
+  const id = c.req.param("id");
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw new HttpError(404, "payment_not_found", "The payment was not found.");
+  const payment = await rpc<{ status: string; payment_intent_id: string | null }>(database(c.env), "tw_get_payment", { p_account_id: user.id, p_payment_id: id });
+  if (!payment.payment_intent_id) throw new HttpError(409, "receipt_unavailable", "A receipt is available once the payment is confirmed.");
+  const intent = await createStripe(c.env).paymentIntents.retrieve(payment.payment_intent_id, { expand: ["latest_charge"] });
+  const charge = typeof intent.latest_charge === "object" ? intent.latest_charge : null;
+  if (!charge?.receipt_url) throw new HttpError(409, "receipt_unavailable", "Stripe has not issued a receipt for this payment yet.");
+  return c.json({ receipt_url: charge.receipt_url });
 });
 
 app.post("/v1/billing/checkout", requireAccount(), async (c) => {
@@ -666,6 +802,40 @@ app.post("/v1/internal/offers", requireAccount(), async (c) => {
   return c.json({ updated: true });
 });
 
+app.post("/v1/internal/models/:id/official-prices", requireAccount(), async (c) => {
+  const actor = requireAdmin(c);
+  const body = z.object({
+    reason: z.string().trim().min(3).max(500), source_note: z.string().trim().min(5).max(500),
+    input_micros: z.string().regex(/^\d{1,18}$/).nullable(), output_micros: z.string().regex(/^\d{1,18}$/).nullable(),
+    unit_micros: z.string().regex(/^\d{1,18}$/).nullable(),
+  }).strict().safeParse(await readJson(c, c.env));
+  if (!body.success) throw new HttpError(400, "invalid_model_settings", "The official reference prices are invalid.");
+  const version = await rpc<number>(database(c.env), "tw_admin_set_official_prices", {
+    p_actor: actor, p_reason: body.data.reason, p_model_id: c.req.param("id"), p_input_micros: body.data.input_micros,
+    p_output_micros: body.data.output_micros, p_unit_micros: body.data.unit_micros, p_source_note: body.data.source_note,
+  });
+  return c.json({ model: c.req.param("id"), version });
+});
+
+app.post("/v1/internal/incidents", requireAccount(), async (c) => {
+  const actor = requireAdmin(c);
+  const body = z.object({
+    reason: z.string().trim().min(3).max(500), id: z.uuid().nullable(),
+    title: z.string().trim().min(3).max(160).nullable(), impact: z.string().trim().min(3).max(2000).nullable(),
+    service: z.string().trim().min(2).max(80).nullable(), model_ids: z.array(z.string().min(1).max(120)).max(50).nullable(),
+    message: z.string().trim().min(3).max(1000), resolved: z.boolean(),
+  }).strict().safeParse(await readJson(c, c.env));
+  if (!body.success || (body.data.id === null && (!body.data.title || !body.data.impact || !body.data.service))) {
+    throw new HttpError(400, "invalid_incident", "The incident update is invalid.");
+  }
+  const id = await rpc<string>(database(c.env), "tw_admin_publish_incident", {
+    p_actor: actor, p_reason: body.data.reason, p_incident_id: body.data.id, p_title: body.data.title,
+    p_impact: body.data.impact, p_service: body.data.service, p_model_ids: body.data.model_ids,
+    p_message: body.data.message, p_resolved: body.data.resolved,
+  });
+  return c.json({ id, updated: true });
+});
+
 app.onError((cause, c) => {
   const error = safeErrorMessage(cause);
   writeLog("http.error", { request_id: c.get("requestId"), method: c.req.method, path: c.req.path, status: error.status, code: error.code });
@@ -899,6 +1069,44 @@ export async function queue(batch: QueueBatch, env: Env): Promise<void> {
   }
 }
 
+function formatUsdAmount(micros: string): string {
+  const [whole, fraction = ""] = formatCredits(micros).split(".");
+  return `$${whole}.${fraction.padEnd(2, "0")}`;
+}
+
+// Claimed alerts are disarmed in the database first, so concurrent cron runs never
+// send twice; anything not delivered (or to an unverified address) is re-armed.
+async function sendLowBalanceAlerts(env: Env): Promise<void> {
+  if (!env.EMAIL || !env.ALERT_FROM_EMAIL) return;
+  const db = database(env);
+  const due = await rpc<Array<{ account_id: string; threshold_micros: string; available_micros: string }>>(db, "tw_claim_low_balance_alerts", { p_limit: 50 });
+  if (!due.length) return;
+  const auth = adminAuth(env);
+  const site = env.PUBLIC_SITE_URL ?? "https://aiapi.deals";
+  for (const alert of due) {
+    try {
+      const { data, error } = await auth.getUserById(alert.account_id);
+      const email = data.user?.email;
+      if (error || !email || !data.user?.email_confirmed_at) {
+        await rpc(db, "tw_rearm_low_balance_alert", { p_account_id: alert.account_id });
+        continue;
+      }
+      const balance = formatUsdAmount(alert.available_micros);
+      const threshold = formatUsdAmount(alert.threshold_micros);
+      await env.EMAIL.send({
+        from: env.ALERT_FROM_EMAIL, to: email,
+        subject: `Your AIAPI.deals balance is below ${threshold}`,
+        text: `Your available balance is ${balance}, below your alert threshold of ${threshold}.\n\nTop up: ${site}/dashboard/billing\nChange alerts: ${site}/dashboard/settings\n`,
+        html: `<p>Your available balance is <strong>${balance}</strong>, below your alert threshold of ${threshold}.</p><p><a href="${site}/dashboard/billing">Top up credits</a> · <a href="${site}/dashboard/settings">Change alert settings</a></p>`,
+      });
+      writeLog("alerts.low_balance_sent", { account_id: alert.account_id });
+    } catch {
+      writeLog("alerts.low_balance_failed", { account_id: alert.account_id });
+      await rpc(db, "tw_rearm_low_balance_alert", { p_account_id: alert.account_id }).catch(() => undefined);
+    }
+  }
+}
+
 export async function scheduled(_controller: ScheduledController, env: Env): Promise<void> {
   const db = database(env);
   // Each step is isolated so one failing RPC does not stop the remaining recovery work.
@@ -918,6 +1126,7 @@ export async function scheduled(_controller: ScheduledController, env: Env): Pro
       catch { writeLog("queue.recovery_send_failed", { request_id: id }); }
     }
   });
+  await step("low_balance_alerts", () => sendLowBalanceAlerts(env));
   await step("object_cleanup", async () => {
     const expired = await rpc<Array<{ request_id: string; state: string; result_keys: string[]; payload_key: string | null }>>(db, "tw_expired_objects");
     for (const item of expired) {

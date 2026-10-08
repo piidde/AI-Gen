@@ -69,10 +69,13 @@ closed.
   communicate this consequence before confirmation.
 - Low-balance emails use a customer-entered absolute credit threshold.
 
-S07 now presents these deletion/alert policies in mock Settings controls. Deletion
-shows the current shared demo wallet before confirmation and changes no real
-account or credit balance. Alert evaluation uses exact display amounts only;
-backend delivery, pending-operation reconciliation and retention remain B06/S12.
+Low-balance alerts are implemented (2026-10-08): `account_preferences` stores the
+threshold as integer micros; the five-minute cron claims due alerts atomically (one
+email per downward crossing below the available balance, re-armed once the balance
+rises above the threshold or the threshold changes) and sends them through
+Cloudflare Email Sending ([ADR-007](decisions/ADR-007-cloudflare-email-sending.md)).
+Unverified emails and failed sends re-arm the alert. Self-service account deletion
+is deferred; support handles deletion requests until a retention-safe flow exists.
 
 See the [frontend review](FRONTEND_REVIEW.md) for related choices. These are
 accepted policies, not implemented billing behavior. Credits never expire: this
@@ -120,6 +123,11 @@ credit movement. Older cumulative refund snapshots are recorded as stale without
 reversing a newer refund. A won dispute can restore the reversed purchase credits,
 while account access remains suspended for manual review.
 
+Receipts: `GET /v1/billing/payments/{id}/receipt` returns the Stripe charge
+receipt URL for an owned, confirmed payment. Invoices are not generated (decided
+2026-10-08: receipts only). Billing details are stored per account for support and
+future invoicing; they are not yet sent to Stripe.
+
 Offers start empty and inactive. Exact credit packs, margins, EUR/USD conversion,
 Stripe fee treatment, refunds/chargeback terms, tax, invoicing, and the required
 financial-record retention period remain launch decisions. The markup is not
@@ -139,7 +147,14 @@ provider risk budget before activating a model or offer. See
 
 ## Frontend billing display
 
-The sections below record the frontend demo and pricing research. The backend
+Since 2026-10-08 the dashboard shows balances and charges in USD from server micros,
+lists live offers, starts Stripe Checkout with one Idempotency-Key per purchase
+attempt and, after the redirect, polls payments until the webhook confirms them; the
+browser never credits anything. Savings compare settled charges with official prices
+an operator records per price version (`official_*` columns on `model_prices`);
+requests without a complete reference are excluded and counted, never estimated.
+
+The sections below record the earlier frontend demo and pricing research. The backend
 sections above are authoritative for server accounting and Stripe.
 
 ### Stage 3 display implementation

@@ -1,4 +1,3 @@
-import { usePublicSearch } from "../lib/publicHydration";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { CatalogueReference } from "../content/catalogue";
@@ -9,7 +8,8 @@ import Dialog from "./Dialog";
 import CatalogueRates, { type DisplayCurrency } from "./CatalogueRates";
 import ModelPrices from "./ModelPrices";
 import { ProviderLogo } from "./ProviderLogo";
-import { catalogueNotices, getServiceStatus, readStatusScenario, statusHref } from "../content/serviceStatus";
+import { catalogueNotices } from "../content/serviceStatus";
+import { useServiceStatus } from "../data/useServiceStatus";
 import "../styles/service-status.css";
 import "../styles/catalogue-status.css";
 
@@ -22,9 +22,9 @@ export default function ModelFamily({ family, variants, currency, linkPage = tru
   family: string; variants: CatalogueReference[]; currency: DisplayCurrency; linkPage?: boolean; overview?: boolean;
 }) {
   const [selected, setSelected] = useState<CatalogueReference | null>(null);
-  const search = usePublicSearch();
-  const status = getServiceStatus(readStatusScenario(search));
-  const reserveStatus = overview && variants.some(model => model.availability !== "unknown" || status.incidents.some(incident => incident.modelIds.includes(model.upstreamId)));
+  const status = useServiceStatus();
+  const openIncidents = status.data?.incidents.filter(incident => !incident.resolvedAt) ?? [];
+  const reserveStatus = overview && variants.some(model => model.availability !== "unknown" || openIncidents.some(incident => incident.modelIds.includes(model.upstreamId)));
   const page = familyPages.find(page => page.family === family);
   const first = variants[0];
   if (!first) return null;
@@ -44,9 +44,9 @@ export default function ModelFamily({ family, variants, currency, linkPage = tru
         <footer><button className="text-link" aria-label={`View details for ${model.upstreamId}`} onClick={() => setSelected(model)}>View details<span className="sr-only"> for {model.upstreamId}</span> ↗</button>
         <div className="catalogue-status-slot">{model.availability !== "unknown" && <span className={`availability-label ${model.availability === "unavailable-notice" ? "availability-warning" : ""}`}>
           {model.availability === "unavailable-notice" ? "Temporarily unavailable" : availabilityLabel(model)}
-          {catalogueNotices.some(notice => notice.modelId === model.upstreamId) && <> · <Link className="text-link" to={statusHref(search)}>Notice · {snapshot.checkedOn}</Link></>}
+          {catalogueNotices.some(notice => notice.modelId === model.upstreamId) && <> · <Link className="text-link" to="/status">Notice · {snapshot.checkedOn}</Link></>}
         </span>}
-        {status.incidents.some(incident => incident.modelIds.includes(model.upstreamId)) && <p className="model-status-notice">{status.title}. Live health unknown. <Link className="text-link" to={statusHref(search)}>View sample incident</Link></p>}
+        {openIncidents.some(incident => incident.modelIds.includes(model.upstreamId)) && <p className="model-status-notice">Active incident affects this model. <Link className="text-link" to="/status">View status</Link></p>}
         </div>
         </footer>
       </article>)}
@@ -62,7 +62,7 @@ export default function ModelFamily({ family, variants, currency, linkPage = tru
       <h3>Limitations</h3>
       <ul>{selected.limitations.map(limit => <li key={limit}>{limit}</li>)}</ul>
       {selected.gaps.length > 0 && <p>Evidence gaps: {selected.gaps.join(", ")}. Alias mapping, channel behavior or availability needs review before use.</p>}
-      <p><Link className="text-link" to="/docs">AIAPI.deals documentation status</Link> · <Link className="text-link" to={statusHref(search)}>Status and notices</Link></p>
+      <p><Link className="text-link" to="/docs">AIAPI.deals documentation status</Link> · <Link className="text-link" to="/status">Status and notices</Link></p>
     </Dialog>}
   </section>;
 }

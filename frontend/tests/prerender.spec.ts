@@ -16,11 +16,11 @@ test('direct query routes hydrate without errors and retain URL state', async ({
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
-  for (const path of [...publicRoutes.map(route => route.path), '/models?capability=Text&currency=EUR&q=gpt', '/status?statusPreview=incident']) {
+  await page.route('**/v1/status', route => route.fulfill({ json: { checked_at: new Date().toISOString(), updated_at: null, incidents: [] } }));
+  for (const path of [...publicRoutes.map(route => route.path), '/models?capability=Text&currency=EUR&q=gpt']) {
     await page.goto(path);
     await expect(page.locator('h1')).toHaveCount(1);
     if (path.startsWith('/models?')) await expect(page.getByRole('searchbox')).toHaveValue('gpt');
-    if (path.startsWith('/status?')) await expect(page.getByLabel('Demo status scenario')).toHaveValue('incident');
   }
   expect(errors).toEqual([]);
 });

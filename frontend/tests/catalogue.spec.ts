@@ -100,7 +100,8 @@ test("availability notices agree between catalogue and status without live healt
   }
   await expect(page.getByText("How these reference prices work", { exact: true })).toHaveCount(0);
   await notice.getByRole("link").first().click();
-  await expect(page.getByRole("region", { name: "Overall status" })).toContainText("Service status is not connected");
+  // The preview server has no backend, so the status feed must report itself unavailable.
+  await expect(page.getByRole("region", { name: "Overall status" })).toContainText("Status feed unavailable");
   await expect(page.getByRole("list", { name: "Model availability notices" })).toContainText("gpt-image-2.5-sunburst");
   await expect(page.getByRole("list", { name: "Model availability notices" })).toContainText("Temporarily unavailable");
 });

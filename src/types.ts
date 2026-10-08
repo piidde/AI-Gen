@@ -12,6 +12,7 @@ export interface Env extends Cloudflare.Env {
   PUBLIC_SITE_URL?: string;
   ADMIN_USER_IDS?: string;
   SENTRY_DSN?: string;
+  ALERT_FROM_EMAIL?: string;
 }
 
 export type QueueBatch = MessageBatch;

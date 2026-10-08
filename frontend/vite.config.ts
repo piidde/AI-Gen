@@ -83,6 +83,8 @@ export default defineConfig(({ mode, isPreview }) => {
         });
       },
     } as Plugin],
+    // In development the dashboard talks to `wrangler dev` (npm run dev in the repo root).
+    server: { proxy: { "/v1": "http://127.0.0.1:8787" } },
     build: {
       // Smaller assets inline as data URIs; anything larger stays a cacheable
       // file with a content hash, which is better for repeat visits.

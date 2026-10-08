@@ -27,3 +27,13 @@ export async function rpc<T>(db: RpcClient, name: string, args: Record<string, u
 export function asBytea(hex: string): string {
   return `\\x${hex}`;
 }
+
+// Auth admin API for server-side lookups such as alert recipients; never exposed to clients.
+export function adminAuth(env: Env) {
+  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new HttpError(503, "database_not_configured", "The backend database is not configured.");
+  }
+  return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  }).auth.admin;
+}
