@@ -101,11 +101,10 @@
 
 /* Ticker band */
 .deal-ticker { background: var(--highlight); border-block: 3px solid var(--text); padding: 16px 0; }
-.deal-ticker .home-wrap { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px 0; font-weight: 900; font-stretch: 75%; font-size: 24px; line-height: 1.2; text-transform: uppercase; }
+.deal-ticker .home-wrap { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px 30px; font-weight: 900; font-stretch: 75%; font-size: 22px; line-height: 1.2; text-transform: uppercase; }
 .deal-ticker span { display: inline-flex; align-items: center; gap: 10px; }
 .deal-ticker b { background: var(--deal); color: #ffffff; padding: 0 8px; border-radius: 6px; transform: rotate(-3deg); }
 /* Plain round separators: a star glyph read too much like a provider logo. */
-.deal-ticker span + span::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--text); margin: 0 20px; }
 
 /* Deal cards */
 .deal-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px 20px; }
@@ -270,8 +269,7 @@
   .calc-row .calc-money { font-size: 15px; }
   .calc-row-discount .calc-money { font-size: 16px; }
   .calc-row-discount b { display: none; }
-  .deal-ticker .home-wrap { font-size: 18px; gap: 6px 0; }
-  .deal-ticker span + span::before { margin: 0 14px; }
+  .deal-ticker .home-wrap { font-size: 18px; gap: 8px 20px; }
   .home-code { box-shadow: 6px 6px 0 var(--highlight); }
   .home-code pre { font-size: 12px; padding: 18px; }
   .home-dashboard-preview { padding: 18px; box-shadow: 6px 6px 0 var(--text); }
@@ -286,3 +284,11 @@
 @media (min-width: 961px) { .home-product .home-bighead { white-space: nowrap; } }
 .home .public-chrome-header .button { padding: 12px 20px; font-size: 15px; }
 .home-steps li { padding-right: 52px; }
+
+/* Logos on coloured surfaces: the OpenAI mark is black and the Nano Banana mark is yellow. */
+.home-how .mention .provider-logo-openai, .deal-flag .provider-logo-openai { filter: invert(1); }
+.deal-ticker .provider-logo { box-sizing: content-box; padding: 3px; border-radius: 50%; background: #ffffff; }
+@media (max-width: 480px) {
+  /* Keep the base compact header button; the home-wide .button size would push into the brand. */
+  .home .public-chrome-header .button { padding: 10px 12px; font-size: 12px; }
+}

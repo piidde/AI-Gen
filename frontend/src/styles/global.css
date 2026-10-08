@@ -1361,5 +1361,6 @@ body[data-consent-banner-visible] {
 .overview-start a { text-decoration: underline; text-underline-offset: 3px; }
 
 .provider-logo { flex: none; object-fit: contain; vertical-align: -0.2em; }
-.mention { display: inline-flex; align-items: center; gap: .3em; white-space: nowrap; font-weight: 600; }
-.mention .provider-logo { vertical-align: 0; }
+/* Plain inline (not inline-flex) so the name keeps the surrounding text baseline. */
+.mention { white-space: nowrap; font-weight: 600; }
+.mention .provider-logo { margin-right: .3em; vertical-align: -0.15em; }

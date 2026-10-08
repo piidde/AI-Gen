@@ -16,7 +16,7 @@ export function logoFor(name: string): LogoKey | undefined {
 
 export function ProviderLogo({ name, size = 18 }: { name: string; size?: number }) {
   const key = logoFor(name);
-  return key ? <img className="provider-logo" src={logos[key]} alt="" width={size} height={size} /> : null;
+  return key ? <img className={`provider-logo provider-logo-${key}`} src={logos[key]} alt="" width={size} height={size} /> : null;
 }
 
 /** Inline brand name preceded by its logo, e.g. in running text. */
