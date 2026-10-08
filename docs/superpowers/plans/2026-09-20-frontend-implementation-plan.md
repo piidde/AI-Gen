@@ -32,7 +32,7 @@ compatible prerender/content mechanism during S01 and record the decision.
 | Working branch | `main`; redesign branch `feat/deal-style-rollout` preserved and pushed |
 | Inspected code baseline | `67a8386` — frontend plan naming; baseline verified in H-004 |
 | Current implementation step | H-072 dashboard connected to the live backend (S12 code complete, uncommitted) |
-| Next action | Operator steps in docs/GO_LIVE.md: Stripe secrets/webhook and test purchase, Email Service onboarding, offers and models via admin API |
+| Next action | Operator steps in docs/GO_LIVE.md: Stripe secrets/webhook and test purchase, Email Service onboarding, offers and models via /dashboard/admin (H-074) |
 | Latest completed work | H-072: all /dashboard pages read/write /v1; demo modules removed; backend preferences, billing profile, receipts, savings, incidents and alerts added |
 | Delivery | H-072 committed (45b7eff, 8878c06), pushed to main and deployed to aiapi.deals (Worker version a87e6337); migration dashboard_live applied to Supabase |
 | Latest verification | H-072: backend npm test 49/49, typecheck + build dry-run passed; frontend typecheck/build passed; auth fixture 56 passed / 2 skipped; main suite only the 4 pre-existing catalogue failures (also failing on HEAD cf98425) |
@@ -2111,3 +2111,22 @@ messages and an `additional_tools` item without `instructions`; such requests ke
 provider's Codex prompt and reserve 4.5k extra input tokens. Remaining: OD-017
 provider-routing risk; GPT candidate prices are not invoice-verified.
 
+### H-074 - 2026-10-08 - Admin panel and edge rate limits live
+
+Owner asked for an admin panel on aiapi.deals with live requests and editable limits;
+scope chosen: MVP, rate limits fixed in wrangler.jsonc, no Cloudflare Access.
+`/dashboard/admin` (nav entry only for ADMIN_USER_IDS; server re-checks) shows live
+metrics and a metadata-only cross-account request feed (5 s polling), and edits
+service/provider controls, the per-account concurrency limit, model enablement and
+prices, and credit offers, each with an audit reason. Account inspection, credit
+adjustment, key revocation and incidents stay API-only. Rate-limit bindings cap
+`/v1/*` at 300/min per hashed credential and 600/min per IP before any database call.
+
+Delivery: committed 7e9ea18; owner pasted migration `admin_panel` into the Supabase SQL
+editor (verified: new functions exist and refuse the publishable key with 42501);
+deployed Worker version d6136b11. Live checks: /healthz, /v1/models, /dashboard/admin
+200; /v1/internal/* 401 without a token; a 1500-request keep-alive burst returned
+854 x 200 and 646 x 429 `rate_limited` (the binding is permissive, as documented).
+Verification: backend npm test 60/60; auth fixture 60/60 incl. 2 admin tests; main
+suite 7 catalogue/filter failures unrelated to this change (EUR estimate, filter URL).
+Not verified: the panel signed in as a real admin against production data.
