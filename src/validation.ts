@@ -67,7 +67,7 @@ export function validateChat(raw: unknown): ChatRequest {
   };
 }
 
-const responseContentPart = z.object({ type: z.enum(["input_text", "output_text", "refusal", "text"]) }).passthrough();
+const MEDIA_PARTS = new Set(["input_image", "input_file", "input_audio", "image_url"]);
 const responseItem = z.object({ type: z.string().max(64).optional(), role: z.string().max(32).optional() }).passthrough();
 const responseTool = z.object({ type: z.string().max(64) }).passthrough();
 
@@ -92,12 +92,11 @@ const responsesSchema = z.object({
 
 export type ResponsesRequest = { model: string; requestedMaxTokens: number | null; stream: boolean; body: Record<string, unknown>; itemCount: number };
 
-// Neutral default so the provider does not inject its 4k-token Codex prompt (measured
-// 2026-10-08); clients such as Codex send their own instructions.
+// Without instructions the provider injects its ~4k-token Codex prompt (measured
+// 2026-10-08). Plain SDK calls get a neutral default instead; agents such as Codex,
+// which carry their own developer/system messages, keep the provider's Codex prompt.
 export const DEFAULT_INSTRUCTIONS = "You are a helpful assistant.";
 const CLIENT_TOOL_TYPES = new Set(["function", "custom", "local_shell"]);
-const ITEM_TYPES = new Set(["message", "function_call", "function_call_output", "custom_tool_call", "custom_tool_call_output",
-  "local_shell_call", "local_shell_call_output", "reasoning"]);
 
 // Server-side state and provider-hosted tools are refused: we cannot store
 // conversations, and hosted tools carry provider charges outside token usage.
@@ -110,15 +109,15 @@ export function validateResponses(raw: unknown): ResponsesRequest {
   for (const tool of data.tools ?? []) {
     if (!CLIENT_TOOL_TYPES.has(tool.type)) throw new HttpError(400, "hosted_tool_unsupported", `The ${tool.type} tool is not supported; use function tools.`);
   }
+  // Item types evolve with clients (Codex sends e.g. additional_tools); they are passed
+  // through, but media parts are refused because their token cost is not byte-bounded.
   const items = typeof data.input === "string" ? [] : data.input;
   for (const item of items) {
-    const type = item.type ?? (item.role ? "message" : undefined);
-    if (!type || !ITEM_TYPES.has(type)) throw new HttpError(400, "invalid_request", "The input contains an unsupported item type.");
-    if (type === "message" && Array.isArray(item.content) && !z.array(responseContentPart).safeParse(item.content).success) throw imagesUnsupported;
+    if (Array.isArray(item.content) && item.content.some((part) => typeof part === "object" && part !== null && MEDIA_PARTS.has(String((part as { type?: unknown }).type)))) throw imagesUnsupported;
   }
-  const body: Record<string, unknown> = {
-    model: data.model, input: data.input, instructions: data.instructions || DEFAULT_INSTRUCTIONS, store: false,
-  };
+  const agentContext = items.some((item) => item.role === "developer" || item.role === "system");
+  const instructions = data.instructions || (agentContext ? null : DEFAULT_INSTRUCTIONS);
+  const body: Record<string, unknown> = { model: data.model, input: data.input, store: false, ...(instructions ? { instructions } : {}) };
   for (const key of ["tools", "tool_choice", "parallel_tool_calls", "reasoning", "text", "temperature", "top_p", "include", "prompt_cache_key"] as const) {
     if (data[key] !== undefined && data[key] !== null) body[key] = data[key];
   }
@@ -128,9 +127,9 @@ export function validateResponses(raw: unknown): ResponsesRequest {
 // Upper-bound style estimate for the reservation: about two bytes per token, plus
 // per-item framing and the provider's own small prompt overhead (up to ~300 tokens
 // measured). Settlement always uses the provider's reported usage.
-export function estimatedInputTokens(payload: unknown, items: number): number {
+export function estimatedInputTokens(payload: unknown, items: number, providerPrompt = 0): number {
   const bytes = new TextEncoder().encode(JSON.stringify(payload)).byteLength;
-  return Math.ceil(bytes / 2) + items * 16 + 1_024;
+  return Math.ceil(bytes / 2) + items * 16 + 1_024 + providerPrompt;
 }
 
 export const generationRequestSchema = z.object({

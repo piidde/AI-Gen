@@ -38,10 +38,13 @@ function outputLimit(model: TextModel, requested: number | null): number {
   return Math.min(requested ?? ceiling, ceiling);
 }
 
+// Responses without instructions carry the provider's own Codex prompt (~4.4k tokens).
+const PROVIDER_PROMPT_TOKENS = 4_500;
+
 async function reserve(c: AppContext, model: TextModel, key: ProviderKey, payload: unknown, items: number,
-  maxOutput: number, idempotencyKey: string | null): Promise<Reservation> {
+  maxOutput: number, idempotencyKey: string | null, providerPrompt = 0): Promise<Reservation> {
   const account = c.get("account");
-  const inputTokens = estimatedInputTokens(payload, items);
+  const inputTokens = estimatedInputTokens(payload, items, providerPrompt);
   if (model.max_input_tokens !== null && inputTokens > model.max_input_tokens) {
     throw new HttpError(413, "input_too_large", "The input exceeds this model's context window.");
   }
@@ -72,10 +75,19 @@ function fail(db: RpcClient, requestId: string, category: string, ambiguous: boo
   return rpc(db, "tw_fail_generation", { p_request_id: requestId, p_error_category: category, p_ambiguous: ambiguous });
 }
 
+// Splits one request into sequential phases for the success log; each lap is the time
+// since the previous one (reserve, upstream headers, body, store, settle).
+function phaseTimer() {
+  let last = Date.now();
+  const ms: Record<string, number> = {};
+  return { ms, lap(name: string) { const now = Date.now(); ms[name] = now - last; last = now; } };
+}
+type Phases = ReturnType<typeof phaseTimer>;
+
 // Stores the complete provider response and settles from its reported usage. A lost
 // settlement response is retried once (the RPC is idempotent); anything else leaves the
 // request unresolved rather than guessing a charge.
-async function storeAndSettle(env: Env, db: RpcClient, requestId: string, kind: "chat" | "responses", body: unknown, usage: Usage): Promise<void> {
+async function storeAndSettle(env: Env, db: RpcClient, requestId: string, kind: "chat" | "responses", body: unknown, usage: Usage, phases: Phases): Promise<void> {
   const bytes = encoder.encode(JSON.stringify(body));
   if (bytes.byteLength > requireConfiguredInt(env.MAX_RESULT_BYTES, 268_435_456)) {
     await fail(db, requestId, "provider_response_too_large", true);
@@ -88,10 +100,12 @@ async function storeAndSettle(env: Env, db: RpcClient, requestId: string, kind: 
   });
   try {
     await env.GENERATED_ASSETS.put(objectKey, bytes, { httpMetadata: { contentType: "application/json", cacheControl: "private, no-store" } });
+    phases.lap("store_ms");
     try { await settle(); } catch (cause) {
       if (cause instanceof HttpError && cause.code === "usage_exceeds_reservation") throw cause;
       await settle();
     }
+    phases.lap("settle_ms");
   } catch (cause) {
     const exceeded = cause instanceof HttpError && cause.code === "usage_exceeds_reservation";
     await fail(db, requestId, exceeded ? "usage_exceeds_reservation" : "settlement_failed", true);
@@ -158,32 +172,36 @@ const sseHeaders = (requestId: string, gateway: string) => ({
   "x-request-id": gateway, "x-takewing-request-id": requestId,
 });
 
-type PreparedChat = { model: TextModel; key: ProviderKey; maxOutput: number; requestId: string; duplicate: unknown | null; duplicateFound: boolean };
+type PreparedChat = { model: TextModel; key: ProviderKey; maxOutput: number; requestId: string; duplicate: unknown | null; duplicateFound: boolean; phases: Phases };
 
 // Validation, pricing and the credit reservation happen before any response bytes are
 // sent, so refusals (credits, limits, model) stay ordinary HTTP errors for streams too.
 async function prepareChat(c: AppContext, request: ChatRequest, idempotencyKey: string | null): Promise<PreparedChat> {
+  const phases = phaseTimer();
   const model = await findTextModel(c.env, request.model, false);
   const maxOutput = outputLimit(model, request.requestedMaxTokens);
   const key = chooseProviderKey(c.env, model.provider_group_id);
   const payload = { model: request.model, messages: request.messages, options: request.options, max: request.requestedMaxTokens };
   const reservation = await reserve(c, model, key, payload, request.messages.length, maxOutput, idempotencyKey);
-  return { model, key, maxOutput, requestId: reservation.request_id, duplicateFound: reservation.duplicate,
+  phases.lap("reserve_ms");
+  return { model, key, maxOutput, requestId: reservation.request_id, duplicateFound: reservation.duplicate, phases,
     duplicate: reservation.duplicate ? await duplicateResult(c, reservation) : null };
 }
 
 async function executeChat(c: AppContext, request: ChatRequest, prepared: PreparedChat): Promise<unknown> {
   if (prepared.duplicateFound) return prepared.duplicate;
-  const { model, key, maxOutput, requestId } = prepared;
+  const { model, key, maxOutput, requestId, phases } = prepared;
   const db = database(c.env);
   const started = Date.now();
   const upstream = await callUpstream(c.env, key, "/v1/chat/completions",
     { model: request.model, messages: request.messages, max_tokens: maxOutput, stream: false, ...request.options },
     db, requestId, model.id, started);
+  phases.lap("upstream_ms");
   const { body, usage } = await readUsageJson(c.env, db, requestId, upstream, chatUsage);
-  await storeAndSettle(c.env, db, requestId, "chat", body, usage);
+  phases.lap("body_ms");
+  await storeAndSettle(c.env, db, requestId, "chat", body, usage, phases);
   writeLog("generation.succeeded", { request_id: requestId, model: model.id, provider_key_id: key.id,
-    input_tokens: usage.input, output_tokens: usage.output, duration_ms: Date.now() - started });
+    input_tokens: usage.input, output_tokens: usage.output, duration_ms: Date.now() - started, ...phases.ms });
   return body;
 }
 
@@ -279,10 +297,13 @@ async function readChunk(reader: ReadableStreamDefaultReader<Uint8Array>): Promi
 
 export async function handleResponses(c: AppContext, raw: unknown, idempotencyKey: string | null): Promise<Response> {
   const request = validateResponses(raw);
+  const phases = phaseTimer();
   const model = await findTextModel(c.env, request.model, true);
   const maxOutput = outputLimit(model, request.requestedMaxTokens);
   const key = chooseProviderKey(c.env, model.provider_group_id);
-  const reservation = await reserve(c, model, key, { ...request.body, max: request.requestedMaxTokens }, request.itemCount, maxOutput, idempotencyKey);
+  const reservation = await reserve(c, model, key, { ...request.body, max: request.requestedMaxTokens }, request.itemCount, maxOutput, idempotencyKey,
+    "instructions" in request.body ? 0 : PROVIDER_PROMPT_TOKENS);
+  phases.lap("reserve_ms");
   const jsonHeaders = (id: string) => ({ "content-type": "application/json; charset=utf-8", "x-request-id": c.get("requestId"), "x-takewing-request-id": id, "cache-control": "no-store" });
   if (reservation.duplicate) return new Response(JSON.stringify(await duplicateResult(c, reservation)), { headers: jsonHeaders(reservation.request_id) });
   const db = database(c.env);
@@ -291,14 +312,17 @@ export async function handleResponses(c: AppContext, raw: unknown, idempotencyKe
   const upstreamBody = { ...request.body, max_output_tokens: maxOutput, stream: request.stream };
   if (!request.stream) {
     const upstream = await callUpstream(c.env, key, "/v1/responses", upstreamBody, db, requestId, model.id, started);
+    phases.lap("upstream_ms");
     const { body, usage } = await readUsageJson(c.env, db, requestId, upstream, responsesUsage);
-    await storeAndSettle(c.env, db, requestId, "responses", body, usage);
-    writeLog("generation.succeeded", { request_id: requestId, model: model.id, provider_key_id: key.id, input_tokens: usage.input, output_tokens: usage.output, duration_ms: Date.now() - started });
+    phases.lap("body_ms");
+    await storeAndSettle(c.env, db, requestId, "responses", body, usage, phases);
+    writeLog("generation.succeeded", { request_id: requestId, model: model.id, provider_key_id: key.id, input_tokens: usage.input, output_tokens: usage.output, duration_ms: Date.now() - started, ...phases.ms });
     return new Response(JSON.stringify(body), { headers: jsonHeaders(requestId) });
   }
   // Streamed: forward provider events unchanged while reading them for the final usage.
   // Reading continues after a client disconnect so the request is still settled.
   const upstream = await callUpstream(c.env, key, "/v1/responses", upstreamBody, db, requestId, model.id, started, 0);
+  phases.lap("upstream_ms");
   if (!upstream.body) await upstreamFailure(db, requestId, model.id, key, null, started);
   const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
   const writer = writable.getWriter();
@@ -331,11 +355,12 @@ export async function handleResponses(c: AppContext, raw: unknown, idempotencyKe
       broken = true;
       try { await reader.cancel(); } catch { /* Already closed. */ }
     }
+    phases.lap("body_ms");
     const usage = completed ? responsesUsage(completed) : null;
     try {
       if (usage && !broken) {
-        await storeAndSettle(c.env, db, requestId, "responses", completed, usage);
-        writeLog("generation.succeeded", { request_id: requestId, model: model.id, provider_key_id: key.id, input_tokens: usage.input, output_tokens: usage.output, duration_ms: Date.now() - started, streamed: true });
+        await storeAndSettle(c.env, db, requestId, "responses", completed, usage, phases);
+        writeLog("generation.succeeded", { request_id: requestId, model: model.id, provider_key_id: key.id, input_tokens: usage.input, output_tokens: usage.output, duration_ms: Date.now() - started, streamed: true, ...phases.ms });
       } else {
         // Partial output may already have been billed upstream; never guess a charge.
         await fail(db, requestId, broken ? "provider_stream_interrupted" : failed ? "provider_stream_failed" : "provider_usage_missing", true);

@@ -46,7 +46,8 @@ test("responses keep client state out, force store=false and add neutral instruc
   assert.equal(code(() => validateResponses({ model: "m", input: "x", previous_response_id: "resp_1" })), "previous_response_unsupported");
   assert.equal(code(() => validateResponses({ model: "m", input: "x", tools: [{ type: "web_search" }] })), "hosted_tool_unsupported");
   assert.equal(code(() => validateResponses({ model: "m", input: [{ type: "message", role: "user", content: [{ type: "input_image", image_url: "x" }] }] })), "image_input_unsupported");
-  assert.equal(code(() => validateResponses({ model: "m", input: [{ type: "computer_call" }] })), "invalid_request");
+  const codex = validateResponses({ model: "m", input: [{ type: "additional_tools", role: "developer" }, { type: "message", role: "developer", content: [{ type: "input_text", text: "rules" }] }] });
+  assert.equal("instructions" in codex.body, false);
 });
 
 test("the input estimate grows with payload bytes and items", () => {

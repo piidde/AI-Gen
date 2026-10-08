@@ -2092,3 +2092,22 @@ prerender change: `.html` rewrite targets were answered with a 307 to `/spa`, so
 and redeployed; /login, /dashboard/*, /blog, /models/*, /status return 200 at their
 own URLs and unknown paths 404. Stripe secrets are not yet set in the Worker.
 
+### H-073 - 2026-10-08 - Coding models (Responses API, Codex) and chat models live
+
+Owner asked that the site make clear text models are normal API keys usable in
+harnesses/VS Code, with two buttons. Live provider checks showed native tool calling
+only via `/v1/responses` for GPT (gpt-6-astra, gpt-5.6-terra, gpt-5.6-sol, gpt-5.5);
+Gemini is chat-only. Built `/v1/responses` (streamed proxy, settled from
+`response.completed`), tolerant streamable chat, `/v1/models` endpoint metadata, and
+split the collection into "Coding & agent models" (buttons: Codex, any OpenAI tool)
+and "Chat models". Owner authorized going live: migration `responses_api` applied, the
+four GPT models enabled with their candidate prices (version 2, audited), deployed.
+
+Live verification with a temporary key (revoked afterwards): Responses + tool call,
+Responses streaming (settled), Gemini streamed chat with usage, GPT chat, tool and
+model refusals, and a real Codex CLI 0.153 session that created and ran a file
+(six streamed turns, ~16.5k input tokens each, all settled). Codex sends developer
+messages and an `additional_tools` item without `instructions`; such requests keep the
+provider's Codex prompt and reserve 4.5k extra input tokens. Remaining: OD-017
+provider-routing risk; GPT candidate prices are not invoice-verified.
+
