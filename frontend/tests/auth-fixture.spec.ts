@@ -89,7 +89,22 @@ const models = [
 type Backend = {
   accounts: Map<string, Account>; calls: { method: string; path: string; headers: Record<string, string>; body: unknown }[];
   incidents: unknown[]; failures: Map<string, { status: number; code: string; message: string }>; hold: Set<string>;
+  admins: Set<string>; maxConcurrent: number;
 };
+
+function adminOps(backend: Backend) {
+  return { summary: { accepting_requests: true, result_ttl_hours: 2, markup_bps: 20000, max_concurrent_per_account: backend.maxConcurrent,
+      active_accounts: 2, active_keys: 3, in_flight_requests: 1, requests_1h: 4, requests_24h: 12, completed_24h: 10, failed_24h: 1,
+      customer_charge_24h_micros: "2400000", provider_cost_24h_micros: "1200000", unknown_requests: 0, unresolved_reservations: 0,
+      queued_requests: 0, oldest_queued_seconds: 0, models: 2,
+      provider_groups: [{ id: "grsai-default", enabled: true, budget_limit_micros: "500000000", spent_micros: "1200000", reserved_micros: "300000" }],
+      model_usage_24h: [] },
+    models: [{ id: "gpt-5.5", name: "GPT 5.5", capability: "text", enabled: true, provider_model_id: "gpt-5.5", current_price_version: 3,
+      price_verified_at: "2026-10-06T00:00:00Z", max_input_tokens: 200000, max_output_tokens: 16000, max_units: null, unit: "tokens",
+      input_micros: "308000", output_micros: "1890000", unit_micros: null, markup_bps: null, source_note: "fixture source",
+      parameter_schema: { type: "object", properties: {} }, responses_api: true }],
+    offers: [] };
+}
 
 const periodDays: Record<string, number | null> = { today: 0, "7d": 7, "30d": 30, "6m": 183, "1y": 365, all: null };
 function periodFrom(period: string): number | null {
@@ -119,6 +134,18 @@ async function installBackend(context: BrowserContext, backend: Backend) {
     const token = headers.authorization?.replace(/^Bearer /, "") ?? "";
     const accountId = token.replace("fixture-access-", "");
     if (!token.startsWith("fixture-access-")) return fail(401, "authentication_required", "A valid API key or Supabase access token is required.");
+    if (path === "/v1/internal/admin-check") return json({ authorized: backend.admins.has(accountId) });
+    if (path.startsWith("/v1/internal/")) {
+      if (!backend.admins.has(accountId)) return fail(403, "admin_required", "This operation requires an administrator account.");
+      if (path === "/v1/internal/ops") return json(adminOps(backend));
+      if (path === "/v1/internal/requests") return json({ data: [{ id: uuid(0x501), created_at: new Date().toISOString(), completed_at: null,
+        account_id: second.id, api_key_prefix: "tw_live_ab12", model: "gpt-5.5", capability: "text", state: "submitting", error_category: null,
+        input_tokens: null, output_tokens: null, units: 0, reserved_micros: "64000", charged_micros: null, provider_micros: null, duration_ms: null }] });
+      if (path === "/v1/internal/controls" && method === "POST") {
+        backend.maxConcurrent = (body as { max_concurrent_per_account: number }).max_concurrent_per_account;
+        return json({ updated: true });
+      }
+    }
     if (!backend.accounts.has(accountId)) backend.accounts.set(accountId, freshAccount(accountId === user.id));
     const account = backend.accounts.get(accountId)!;
     const q = url.searchParams;
@@ -212,7 +239,7 @@ async function installBackend(context: BrowserContext, backend: Backend) {
 let backend: Backend;
 
 test.beforeEach(async ({ context }) => {
-  backend = { accounts: new Map(), calls: [], incidents: [], failures: new Map(), hold: new Set() };
+  backend = { accounts: new Map(), calls: [], incidents: [], failures: new Map(), hold: new Set(), admins: new Set(), maxConcurrent: 3 };
   // Deny unexpected network access; the fixture must never contact a real service.
   await context.route("**/*", async route => {
     const url = new URL(route.request().url());
@@ -843,4 +870,34 @@ test("key metadata is isolated per account", async ({ page }) => {
   await signIn(page, "/dashboard/api-keys");
   await expect(page.getByRole("heading", { name: "Create your first API key" })).toBeVisible();
   await expect(page.locator("body")).not.toContainText("Production");
+});
+
+test("the admin panel is hidden from customers and refused by the server", async ({ page }) => {
+  await signIn(page, "/dashboard");
+  await expect(page.getByRole("link", { name: "Admin", exact: true })).toHaveCount(0);
+  await page.goto("/dashboard/admin");
+  await expect(page.getByRole("heading", { name: "Administrator access required" })).toBeVisible();
+  expect(backend.calls.some(call => call.path.startsWith("/v1/internal/ops"))).toBe(false);
+});
+
+test("the admin panel polls live requests and saves an audited concurrency limit", async ({ page }) => {
+  backend.admins.add(user.id);
+  await signIn(page, "/dashboard");
+  await page.getByRole("link", { name: "Admin", exact: true }).click();
+  const table = page.getByRole("region", { name: "Recent requests across all accounts" });
+  await expect(table.locator("tbody tr")).toHaveCount(1);
+  await expect(table).toContainText("gpt-5.5");
+  await expect(table).toContainText("$0.064 held");
+  await expect.poll(() => backend.calls.filter(call => call.path.startsWith("/v1/internal/requests")).length, { timeout: 12_000 }).toBeGreaterThan(1);
+  await page.getByRole("tab", { name: "Controls" }).click();
+  const save = page.getByRole("button", { name: "Save controls" });
+  await page.getByLabel("Concurrent requests per account").fill("5");
+  await expect(save).toBeDisabled();
+  await page.getByLabel("Reason for the audit log").first().fill("launch capacity");
+  await save.click();
+  await expect(page.getByText("Controls saved.")).toBeVisible();
+  expect(backend.calls.find(call => call.method === "POST" && call.path === "/v1/internal/controls")?.body)
+    .toEqual({ reason: "launch capacity", accepting_requests: true, result_ttl_hours: 2, max_concurrent_per_account: 5 });
+  await page.getByRole("tab", { name: "Live" }).click();
+  await expect(page.getByText("Limit 5 per account")).toBeVisible();
 });

@@ -84,9 +84,12 @@ account and capability.
 
 Status: **PARTLY DECIDED**. Atomic credit/provider budget checks, a default
 three-request per-account concurrency limit, global/provider pause, model
-disablement, account suspension, and key revocation exist in code. Per-IP,
-per-key, and daily limits and their thresholds are **OPEN**; Cloudflare rate-limit
-configuration is not present.
+disablement, account suspension, and key revocation exist in code. The concurrency
+limit (1-100) is editable at runtime in the admin panel. **ASSUMPTION:** Cloudflare
+Workers rate-limit bindings in `wrangler.jsonc` cap `/v1/*` at 300 requests per minute
+per credential (hashed bearer) and 600 per minute per IP, before authentication or any
+database call; thresholds change only with a deploy and need review against real
+traffic. Daily limits are **OPEN**.
 
 ## OD-012 Monitoring, logs, and retention
 
@@ -99,8 +102,11 @@ retention, 90-day usage retention, and financial-record retention remain **OPEN*
 
 Status: **DECIDED** for restricted `/v1/internal` routes guarded by verified user
 IDs in `ADMIN_USER_IDS`, with required audit reasons for privileged changes.
-No admin dashboard UI exists yet; admin identity
-rotation and production access review remain launch tasks.
+A minimal admin UI at `/dashboard/admin` (shown only to those IDs; the server
+re-checks every call) covers live metrics, a metadata-only cross-account request
+feed, service/provider controls, model enablement and prices, and credit offers.
+Account inspection, credit adjustment, key revocation, and incidents remain API-only.
+Admin identity rotation and production access review remain launch tasks.
 
 ## OD-014 Prices, markup, offers, and currency
 

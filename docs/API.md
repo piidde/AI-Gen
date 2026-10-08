@@ -49,7 +49,9 @@ The response includes X-Request-Id. Generation responses also include X-Takewing
 | GET /v1/billing/payments/{id}/receipt | Supabase user token | Stripe receipt link for an owned, confirmed payment; 409 until Stripe issues one. No invoices are generated. |
 | POST /stripe/webhook | Stripe-Signature | Process trusted payment, refund, and dispute events, including closed disputes. |
 
-Administrator routes are under /v1/internal. They require a verified Supabase user ID listed in ADMIN_USER_IDS. They provide operational summaries, account inspection/suspension, API-key revocation, audited credit adjustment, platform/provider controls, model configuration, official reference prices for savings (`POST /v1/internal/models/{id}/official-prices`), incident publishing (`POST /v1/internal/incidents`), and purchase-offer configuration. There is no Operations frontend yet.
+Administrator routes are under /v1/internal. They require a verified Supabase user ID listed in ADMIN_USER_IDS. They provide operational summaries, account inspection/suspension, API-key revocation, audited credit adjustment, platform/provider controls, model configuration, official reference prices for savings (`POST /v1/internal/models/{id}/official-prices`), incident publishing (`POST /v1/internal/incidents`), and purchase-offer configuration, a metadata-only cross-account request feed (`GET /v1/internal/requests`), the per-account concurrency limit (`POST /v1/internal/controls`), and model enablement on the current verified price (`POST /v1/internal/models/{id}/enabled`). The admin panel at /dashboard/admin uses these routes.
+
+All /v1 routes are rate-limited at the edge per credential and per IP; excess calls return 429 rate_limited.
 
 ## Chat request contract
 
@@ -77,7 +79,7 @@ A repeated key with the same input returns the original request; a completed med
 
 Request states include queued, submitting, provider_pending, succeeded, failed, unknown, and expired. unknown means the upstream may have accepted a billable request but the backend cannot confirm the outcome. Check status using the same request ID; never retry the generation with a new key solely because of a timeout. Stripe dispute events are deduplicated and terminal outcomes restore/keep reversed credits as appropriate; resolved disputes do not automatically restore account access.
 
-Common codes include authentication_required, api_key_required, model_unavailable, insufficient_credits, concurrency_limit, provider_budget_exhausted, idempotency_conflict, result_not_ready, result_expired, provider_outcome_unknown, and database_unavailable.
+Common codes include authentication_required, api_key_required, model_unavailable, insufficient_credits, concurrency_limit, rate_limited, provider_budget_exhausted, idempotency_conflict, result_not_ready, result_expired, provider_outcome_unknown, and database_unavailable.
 
 ## Local examples
 

@@ -44,6 +44,12 @@
       }
     ]
   },
+  // Edge load protection before any database call (src/rate-limit.ts, OD-011). Changing a
+  // threshold needs a deploy; period is 10 or 60 seconds. Namespace IDs are unique per account.
+  "ratelimits": [
+    { "name": "KEY_RATE_LIMITER", "namespace_id": "1001", "simple": { "limit": 300, "period": 60 } },
+    { "name": "IP_RATE_LIMITER", "namespace_id": "1002", "simple": { "limit": 600, "period": 60 } }
+  ],
   "triggers": { "crons": ["*/5 * * * *"] },
   // Cloudflare Email Sending (Workers Paid). The domain must be onboarded to Email Service.
   "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["alerts@aiapi.deals"] }],
@@ -62,6 +68,10 @@
         "MAX_RESULT_BYTES": "268435456",
         "ALLOWED_ORIGINS": "http://localhost:5173"
       },
+      "ratelimits": [
+        { "name": "KEY_RATE_LIMITER", "namespace_id": "1003", "simple": { "limit": 300, "period": 60 } },
+        { "name": "IP_RATE_LIMITER", "namespace_id": "1004", "simple": { "limit": 600, "period": 60 } }
+      ],
       "r2_buckets": [
         {
           "binding": "GENERATED_ASSETS",

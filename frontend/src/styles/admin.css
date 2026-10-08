@@ -1,0 +1,26 @@
+.admin-tabs { margin-bottom:22px; }
+.admin-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+.admin-metrics > div { display:flex; flex-direction:column; min-width:0; padding:20px; border:var(--border-strong); border-radius:18px; background:var(--panel); }
+.admin-metrics > div.attention { background:var(--highlight); }
+.admin-metrics .metric-label { flex-wrap:wrap; gap:8px; margin:0; font-size:13px; font-weight:800; letter-spacing:.02em; text-transform:uppercase; }
+.admin-metrics .value { margin:16px 0 8px; font-size:clamp(28px,2.4vw,42px); font-weight:900; font-stretch:75%; line-height:1; overflow-wrap:anywhere; }
+.admin-metrics .unit { display:block; margin-top:5px; font-family:var(--font-mono); font-size:12px; font-weight:400; }
+.admin-metrics p { margin:6px 0 0; color:var(--muted); font-size:13px; line-height:1.55; }
+.admin-requests { margin-top:24px; }
+.admin-page .filters { flex-wrap:wrap; }
+.admin-page .mono { font-family:var(--font-mono); font-size:12px; }
+.admin-page .key-actions { display:flex; justify-content:flex-end; gap:8px; }
+.admin-page .key-actions .button { padding:7px 11px; font-size:13px; }
+.admin-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; align-items:start; }
+.admin-grid > .panel { margin:0; }
+.admin-check { display:flex; align-items:center; gap:10px; margin:18px 0; font-size:14px; font-weight:500; }
+.admin-check input { width:18px; height:18px; }
+.admin-page .form-footer { flex-wrap:wrap; }
+.admin-infra { grid-column:1/-1; }
+.admin-infra dl { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; margin:0; }
+.admin-infra dl > div { padding:14px 16px; border:1px solid var(--border); border-radius:var(--radius-control); }
+.admin-infra dt { font-size:12px; color:var(--muted); }
+.admin-infra dd { display:grid; gap:4px; margin:6px 0 0; }
+.admin-infra dd span { font-family:var(--font-mono); font-size:11px; color:var(--muted); overflow-wrap:anywhere; }
+@media(max-width:1250px) { .admin-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .admin-grid { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:650px) { .admin-metrics { grid-template-columns:minmax(0,1fr); } .admin-metrics > div { padding:18px; } }

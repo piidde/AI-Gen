@@ -14,6 +14,7 @@ import { Route } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthProvider';
 import App from './App';
 import DashboardModels from './pages/DashboardModels';
+import Admin from "./pages/Admin";
 export default function BrowserApp() { return <AuthProvider><App>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
@@ -34,5 +35,6 @@ export default function BrowserApp() { return <AuthProvider><App>
           <Route path="billing" element={<Billing />} />
           <Route path="api-keys" element={<ApiKeys />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="admin" element={<Admin />} />
         </Route>
 </App></AuthProvider>; }

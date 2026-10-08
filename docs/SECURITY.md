@@ -130,9 +130,9 @@ cookies, and credential headers. Cloudflare observability is configured in
 retention, and financial-record retention still require explicit setup/decisions.
 
 The database enforces atomic available-credit and provider-budget reservations,
-and defaults to at most three concurrent requests per account. It does not yet
-enforce per-IP, per-key, or daily-rate limits; Cloudflare rate-limit configuration
-is a launch task. Operators can pause the platform/provider, disable models,
+and defaults to at most three concurrent requests per account. Cloudflare rate-limit
+bindings reject excess `/v1/*` calls per credential (keyed by a SHA-256 hash, never the
+raw secret) and per IP before authentication; daily limits are not enforced. Operators can pause the platform/provider, disable models,
 suspend accounts, revoke keys, and adjust credits with an audit reason. Results
 are copied to private R2 and delivered only through authenticated, expiry-checked
 Worker routes; upstream result hosts are restricted by `DOWNLOAD_HOST_ALLOWLIST`.

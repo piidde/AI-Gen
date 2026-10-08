@@ -37,7 +37,11 @@ Already required by the backend; confirm each one exists in production:
 - [ ] After deploy, set a threshold above your balance in Settings → Notifications;
       an email from `alerts@aiapi.deals` should arrive within about five minutes.
 
-## 5. Catalogue, offers and status (admin API, Supabase admin token)
+## 5. Catalogue, offers and status (admin panel or admin API)
+
+Apply migration `20261010120000_admin_panel.sql` before deploying the Worker that uses
+it. Signed in as an `ADMIN_USER_IDS` user, `/dashboard/admin` covers the steps below
+except official prices and incidents, which remain API-only.
 
 - [ ] Enable models and prices: `POST /v1/internal/models/{id}` (only verified prices).
 - [ ] Optional savings reference: `POST /v1/internal/models/{id}/official-prices`.

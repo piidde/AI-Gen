@@ -10,6 +10,7 @@ import { adminAuth, database, rpc } from "./database.js";
 import { HttpError, safeErrorMessage } from "./errors.js";
 import { chooseProviderKey, fetchProviderResult, pollMedia, submitMedia } from "./provider.js";
 import { handleChat, handleResponses } from "./text.js";
+import { rateLimit } from "./rate-limit.js";
 import { decryptPayload, encryptPayload, formatCredits, formatUsdMicros, hex, hmacSha256, newApiKey, requireConfiguredInt, sha256, stableJson } from "./security.js";
 import type { Env, QueueBatch, StoredMedia } from "./types.js";
 import { generationRequestSchema, validateModelInput, validateParameterSchema } from "./validation.js";
@@ -94,6 +95,8 @@ app.use("/*", async (c, next) => {
   if (c.req.path.startsWith("/v1/") || c.req.path === "/healthz") c.header("cache-control", "no-store");
   await next();
 });
+
+app.use("/v1/*", rateLimit());
 
 app.get("/healthz", (c) => c.json({ status: "ok" }));
 
@@ -572,11 +575,23 @@ app.get("/v1/internal/admin-check", requireAccount(), (c) => {
 app.get("/v1/internal/ops", requireAccount(), async (c) => {
   requireAdmin(c);
   const db = database(c.env);
-  const [summary, models] = await Promise.all([
+  const [summary, models, offers] = await Promise.all([
     rpc<unknown>(db, "tw_ops_summary"),
     rpc<unknown>(db, "tw_admin_model_catalog"),
+    rpc<unknown>(db, "tw_admin_list_offers"),
   ]);
-  return c.json({ summary, models });
+  return c.json({ summary, models, offers });
+});
+
+app.get("/v1/internal/requests", requireAccount(), async (c) => {
+  requireAdmin(c);
+  const query = z.object({
+    state: z.enum(["active", "succeeded", "failed", "unknown", "expired"]).optional(),
+    limit: z.coerce.number().int().min(1).max(200).optional(),
+  }).strict().safeParse(c.req.query());
+  if (!query.success) throw new HttpError(400, "invalid_usage_filter", "The request filters are invalid.");
+  const data = await rpc<unknown[]>(database(c.env), "tw_admin_recent_requests", { p_state: query.data.state ?? null, p_limit: query.data.limit ?? 50 });
+  return c.json({ data });
 });
 
 app.post("/v1/internal/controls", requireAccount(), async (c) => {
@@ -585,11 +600,13 @@ app.post("/v1/internal/controls", requireAccount(), async (c) => {
     reason: z.string().trim().min(3).max(500),
     accepting_requests: z.boolean(),
     result_ttl_hours: z.number().int().min(1).max(48).optional(),
+    max_concurrent_per_account: z.number().int().min(1).max(100).optional(),
   }).strict().safeParse(await readJson(c, c.env));
   if (!body.success) throw new HttpError(400, "invalid_operational_controls", "The operational controls are invalid.");
   await rpc(database(c.env), "tw_set_operational_controls", {
     p_actor: actor, p_reason: body.data.reason,
     p_accepting_requests: body.data.accepting_requests, p_result_ttl_hours: body.data.result_ttl_hours ?? null,
+    p_max_concurrent_per_account: body.data.max_concurrent_per_account ?? null,
   });
   return c.json({ updated: true });
 });
@@ -694,6 +711,24 @@ app.post("/v1/internal/offers", requireAccount(), async (c) => {
     p_amount_minor: body.data.amount_minor, p_credits_micros: body.data.credits_micros, p_active: body.data.active,
   });
   return c.json({ updated: true });
+});
+
+app.post("/v1/internal/models/:id/enabled", requireAccount(), async (c) => {
+  const actor = requireAdmin(c);
+  const body = z.object({ reason: z.string().trim().min(3).max(500), enabled: z.boolean() }).strict().safeParse(await readJson(c, c.env));
+  if (!body.success) throw new HttpError(400, "invalid_model_settings", "A reason and the enabled flag are required.");
+  const db = database(c.env);
+  if (body.data.enabled) {
+    // The database checks the price; the full parameter-schema subset is only checked here.
+    const catalog = await rpc<Array<{ id: string; parameter_schema: unknown }>>(db, "tw_admin_model_catalog");
+    const model = catalog.find((item) => item.id === c.req.param("id"));
+    if (!model) throw new HttpError(404, "model_unavailable", "The requested model is unavailable.");
+    validateParameterSchema(model.parameter_schema);
+  }
+  await rpc(db, "tw_admin_set_model_enabled", {
+    p_actor: actor, p_reason: body.data.reason, p_model_id: c.req.param("id"), p_enabled: body.data.enabled,
+  });
+  return c.json({ model: c.req.param("id"), enabled: body.data.enabled });
 });
 
 app.post("/v1/internal/models/:id/official-prices", requireAccount(), async (c) => {

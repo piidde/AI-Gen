@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
+import { useApiResource } from "../data/api";
 import Brand from "./Brand";
 import Icon from "./Icon";
 import type { IconName } from "./Icon";
@@ -32,6 +33,8 @@ export default function DashboardLayout() {
   const sidebarRef = useRef<HTMLElement>(null);
   const mainRef = useRef<HTMLElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
+  // Only hides the entry for others; /v1/internal enforces administrator access itself.
+  const adminCheck = useApiResource<{ authorized: boolean }>("/v1/internal/admin-check");
   const email = user?.email ?? "Signed-in account";
   const displayName =
     readMetadataString(user?.user_metadata?.full_name) ??
@@ -128,6 +131,12 @@ export default function DashboardLayout() {
                 {item.label}
               </NavLink>
             ))}
+            {adminCheck.data?.authorized && (
+              <NavLink to="/dashboard/admin">
+                <Icon name="admin" />
+                Admin
+              </NavLink>
+            )}
           </nav>
         </div>
         <div className="sidebar-bottom">

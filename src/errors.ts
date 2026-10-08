@@ -38,6 +38,7 @@ const databaseErrors: Record<string, { status: number; message: string }> = {
   payment_not_reversible: { status: 409, message: "The payment cannot be reversed in its current state." },
   reason_required: { status: 400, message: "A reason between 3 and 500 characters is required." },
   invalid_result_ttl: { status: 400, message: "Result retention must be between 1 and 48 hours." },
+  invalid_concurrency_limit: { status: 400, message: "The concurrency limit must be between 1 and 100." },
   invalid_key_name: { status: 400, message: "Key name must be between 1 and 60 characters." },
   api_key_not_found: { status: 404, message: "The API key was not found." },
   request_not_settleable: { status: 409, message: "The request is not in a settleable state." },

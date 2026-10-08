@@ -83,9 +83,11 @@ limits, alarms, and rollback path are configured.
 - All model entries, provider spending, platform request acceptance, and purchase
   offers default off. A price row requires an operator-supplied evidence note and
   limits; this is not itself proof of provider behavior.
-- `stream=true` returns 501. There is no IP/API-key rate-limit service; the
+- Cloudflare rate-limit bindings cap `/v1/*` per credential and per IP before any
+  database call (`src/rate-limit.ts`, thresholds in `wrangler.jsonc`). Counting is
+  per location and approximate, so it is load protection, not a billing control. The
   database enforces available-credit, provider-budget, and per-account concurrency
-  limits (default three concurrent requests).
+  limits (default three, editable in the admin panel).
 - Usage and audit retention, tax/invoicing, customer terms, resale and data
   processing terms, alert routing, and production secrets are not finalized.
 - Database migrations and financial/authentication behavior still need local

@@ -13,6 +13,7 @@ const paths = {
   image: "M3 3h14v14H3ZM4 15l5-5 3 3 2-2 3 3M6 6h2v2H6Z",
   profile: "M13 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0M3 18v-2a7 7 0 0 1 14 0v2",
   bell: "M4 14h12l-2-3V7a4 4 0 0 0-8 0v4ZM8 17h4",
+  admin: "M10 2 3 5v5c0 4 3 7 7 8 4-1 7-4 7-8V5Z",
 } as const;
 
 export type IconName = keyof typeof paths;
