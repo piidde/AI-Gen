@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { createOpenApiDocument } from "./openapi.js";
-import { readBoundedJson, readBoundedText } from "./http-body.js";
+import { readBoundedText } from "./http-body.js";
 import { cors } from "hono/cors";
 import { z } from "zod";
 import Stripe from "stripe";
@@ -8,13 +8,13 @@ import * as Sentry from "@sentry/cloudflare";
 import { requireAccount, requireUser, type AppContext, type AppEnv } from "./auth.js";
 import { adminAuth, database, rpc } from "./database.js";
 import { HttpError, safeErrorMessage } from "./errors.js";
-import { chooseProviderKey, fetchProviderResult, pollMedia, submitChat, submitMedia } from "./provider.js";
+import { chooseProviderKey, fetchProviderResult, pollMedia, submitMedia } from "./provider.js";
+import { handleChat, handleResponses } from "./text.js";
 import { decryptPayload, encryptPayload, formatCredits, formatUsdMicros, hex, hmacSha256, newApiKey, requireConfiguredInt, sha256, stableJson } from "./security.js";
 import type { Env, QueueBatch, StoredMedia } from "./types.js";
-import { estimatedInputTokens, generationRequestSchema, validateChat, validateModelInput, validateParameterSchema } from "./validation.js";
+import { generationRequestSchema, validateModelInput, validateParameterSchema } from "./validation.js";
 
 const app = new Hono<AppEnv>();
-const encoder = new TextEncoder();
 
 function apiError(c: AppContext, error: HttpError): Response {
   const requestId = c.get("requestId");
@@ -63,14 +63,6 @@ async function loadTextResult(env: Env, requestId: string): Promise<Response> {
   return new Response(result.body, { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "private, no-store" } });
 }
 
-async function loadOwnedTextResult(env: Env, accountId: string, requestId: string): Promise<Response> {
-  const manifest = await rpc<{ kind?: string }>(database(env), "tw_get_result", {
-    p_account_id: accountId, p_request_id: requestId,
-  });
-  if (manifest.kind !== "chat") throw new HttpError(409, "result_type_mismatch", "This request does not contain a chat result.");
-  return loadTextResult(env, requestId);
-}
-
 function mediaStatus(status: string): "succeeded" | "failed" | "pending" | "unknown" {
   const normalized = status.toLowerCase();
   if (["succeeded", "success", "completed"].includes(normalized)) return "succeeded";
@@ -111,7 +103,7 @@ app.get("/v1/models", async (c) => {
   const models = await rpc<Array<{
     id: string; name: string; capability: "text" | "image" | "video"; price_version: number; provider_group_id: string;
     prices: { input_micros_per_million: string | null; output_micros_per_million: string | null; unit_micros: string | null; unit: string };
-    parameters: unknown;
+    parameters: unknown; max_input_tokens: number | null; max_output_tokens: number | null; responses_api: boolean;
   }>>(database(c.env), "tw_list_models");
   return c.json({ object: "list", data: models.map((model) => ({
     id: model.id, name: model.name, capability: model.capability,
@@ -123,6 +115,10 @@ app.get("/v1/models", async (c) => {
       per_unit: model.prices.unit_micros === null ? null : formatUsdMicros(model.prices.unit_micros),
     },
     parameters: model.parameters,
+    ...(model.capability === "text" ? {
+      endpoints: model.responses_api ? ["chat.completions", "responses"] : ["chat.completions"],
+      tool_calling: model.responses_api, context_window: model.max_input_tokens, max_output_tokens: model.max_output_tokens,
+    } : {}),
   })) });
 });
 
@@ -133,115 +129,13 @@ app.get("/v1/status", async (c) => {
 });
 
 app.post("/v1/chat/completions", requireAccount(), async (c) => {
-  const account = c.get("account");
-  if (account.authType !== "api_key") throw new HttpError(403, "api_key_required", "Use a Takewing API key for generation requests.");
-  const { request, maxOutputTokens } = validateChat(await readJson(c, c.env));
-  const inputTokens = estimatedInputTokens(request.messages);
-  const modelList = await rpc<Array<{ id: string; capability: string; provider_group_id: string }>>(database(c.env), "tw_list_models");
-  const model = modelList.find((item) => item.id === request.model && item.capability === "text");
-  if (!model) throw new HttpError(404, "model_unavailable", "The requested model is unavailable.");
-  const idempotencyKey = getIdempotencyKey(c, false);
-  const requestHash = hex(await hmacSha256(c.env.IDEMPOTENCY_HMAC_SECRET, stableJson(request)));
-  const key = chooseProviderKey(c.env, model.provider_group_id);
-  const db = database(c.env);
-  const reservation = await rpc<{ request_id: string; state: string; duplicate: boolean }>(db, "tw_reserve_generation", {
-    p_account_id: account.id, p_api_key_id: account.apiKeyId, p_model_id: model.id,
-    p_idempotency_key: idempotencyKey, p_request_hash: `\\x${requestHash}`, p_kind: "text",
-    p_input_tokens: inputTokens, p_output_tokens: maxOutputTokens, p_units: null, p_payload_object_key: null,
-    p_provider_key_id: key.id,
-  });
-  if (reservation.duplicate) {
-    if (reservation.state === "succeeded") return loadOwnedTextResult(c.env, account.id, reservation.request_id);
-    if (reservation.state === "expired") throw new HttpError(410, "result_expired", "The saved result is no longer available.");
-    return c.json({ error: { message: "This request is already in progress or has an unresolved provider outcome.", code: "idempotent_request_exists", request_id: reservation.request_id } }, 409);
-  }
-  const upstreamBody: Record<string, unknown> = {
-    model: request.model,
-    messages: request.messages,
-    max_tokens: maxOutputTokens,
-    stream: false,
-    ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
-    ...(request.top_p === undefined ? {} : { top_p: request.top_p }),
-    ...(request.stop === undefined ? {} : { stop: request.stop }),
-    ...(request.seed === undefined ? {} : { seed: request.seed }),
-  };
-  const started = Date.now();
-  let upstream: Response;
-  try {
-    upstream = (await submitChat(c.env, key, upstreamBody)).response;
-  } catch {
-    await rpc(db, "tw_fail_generation", { p_request_id: reservation.request_id, p_error_category: "provider_timeout_or_disconnect", p_ambiguous: true });
-    writeLog("generation.unknown", { request_id: reservation.request_id, model: model.id, provider_key_id: key.id, duration_ms: Date.now() - started });
-    throw new HttpError(503, "provider_outcome_unknown", "The provider outcome is unclear. The request will not be resubmitted automatically.");
-  }
-  if (!upstream.ok) {
-    // 429 means the provider refused before generating; release immediately.
-    const ambiguous = upstream.status >= 500 || upstream.status === 408;
-    await rpc(db, "tw_fail_generation", {
-      p_request_id: reservation.request_id,
-      p_error_category: ambiguous ? "provider_rejection_ambiguous" : "provider_rejected",
-      p_ambiguous: ambiguous,
-    });
-    writeLog(ambiguous ? "generation.unknown" : "generation.failed", {
-      request_id: reservation.request_id, model: model.id, provider_key_id: key.id,
-      provider_status: upstream.status, duration_ms: Date.now() - started,
-    });
-    throw new HttpError(ambiguous ? 503 : 502, ambiguous ? "provider_outcome_unknown" : "provider_rejected",
-      ambiguous ? "The provider outcome is unclear; this request will not be resubmitted automatically." : "The provider rejected this request.");
-  }
-  let responseBody: unknown;
-  try {
-    responseBody = await readBoundedJson(upstream, requireConfiguredInt(c.env.MAX_TEXT_RESULT_BYTES, 8_388_608));
-  } catch (cause) {
-    const error = cause instanceof HttpError ? cause : new HttpError(502, "provider_response_invalid", "The provider response could not be read.");
-    await rpc(db, "tw_fail_generation", { p_request_id: reservation.request_id, p_error_category: error.code, p_ambiguous: true });
-    throw new HttpError(503, "provider_outcome_unknown", "The provider response could not be safely stored. The request will not be resubmitted.");
-  }
-  const parsed = z.object({
-    choices: z.array(z.unknown()).min(1),
-    usage: z.object({ prompt_tokens: z.number().int().nonnegative(), completion_tokens: z.number().int().nonnegative() }).passthrough(),
-  }).passthrough().safeParse(responseBody);
-  if (!parsed.success) {
-    await rpc(db, "tw_fail_generation", { p_request_id: reservation.request_id, p_error_category: "provider_usage_missing", p_ambiguous: true });
-    writeLog("generation.unknown", { request_id: reservation.request_id, model: model.id, provider_key_id: key.id, duration_ms: Date.now() - started });
-    throw new HttpError(503, "provider_usage_unavailable", "The provider response did not contain verifiable usage.");
-  }
-  const resultBytes = encoder.encode(JSON.stringify(responseBody));
-  const maxResultBytes = requireConfiguredInt(c.env.MAX_RESULT_BYTES, 268_435_456);
-  if (resultBytes.byteLength > maxResultBytes) {
-    await rpc(db, "tw_fail_generation", { p_request_id: reservation.request_id, p_error_category: "provider_response_too_large", p_ambiguous: true });
-    throw new HttpError(502, "provider_response_too_large", "The provider response exceeds the configured size limit.");
-  }
-  const objectKey = `results/${reservation.request_id}/response.json`;
-  const settle = () => rpc(db, "tw_settle_generation", {
-    p_request_id: reservation.request_id,
-    p_input_tokens: parsed.data.usage.prompt_tokens,
-    p_output_tokens: parsed.data.usage.completion_tokens,
-    p_units: null,
-    p_result_manifest: { kind: "chat" },
-    p_result_object_keys: [objectKey],
-  });
-  try {
-    await c.env.GENERATED_ASSETS.put(objectKey, resultBytes, { httpMetadata: { contentType: "application/json", cacheControl: "private, no-store" } });
-    // Settlement is idempotent: a retry after a lost DB response returns the committed outcome.
-    try { await settle(); } catch (cause) {
-      if (cause instanceof HttpError && cause.code === "usage_exceeds_reservation") throw cause;
-      await settle();
-    }
-  } catch (cause) {
-    const exceeded = cause instanceof HttpError && cause.code === "usage_exceeds_reservation";
-    await rpc(db, "tw_fail_generation", { p_request_id: reservation.request_id, p_error_category: exceeded ? "usage_exceeds_reservation" : "settlement_failed", p_ambiguous: true });
-    writeLog("generation.settlement_unknown", { request_id: reservation.request_id, model: model.id, provider_key_id: key.id });
-    throw new HttpError(503, "settlement_outcome_unknown", "The response could not be safely settled. Check the request status before retrying.");
-  }
-  writeLog("generation.succeeded", {
-    request_id: reservation.request_id, model: model.id, provider_key_id: key.id,
-    input_tokens: parsed.data.usage.prompt_tokens, output_tokens: parsed.data.usage.completion_tokens,
-    duration_ms: Date.now() - started,
-  });
-  return new Response(JSON.stringify(responseBody), {
-    headers: { "content-type": "application/json; charset=utf-8", "x-request-id": c.get("requestId"), "x-takewing-request-id": reservation.request_id, "cache-control": "no-store" },
-  });
+  if (c.get("account").authType !== "api_key") throw new HttpError(403, "api_key_required", "Use a Takewing API key for generation requests.");
+  return handleChat(c, await readJson(c, c.env), getIdempotencyKey(c, false));
+});
+
+app.post("/v1/responses", requireAccount(), async (c) => {
+  if (c.get("account").authType !== "api_key") throw new HttpError(403, "api_key_required", "Use a Takewing API key for generation requests.");
+  return handleResponses(c, await readJson(c, c.env), getIdempotencyKey(c, false));
 });
 
 app.post("/v1/generations", requireAccount(), async (c) => {
@@ -311,7 +205,7 @@ app.get("/v1/requests/:id/result", requireAccount(), async (c) => {
   const id = c.req.param("id"); assertUuid(id);
   const accountId = c.get("account").id;
   const manifest = await rpc<{ kind?: string }>(database(c.env), "tw_get_result", { p_account_id: accountId, p_request_id: id });
-  if (manifest.kind === "chat") return loadTextResult(c.env, id);
+  if (manifest.kind === "chat" || manifest.kind === "responses") return loadTextResult(c.env, id);
   return c.json(manifest);
 });
 
@@ -817,6 +711,16 @@ app.post("/v1/internal/models/:id/official-prices", requireAccount(), async (c) 
   return c.json({ model: c.req.param("id"), version });
 });
 
+app.post("/v1/internal/models/:id/responses-api", requireAccount(), async (c) => {
+  const actor = requireAdmin(c);
+  const body = z.object({ reason: z.string().trim().min(3).max(500), enabled: z.boolean() }).strict().safeParse(await readJson(c, c.env));
+  if (!body.success) throw new HttpError(400, "invalid_model_settings", "A reason and the enabled flag are required.");
+  await rpc(database(c.env), "tw_admin_set_responses_api", {
+    p_actor: actor, p_reason: body.data.reason, p_model_id: c.req.param("id"), p_enabled: body.data.enabled,
+  });
+  return c.json({ model: c.req.param("id"), responses_api: body.data.enabled });
+});
+
 app.post("/v1/internal/incidents", requireAccount(), async (c) => {
   const actor = requireAdmin(c);
   const body = z.object({
@@ -1151,8 +1055,8 @@ export async function scheduled(_controller: ScheduledController, env: Env): Pro
 }
 
 const worker = {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const response = await app.fetch(request, env);
+  async fetch(request: Request, env: Env, context: ExecutionContext): Promise<Response> {
+    const response = await app.fetch(request, env, context);
     if (response.status === 404 && env.ASSETS && !new URL(request.url).pathname.startsWith("/v1/")) {
       return env.ASSETS.fetch(request);
     }

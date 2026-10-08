@@ -1,0 +1,51 @@
+event: response.created
+data: {"response":{"created_at":1791455342,"id":"resp_ft_ea330c934033af56ac3687d96f02f580","model":"gpt-5.6-sol","object":"response","output":[],"status":"in_progress"},"sequence_number":0,"type":"response.created"}
+
+event: response.in_progress
+data: {"response":{"created_at":1791455342,"id":"resp_ft_ea330c934033af56ac3687d96f02f580","model":"gpt-5.6-sol","object":"response","output":[],"status":"in_progress"},"sequence_number":1,"type":"response.in_progress"}
+
+event: response.output_item.added
+data: {"item":{"content":[],"id":"msg_ft_ea330c934033af56ac3687d96f02f580","role":"assistant","status":"in_progress","type":"message"},"output_index":0,"sequence_number":2,"type":"response.output_item.added"}
+
+event: response.content_part.added
+data: {"content_index":0,"item_id":"msg_ft_ea330c934033af56ac3687d96f02f580","output_index":0,"part":{"annotations":[],"text":"","type":"output_text"},"sequence_number":3,"type":"response.content_part.added"}
+
+event: response.output_text.delta
+data: {"content_index":0,"delta":" ","item_id":"msg_ft_ea330c934033af56ac3687d96f02f580","output_index":0,"sequence_number":4,"type":"response.output_text.delta"}
+
+event: response.output_text.done
+data: {"content_index":0,"item_id":"msg_ft_ea330c934033af56ac3687d96f02f580","output_index":0,"sequence_number":5,"text":" ","type":"response.output_text.done"}
+
+event: response.content_part.done
+data: {"content_index":0,"item_id":"msg_ft_ea330c934033af56ac3687d96f02f580","output_index":0,"part":{"annotations":[],"text":" ","type":"output_text"},"sequence_number":6,"type":"response.content_part.done"}
+
+event: response.output_item.done
+data: {"item":{"content":[{"annotations":[],"text":" ","type":"output_text"}],"id":"msg_ft_ea330c934033af56ac3687d96f02f580","role":"assistant","status":"completed","type":"message"},"output_index":0,"sequence_number":7,"type":"response.output_item.done"}
+
+event: response.output_item.added
+data: {"item":{"arguments":"","call_id":"call_e52dab0dbbfd4b5ca907f3b90cdf95c0","id":"fc_0a6f8f6429d456c2016ac7707500ac81998d4179d129edd02d","internal_chat_message_metadata_passthrough":{"turn_id":"01a11b0f-3475-7e46-923d-51ac61312112"},"metadata":{"turn_id":"01a11b0f-3475-7e46-923d-51ac61312112"},"name":"get_weather","status":"in_progress","type":"function_call"},"output_index":1,"sequence_number":8,"type":"response.output_item.added"}
+
+event: response.function_call_arguments.delta
+data: {"delta":"{\"","item_id":"fc_0a6f8f6429d456c2016ac7707500ac81998d4179d129edd02d","obfuscation":"iGrdxmWBwwMhcu","output_index":1,"sequence_number":9,"type":"response.function_call_arguments.delta"}
+
+event: response.function_call_arguments.delta
+data: {"delta":"city","item_id":"fc_0a6f8f6429d456c2016ac7707500ac81998d4179d129edd02d","obfuscation":"aLp8wSMC4MOm","output_index":1,"sequence_number":10,"type":"response.function_call_arguments.delta"}
+
+event: response.function_call_arguments.delta
+data: {"delta":"\":\"","item_id":"fc_0a6f8f6429d456c2016ac7707500ac81998d4179d129edd02d","obfuscation":"16KsEodwJZcnd","output_index":1,"sequence_number":11,"type":"response.function_call_arguments.delta"}
+
+event: response.function_call_arguments.delta
+data: {"delta":"Berlin","item_id":"fc_0a6f8f6429d456c2016ac7707500ac81998d4179d129edd02d","obfuscation":"TaX0UvVBFf","output_index":1,"sequence_number":12,"type":"response.function_call_arguments.delta"}
+
+event: response.function_call_arguments.delta
+data: {"delta":"\"}","item_id":"fc_0a6f8f6429d456c2016ac7707500ac81998d4179d129edd02d","obfuscation":"u6eQ7ABEu4ONdg","output_index":1,"sequence_number":13,"type":"response.function_call_arguments.delta"}
+
+event: response.function_call_arguments.done
+data: {"arguments":"{\"city\":\"Berlin\"}","item_id":"fc_0a6f8f6429d456c2016ac7707500ac81998d4179d129edd02d","output_index":1,"sequence_number":14,"type":"response.function_call_arguments.done"}
+
+event: response.output_item.done
+data: {"item":{"arguments":"{\"city\":\"Berlin\"}","call_id":"call_e52dab0dbbfd4b5ca907f3b90cdf95c0","id":"fc_0a6f8f6429d456c2016ac7707500ac81998d4179d129edd02d","internal_chat_message_metadata_passthrough":{"create_time":1791455349.006876,"turn_id":"01a11b0f-3475-7e46-923d-51ac61312112"},"metadata":{"turn_id":"01a11b0f-3475-7e46-923d-51ac61312112"},"name":"get_weather","status":"completed","type":"function_call"},"output_index":1,"sequence_number":15,"type":"response.output_item.done"}
+
+event: response.completed
+data: {"response":{"access_programs":null,"background":false,"completed_at":1791455349,"created_at":1791455344,"error":null,"frequency_penalty":0.0,"id":"resp_ft_ea330c934033af56ac3687d96f02f580","incomplete_details":null,"instructions":"You are a helpful assistant.","max_output_tokens":null,"max_tool_calls":null,"metadata":{},"model":"gpt-5.6-sol","moderation":null,"object":"response","output":[{"content":[{"annotations":[],"text":" ","type":"output_text"}],"id":"msg_ft_ea330c934033af56ac3687d96f02f580","role":"assistant","status":"completed","type":"message"},{"arguments":"{\"city\":\"Berlin\"}","call_id":"call_e52dab0dbbfd4b5ca907f3b90cdf95c0","id":"fc_0a6f8f6429d456c2016ac7707500ac81998d4179d129edd02d","internal_chat_message_metadata_passthrough":{"create_time":1791455349.006876,"turn_id":"01a11b0f-3475-7e46-923d-51ac61312112"},"metadata":{"turn_id":"01a11b0f-3475-7e46-923d-51ac61312112"},"name":"get_weather","status":"completed","type":"function_call"}],"parallel_tool_calls":true,"presence_penalty":0.0,"previous_response_id":null,"prompt_cache_key":"fbb1df27-a2b1-4ef5-b69d-73b38f8dc9c7","prompt_cache_retention":"24h","reasoning":{"context":"all_turns","effort":"medium","mode":"standard","summary":null},"safety_identifier":"user-PRmFa9yyzPsNIQ9ZlmwO9Klq","service_tier":"default","status":"completed","store":false,"temperature":1.0,"text":{"format":{"type":"text"},"verbosity":"medium"},"tool_choice":"auto","tool_usage":{"image_gen":{"input_tokens":0,"input_tokens_details":{"image_tokens":0,"text_tokens":0},"output_tokens":0,"output_tokens_details":{"image_tokens":0,"text_tokens":0},"total_tokens":0},"web_search":{"num_requests":0}},"tools":[{"description":"Get weather for a city","name":"get_weather","output_schema":null,"parameters":{"additionalProperties":false,"properties":{"city":{"type":"string"}},"required":["city"],"type":"object"},"strict":true,"type":"function"}],"top_logprobs":0,"top_p":0.98,"truncation":"disabled","usage":{"attribution":{"items":{"fc_0a6f8f6429d456c2016ac7707500ac81998d4179d129edd02d":{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":2,"output_tokens":18},"msg_0a6f8f6429d456c2016ac7707022488199bb4099e53aea5fb5":{"cache_write_tokens":0,"cached_tokens":0,"content":[{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":12,"output_tokens":0}],"input_tokens":12,"output_tokens":0}},"request_fields":{"instructions":{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":10,"output_tokens":0},"tools":{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":36,"output_tokens":0}}},"input_tokens":60,"input_tokens_details":{"cache_write_tokens":0,"cached_tokens":0},"output_tokens":18,"output_tokens_details":{"reasoning_tokens":0},"total_tokens":78},"user":null},"sequence_number":16,"type":"response.completed"}
+

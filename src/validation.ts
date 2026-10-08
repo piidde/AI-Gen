@@ -1,50 +1,142 @@
 import { z } from "zod";
 import { HttpError } from "./errors.js";
 
+const toolsMoved = new HttpError(400, "tools_require_responses_api",
+  "Tool calling is available on /v1/responses with a coding model (GPT). Chat completions accept text only.");
+const imagesUnsupported = new HttpError(400, "image_input_unsupported", "Image and file input are not supported yet.");
+
+// Text parts are flattened; anything else (images, audio, files) has no byte-bounded token cost.
+const textPart = z.object({ type: z.literal("text"), text: z.string().max(250_000) }).passthrough();
 const messageSchema = z.object({
   role: z.enum(["system", "developer", "user", "assistant"]),
-  content: z.string().max(250_000),
-}).strict();
+  content: z.union([z.string().max(250_000), z.array(z.unknown()).min(1).max(200)]),
+  name: z.string().max(64).optional(),
+}).passthrough();
 
-export const chatRequestSchema = z.object({
+const chatSchema = z.object({
   model: z.string().min(1).max(120),
-  messages: z.array(messageSchema).min(1).max(100),
-  max_tokens: z.number().int().min(1).max(100_000).optional(),
-  max_completion_tokens: z.number().int().min(1).max(100_000).optional(),
+  messages: z.array(messageSchema).min(1).max(500),
+  max_tokens: z.number().int().min(1).max(1_000_000).optional(),
+  max_completion_tokens: z.number().int().min(1).max(1_000_000).optional(),
   stream: z.boolean().optional(),
+  stream_options: z.object({ include_usage: z.boolean().optional() }).passthrough().optional(),
   temperature: z.number().min(0).max(2).optional(),
   top_p: z.number().gt(0).max(1).optional(),
   stop: z.union([z.string().max(500), z.array(z.string().max(500)).max(4)]).optional(),
   seed: z.number().int().optional(),
-}).strict();
+  presence_penalty: z.number().min(-2).max(2).optional(),
+  frequency_penalty: z.number().min(-2).max(2).optional(),
+  n: z.number().int().optional(),
+}).passthrough();
 
-export type ChatRequest = z.infer<typeof chatRequestSchema>;
+export type ChatMessage = { role: "system" | "developer" | "user" | "assistant"; content: string; name?: string };
+export type ChatRequest = {
+  model: string; messages: ChatMessage[]; requestedMaxTokens: number | null; stream: boolean; includeUsage: boolean;
+  options: Record<string, unknown>;
+};
+
+// Accepts what OpenAI SDKs and simple harnesses send; unknown harmless fields are dropped
+// rather than rejected. Tools are refused explicitly because the provider ignores or
+// stalls on them for chat completions (verified 2026-10-08).
+export function validateChat(raw: unknown): ChatRequest {
+  if (raw && typeof raw === "object" && ["tools", "tool_choice", "functions", "function_call"].some((key) => key in raw)) throw toolsMoved;
+  const parsed = chatSchema.safeParse(raw);
+  if (!parsed.success) throw new HttpError(400, "invalid_request", "The chat request contains invalid fields.");
+  const data = parsed.data;
+  if (data.n !== undefined && data.n !== 1) throw new HttpError(400, "invalid_request", "Only n=1 is supported.");
+  if (data.max_tokens !== undefined && data.max_completion_tokens !== undefined && data.max_tokens !== data.max_completion_tokens) {
+    throw new HttpError(400, "invalid_request", "Set either max_tokens or max_completion_tokens, not both.");
+  }
+  const messages = data.messages.map((message): ChatMessage => {
+    let content: string;
+    if (typeof message.content === "string") content = message.content;
+    else {
+      const parts = z.array(textPart).safeParse(message.content);
+      if (!parts.success) throw imagesUnsupported;
+      content = parts.data.map((part) => part.text).join("\n");
+    }
+    return { role: message.role, content, ...(message.name ? { name: message.name } : {}) };
+  });
+  const options: Record<string, unknown> = {};
+  for (const key of ["temperature", "top_p", "stop", "seed", "presence_penalty", "frequency_penalty"] as const) {
+    if (data[key] !== undefined) options[key] = data[key];
+  }
+  return {
+    model: data.model, messages, requestedMaxTokens: data.max_completion_tokens ?? data.max_tokens ?? null,
+    stream: data.stream === true, includeUsage: data.stream_options?.include_usage === true, options,
+  };
+}
+
+const responseContentPart = z.object({ type: z.enum(["input_text", "output_text", "refusal", "text"]) }).passthrough();
+const responseItem = z.object({ type: z.string().max(64).optional(), role: z.string().max(32).optional() }).passthrough();
+const responseTool = z.object({ type: z.string().max(64) }).passthrough();
+
+const responsesSchema = z.object({
+  model: z.string().min(1).max(120),
+  input: z.union([z.string().max(4_000_000), z.array(responseItem).min(1).max(5_000)]),
+  instructions: z.string().max(1_000_000).nullable().optional(),
+  tools: z.array(responseTool).max(256).optional(),
+  tool_choice: z.unknown().optional(),
+  parallel_tool_calls: z.boolean().optional(),
+  max_output_tokens: z.number().int().min(1).max(1_000_000).nullable().optional(),
+  reasoning: z.object({}).passthrough().nullable().optional(),
+  text: z.object({}).passthrough().nullable().optional(),
+  temperature: z.number().min(0).max(2).nullable().optional(),
+  top_p: z.number().gt(0).max(1).nullable().optional(),
+  include: z.array(z.string().max(120)).max(20).nullable().optional(),
+  prompt_cache_key: z.string().max(200).optional(),
+  stream: z.boolean().optional(),
+  previous_response_id: z.string().nullable().optional(),
+  background: z.boolean().nullable().optional(),
+}).passthrough();
+
+export type ResponsesRequest = { model: string; requestedMaxTokens: number | null; stream: boolean; body: Record<string, unknown>; itemCount: number };
+
+// Neutral default so the provider does not inject its 4k-token Codex prompt (measured
+// 2026-10-08); clients such as Codex send their own instructions.
+export const DEFAULT_INSTRUCTIONS = "You are a helpful assistant.";
+const CLIENT_TOOL_TYPES = new Set(["function", "custom", "local_shell"]);
+const ITEM_TYPES = new Set(["message", "function_call", "function_call_output", "custom_tool_call", "custom_tool_call_output",
+  "local_shell_call", "local_shell_call_output", "reasoning"]);
+
+// Server-side state and provider-hosted tools are refused: we cannot store
+// conversations, and hosted tools carry provider charges outside token usage.
+export function validateResponses(raw: unknown): ResponsesRequest {
+  const parsed = responsesSchema.safeParse(raw);
+  if (!parsed.success) throw new HttpError(400, "invalid_request", "The responses request contains invalid fields.");
+  const data = parsed.data;
+  if (data.previous_response_id) throw new HttpError(400, "previous_response_unsupported", "previous_response_id is not supported; send the full input with store=false.");
+  if (data.background) throw new HttpError(400, "background_unsupported", "Background responses are not supported.");
+  for (const tool of data.tools ?? []) {
+    if (!CLIENT_TOOL_TYPES.has(tool.type)) throw new HttpError(400, "hosted_tool_unsupported", `The ${tool.type} tool is not supported; use function tools.`);
+  }
+  const items = typeof data.input === "string" ? [] : data.input;
+  for (const item of items) {
+    const type = item.type ?? (item.role ? "message" : undefined);
+    if (!type || !ITEM_TYPES.has(type)) throw new HttpError(400, "invalid_request", "The input contains an unsupported item type.");
+    if (type === "message" && Array.isArray(item.content) && !z.array(responseContentPart).safeParse(item.content).success) throw imagesUnsupported;
+  }
+  const body: Record<string, unknown> = {
+    model: data.model, input: data.input, instructions: data.instructions || DEFAULT_INSTRUCTIONS, store: false,
+  };
+  for (const key of ["tools", "tool_choice", "parallel_tool_calls", "reasoning", "text", "temperature", "top_p", "include", "prompt_cache_key"] as const) {
+    if (data[key] !== undefined && data[key] !== null) body[key] = data[key];
+  }
+  return { model: data.model, requestedMaxTokens: data.max_output_tokens ?? null, stream: data.stream === true, body, itemCount: Math.max(1, items.length) };
+}
+
+// Upper-bound style estimate for the reservation: about two bytes per token, plus
+// per-item framing and the provider's own small prompt overhead (up to ~300 tokens
+// measured). Settlement always uses the provider's reported usage.
+export function estimatedInputTokens(payload: unknown, items: number): number {
+  const bytes = new TextEncoder().encode(JSON.stringify(payload)).byteLength;
+  return Math.ceil(bytes / 2) + items * 16 + 1_024;
+}
 
 export const generationRequestSchema = z.object({
   model: z.string().min(1).max(120),
   input: z.record(z.string(), z.unknown()),
 }).strict();
-
-export function validateChat(raw: unknown): { request: ChatRequest; maxOutputTokens: number } {
-  const parsed = chatRequestSchema.safeParse(raw);
-  if (!parsed.success) throw new HttpError(400, "invalid_request", "The chat request contains invalid or unsupported fields.");
-  if (parsed.data.stream === true) throw new HttpError(501, "streaming_not_enabled", "Streaming is not enabled until the upstream stream format and billing are verified.");
-  if (parsed.data.max_tokens !== undefined && parsed.data.max_completion_tokens !== undefined) {
-    throw new HttpError(400, "invalid_request", "Set either max_tokens or max_completion_tokens, not both.");
-  }
-  const maxOutputTokens = parsed.data.max_completion_tokens ?? parsed.data.max_tokens;
-  if (maxOutputTokens === undefined) throw new HttpError(400, "max_tokens_required", "Set max_tokens to reserve a bounded maximum cost.");
-  return { request: parsed.data, maxOutputTokens };
-}
-
-export function estimatedInputTokens(messages: ChatRequest["messages"]): number {
-  const bytes = new TextEncoder().encode(JSON.stringify(messages)).byteLength;
-  const estimated = Math.ceil(bytes * 2) + messages.length * 16;
-  if (!Number.isSafeInteger(estimated) || estimated > 100_000) {
-    throw new HttpError(413, "input_too_large", "The estimated input exceeds the API limit.");
-  }
-  return estimated;
-}
 
 type JsonSchema = {
   type?: string;

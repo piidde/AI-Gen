@@ -189,6 +189,16 @@ deletion is deferred; the dashboard points to support. **OPEN:** retention-safe
 deletion (auth user, keys and profile removed; ledger/payment records kept or
 anonymized for accounting) and the financial-record retention period.
 
+## OD-017 Provider routing for GPT models
+
+Status: **INVESTIGATION (2026-10-08).** Without client instructions the provider's
+Responses endpoint injects the full OpenAI Codex CLI system prompt (~21k characters,
+~4,400 tokens), and chat completions for GPT carry the same cached overhead. This
+suggests the provider serves GPT through a Codex/ChatGPT backend. Risks: resale and
+terms-of-service exposure and sudden loss of access. The Worker sends neutral default
+instructions to avoid the hidden cost. **OPEN (owner):** accept the risk, ask the
+provider, or source GPT elsewhere before advertising coding models broadly.
+
 ## Launch gates
 
 Before public sales, apply and review the migration, run database and financial

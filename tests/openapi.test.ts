@@ -64,10 +64,9 @@ test("idempotency, output limits, expiry and streamed media contracts are explic
     assert.equal(header.schema.maxLength, 128);
   }
   const chat = document.components.schemas.ChatRequest as any;
-  assert.equal(chat.additionalProperties, false);
-  assert.deepEqual(chat.oneOf.map((option: any) => option.required), [["max_tokens"], ["max_completion_tokens"]]);
-  assert.equal(chat.properties.messages.maxItems, 100);
-  assert.ok(paths["/v1/chat/completions"].post.responses["501"]);
+  assert.deepEqual(chat.required, ["model", "messages"]);
+  assert.equal(chat.properties.messages.maxItems, 500);
+  assert.deepEqual(paths["/v1/responses"].post.security, [{ takewingKey: [] }]);
   assert.ok(paths["/v1/requests/{id}/result"].get.responses["410"]);
   assert.ok(paths["/v1/files/{requestId}/{index}"].get.responses["200"].content["application/octet-stream"]);
   assert.equal((document.components.schemas.MediaManifest as any).properties.kind.const, "media");

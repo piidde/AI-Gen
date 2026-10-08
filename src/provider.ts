@@ -52,19 +52,16 @@ export function providerBaseUrl(env: Env): string {
   return url.origin;
 }
 
-export async function submitChat(
-  env: Env,
-  key: ProviderKey,
-  body: Record<string, unknown>,
-): Promise<{ response: Response; elapsedMs: number }> {
-  const started = Date.now();
-  const response = await fetch(`${providerBaseUrl(env)}/v1/chat/completions`, {
+// Text endpoints (chat completions and responses) share one adapter. timeoutMs 0 means
+// no total deadline: streamed responses are bounded by an idle timeout while reading.
+export async function submitText(env: Env, key: ProviderKey, path: "/v1/chat/completions" | "/v1/responses",
+  body: Record<string, unknown>, timeoutMs = 110_000): Promise<Response> {
+  return fetch(`${providerBaseUrl(env)}${path}`, {
     method: "POST",
     headers: { authorization: `Bearer ${key.key}`, "content-type": "application/json" },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(110_000),
+    ...(timeoutMs > 0 ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
   });
-  return { response, elapsedMs: Date.now() - started };
 }
 
 export type ProviderMediaResult = {

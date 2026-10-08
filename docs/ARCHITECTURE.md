@@ -9,8 +9,10 @@ private Supabase PostgreSQL functions for account, model, usage, billing, and
 request state; browser roles cannot read the private schema. The Worker is the
 only component holding Stripe and GrsAI credentials.
 
-Text requests use GrsAI's OpenAI-style chat endpoint synchronously. Streaming is
-disabled. Image/video requests reserve limits and credits in PostgreSQL, store an
+Text requests use GrsAI's OpenAI-style chat endpoint synchronously (streamed chat
+is re-emitted from the finished completion) and, for coding models, its Responses
+endpoint, whose event stream is proxied while the Worker reads the final usage
+(`src/text.ts`). Image/video requests reserve limits and credits in PostgreSQL, store an
 encrypted short-lived input in private R2, and enqueue only the request ID in
 Cloudflare Queues. The Worker polls GrsAI, copies allowlisted media into private
 R2, and serves downloads through authenticated routes. A five-minute scheduled

@@ -589,3 +589,20 @@ Build/typecheck and 24 affected desktop/mobile tests passed; desktop screenshot 
 ### H-047 - 2026-09-21 - Requested GPT Image 2.5 savings wording
 
 Supersedes H-046 badge: shared basic GPT Image 2.5 cards now say Save up to 89%, calculated from exact selling price against the official 1K High output reference. Adjacent copy explicitly identifies that comparison and automatic quality; no confirmed High output equivalence is claimed. Official Low-High price range remains visible. Build/typecheck and 14 desktop/mobile pricing checks passed.
+
+## Provider API capability checks (2026-10-08)
+
+Live calls against the provider with a test key (capabilities, not prices):
+
+| Check | Result |
+| --- | --- |
+| `/v1/responses` + function tool | gpt-6-astra, gpt-5.6-terra, gpt-5.6-sol, gpt-5.5 return `function_call`; a `function_call_output` follow-up completes normally |
+| `/v1/responses` streaming | Standard event stream; `response.completed` carries `usage` (input/output tokens) |
+| `/v1/responses` + Gemini | 400 "model not supported" for every Gemini model tried |
+| `/v1/responses` without instructions | Provider injects the Codex CLI system prompt (~4,380 input tokens); any client `instructions` replace it |
+| `/v1/chat/completions` + tools | Gemini ignores tools (answers directly, apparently search-grounded); GPT stalls past 60 s |
+| `/v1/chat/completions` streaming | Gemini streams with usage in the last chunk; GPT returned no data within 90 s |
+| Gemini output vs max_tokens | completion_tokens can exceed max_tokens (thinking), so reservations keep the output ceiling |
+
+The provider publishes a Codex CLI configuration using `wire_api = "responses"`.
+
