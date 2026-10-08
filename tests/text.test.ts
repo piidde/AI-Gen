@@ -59,8 +59,9 @@ test("the input estimate grows with payload bytes and items", () => {
 });
 
 test("the recorded provider stream yields usage only from response.completed, regardless of chunking", () => {
-  const fixture = readFileSync(new URL("./fixtures/responses-stream.txt", import.meta.url), "utf8");
-  for (const size of [1, 7, 64, 1_000, fixture.length]) {
+  const lf = readFileSync(new URL("./fixtures/responses-stream.txt", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  const variants = [lf, lf.replace(/\n/g, "\r\n")].flatMap((text) => [1, 7, 64, 1_000, text.length].map((size) => [text, size] as const));
+  for (const [fixture, size] of variants) {
     const parser = new SseParser();
     const events = [];
     for (let i = 0; i < fixture.length; i += size) events.push(...parser.push(fixture.slice(i, i + size)));
@@ -68,7 +69,7 @@ test("the recorded provider stream yields usage only from response.completed, re
     assert.equal(outcome.failed, false);
     assert.deepEqual(responsesUsage(outcome.completed), { input: 60, output: 18 });
   }
-  const cut = fixture.slice(0, fixture.indexOf("event: response.completed"));
+  const cut = lf.slice(0, lf.indexOf("event: response.completed"));
   const truncated = streamedOutcome(new SseParser().push(cut));
   assert.equal(truncated.completed, null);
   const failed = streamedOutcome(new SseParser().push('event: response.failed\ndata: {"type":"response.failed","response":{"status":"failed"}}\n\n'));

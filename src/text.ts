@@ -254,7 +254,8 @@ export async function handleChat(c: AppContext, raw: unknown, idempotencyKey: st
 export class SseParser {
   private buffer = "";
   push(text: string): Array<{ event: string | null; data: string }> {
-    this.buffer += text.replace(/\r\n/g, "\n");
+    // Normalize the whole buffer: a CRLF pair may be split across two network chunks.
+    this.buffer = (this.buffer + text).replace(/\r\n/g, "\n");
     const events: Array<{ event: string | null; data: string }> = [];
     let index: number;
     while ((index = this.buffer.indexOf("\n\n")) !== -1) {
