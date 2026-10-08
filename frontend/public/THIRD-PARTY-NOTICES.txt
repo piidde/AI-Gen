@@ -8,13 +8,20 @@ Copyright 2017 IBM Corp.
 Distributed through @fontsource/ibm-plex-mono under the SIL Open Font License 1.1.
 See IBM-PLEX-MONO-LICENSE.txt. Source: https://github.com/IBM/plex
 
-OpenAI and Gemini monochrome SVG provider icons
-Obtained from the LobeHub icons library (OpenAI, Gemini, Nano Banana marks) through the accepted local design assets.
+OpenAI, Gemini and Codex monochrome SVG icons
+Obtained from the LobeHub icons library (OpenAI, Gemini, Nano Banana and Codex marks) through the accepted local design assets.
 Copyright (c) 2023 LobeHub. MIT License; see LOBEHUB-LICENSE.txt.
 Source: https://github.com/lobehub/lobe-icons
 Original distribution: @lobehub/icons-static-svg via jsDelivr.
 Provider names and marks belong to their respective owners. Display does not
 imply a partnership, endorsement, or confirmed catalogue availability.
+
+Visual Studio Code file-type icon
+From the vscode-icons project (file_type_vscode.svg).
+Copyright (c) 2016 Roberto Huertas. MIT License; see VSCODE-ICONS-LICENSE.txt.
+Source: https://github.com/vscode-icons/vscode-icons
+Visual Studio Code is a trademark of Microsoft. Codex is a trademark of OpenAI.
+Shown only to indicate compatibility; no partnership or endorsement is implied.
 
 AIAPI.deals wordmark and homepage design are project implementation assets
 based on the owner's accepted design.

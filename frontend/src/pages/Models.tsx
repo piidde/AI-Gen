@@ -5,6 +5,7 @@ import type { CatalogueReference } from "../content/catalogue";
 
 import { queryChoice, updateQuery } from "../lib/queryState";
 import PageHeading from "../components/PageHeading";
+import CodingSetup from "../components/CodingSetup";
 import PublicCatalogueShell from "../components/PublicCatalogueShell";
 import CatalogueBasis, { useCatalogueCurrency } from "../components/CatalogueBasis";
 import ModelFamily from "../components/ModelFamily";
@@ -17,7 +18,7 @@ import "../styles/catalogue-overview.css";
 const sections: { title: string; note: string; match: (model: CatalogueReference) => boolean; actions?: ReactNode }[] = [
   { title: "Coding & agent models", note: "A normal API key with tool calling (OpenAI Responses API). Works in Codex CLI, Codex for VS Code and your own harness. Per 1M tokens.",
     match: model => model.modality === "text" && model.provider === "OpenAI",
-    actions: <><Link className="button" to="/docs#codex">Use with Codex (CLI &amp; VS Code)</Link><Link className="button secondary" to="/docs#responses">Use with any OpenAI tool</Link></> },
+    actions: <CodingSetup /> },
   { title: "Chat models", note: "A normal OpenAI-compatible API key for apps, SDKs and curl (chat completions, no tool calling). Per 1M tokens.",
     match: model => model.modality === "text" && model.provider !== "OpenAI" },
   { title: "Image models", note: "Per-request pricing. Choose your model and resolution.", match: model => model.modality === "image" },

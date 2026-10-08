@@ -106,18 +106,29 @@ test("availability notices agree between catalogue and status without live healt
   await expect(page.getByRole("list", { name: "Model availability notices" })).toContainText("Temporarily unavailable");
 });
 
-test("model collection separates coding and chat models and links Codex and tool guides", async ({ page }) => {
+test("model collection separates coding and chat models and opens Codex and tool setup in place", async ({ page }, info) => {
   await page.goto("/models");
   const coding = page.getByRole("region", { name: "Coding & agent models" });
   await expect(coding).toContainText("tool calling");
-  await expect(coding.getByRole("link", { name: "Use with Codex (CLI & VS Code)" })).toHaveAttribute("href", "/docs#codex");
-  await expect(coding.getByRole("link", { name: "Use with any OpenAI tool" })).toHaveAttribute("href", "/docs#responses");
   await expect(coding.locator(".model-card").first()).toHaveAttribute("data-model-id", /^gpt-/);
+  await expect(coding.locator(".model-card").first().getByLabel("Works with Codex CLI and Codex for VS Code")).toBeVisible();
   const chat = page.getByRole("region", { name: "Chat models" });
   await expect(chat.locator(".model-card").first()).toHaveAttribute("data-model-id", /^gemini-/);
-  await expect(chat.getByRole("link", { name: /Codex/ })).toHaveCount(0);
-  await coding.getByRole("link", { name: "Use with Codex (CLI & VS Code)" }).click();
-  await expect(page.locator("#codex")).toContainText('wire_api = "responses"');
-  await expect(page.locator("#codex")).toContainText("https://aiapi.deals/v1");
+  await expect(chat.locator(".works-with")).toHaveCount(0);
+  const codex = coding.getByRole("button", { name: "Use with Codex (CLI & VS Code)" });
+  await codex.click();
+  const dialog = page.getByRole("dialog", { name: "Use with Codex (CLI & VS Code)" });
+  await expect(dialog).toContainText('wire_api = "responses"');
+  await expect(dialog).toContainText("https://aiapi.deals/v1");
+  await expect(dialog.getByRole("link", { name: /Full guide in the docs/ })).toHaveAttribute("href", "/docs#codex");
+  await page.screenshot({ path: info.outputPath("codex-setup.png") });
+  await page.keyboard.press("Escape");
+  await expect(codex).toBeFocused();
+  await coding.getByRole("button", { name: "Use with any OpenAI tool" }).click();
+  await expect(page.getByRole("dialog", { name: "Use with any OpenAI tool" })).toContainText("client.responses.create");
+  const bounds = await page.getByRole("dialog").boundingBox();
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+  await page.keyboard.press("Escape");
+  await page.screenshot({ path: info.outputPath("coding-models.png"), clip: { x: 0, y: (await coding.boundingBox())!.y - 20, width: page.viewportSize()!.width, height: 700 } });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

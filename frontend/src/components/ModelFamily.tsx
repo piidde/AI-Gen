@@ -7,7 +7,7 @@ import CopyButton from "./CopyButton";
 import Dialog from "./Dialog";
 import CatalogueRates, { type DisplayCurrency } from "./CatalogueRates";
 import ModelPrices from "./ModelPrices";
-import { ProviderLogo } from "./ProviderLogo";
+import { ProviderLogo, ToolLogo } from "./ProviderLogo";
 import { catalogueNotices } from "../content/serviceStatus";
 import { useServiceStatus } from "../data/useServiceStatus";
 import "../styles/service-status.css";
@@ -41,7 +41,10 @@ export default function ModelFamily({ family, variants, currency, linkPage = tru
       {variants.map(model => <article className="panel model-card reference-card" data-model-id={model.upstreamId} key={model.upstreamId}>
         {overview && <div className="catalogue-card-provider"><ProviderLogo name={model.upstreamId.includes("banana") ? "Nano Banana" : model.provider} /><span>{model.provider}</span></div>}
         <h3>{overview ? modelDisplayName(model.upstreamId) : model.upstreamId}</h3>
-        <p className="model-family">{model.modality === "image" ? `Listed resolutions: ${model.listedResolutions.join(" / ") || "not verified"}` : "Text · separately metered components"}</p>
+        <p className="model-family">{model.modality === "image" ? `Listed resolutions: ${model.listedResolutions.join(" / ") || "not verified"}` : model.provider === "OpenAI" ? "Coding · tool calling · Responses API" : "Chat · chat completions"}</p>
+        {model.modality === "text" && model.provider === "OpenAI" && <p className="works-with" aria-label="Works with Codex CLI and Codex for VS Code">
+          <span>Works with</span><span className="works-with-tool"><ToolLogo tool="codex" size={16} />Codex</span><span className="works-with-tool"><ToolLogo tool="vscode" size={16} />VS Code</span>
+        </p>}
         <ModelPrices model={model} overview={overview} currency={currency} />
         <footer><button className="text-link" aria-label={`View details for ${model.upstreamId}`} onClick={() => setSelected(model)}>View details<span className="sr-only"> for {model.upstreamId}</span> ↗</button>
         <div className="catalogue-status-slot">{model.availability !== "unknown" && <span className={`availability-label ${model.availability === "unavailable-notice" ? "availability-warning" : ""}`}>

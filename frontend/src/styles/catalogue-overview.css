@@ -94,3 +94,20 @@
   .catalogue-closing { align-items: start; flex-direction: column; }
   .catalogue-closing-actions { align-items: start; }
 }
+
+/* Setup buttons above the coding models: open the instructions in a dialog. */
+.setup-button { display: inline-flex; align-items: center; gap: 10px; }
+.setup-logos { display: inline-flex; gap: 4px; }
+.setup-logos img { background: #fff; border-radius: 999px; padding: 2px; box-sizing: content-box; }
+.setup-arrow { font-weight: 900; transition: transform .15s ease; }
+.setup-button:hover .setup-arrow, .setup-button:focus-visible .setup-arrow { transform: translateX(3px); }
+.works-with { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 2px 0 10px; font-size: 12px; color: var(--muted); }
+.works-with-tool { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 5px; border: 1.5px solid var(--text); border-radius: 999px; background: #fff; color: var(--text); font-weight: 700; }
+.setup-dialog ol { padding-left: 20px; display: grid; gap: 14px; }
+.setup-dialog .provider-logo { vertical-align: -3px; margin-right: 4px; }
+.setup-snippet { margin-top: 8px; display: grid; gap: 6px; justify-items: start; }
+.setup-snippet pre { width: 100%; box-sizing: border-box; overflow-x: auto; margin: 0; padding: 12px 14px; border-radius: 12px; background: #111; color: #f2f2ea; font: 13px/1.5 var(--font-mono); }
+.setup-values { display: grid; grid-template-columns: max-content 1fr; gap: 8px 14px; align-items: center; }
+.setup-values dt { font-weight: 800; }
+.setup-values dd { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+@media (max-width: 600px) { .setup-values { grid-template-columns: 1fr; } .setup-values dt { margin-top: 6px; } }
