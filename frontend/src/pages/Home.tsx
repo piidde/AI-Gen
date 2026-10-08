@@ -49,7 +49,7 @@ export default function Home() {
     <div className="home">
       <a className="skip-link" href="#main-content">Skip to content</a>
       <div className="home-preview">
-        Up to <b>{maxDealPercent}% below</b> official API list prices · Preview: paid API access is not live yet
+        Up to <b>{maxDealPercent}% below</b> official API list prices
       </div>
       <div className="home-wrap">
         <PublicHeader />
@@ -179,7 +179,7 @@ export default function Home() {
             <details><summary>Can I generate images or text on this website?</summary><p>Generation is API-only. You use your own application or API client; this website manages your account, keys, billing and usage.</p></details>
             <details><summary>How much can I save?</summary><p>Our cards show savings against the stated official price reference. For images, check the size and quality in the comparison note. Your total depends on the model, settings and any additional input or thinking usage.</p></details>
             <details><summary>Are failed requests always refunded?</summary><p>Credits are restored for a failed request only when there is no upstream cost. A billed policy rejection stays charged. If a result is uncertain, inspect the request status before retrying.</p></details>
-            <details><summary>Do I need a subscription?</summary><p>No. Use prepaid credits across image and text models, with no monthly subscription. Credits never expire. Paid access is not live yet.</p></details>
+            <details><summary>Do I need a subscription?</summary><p>No. Use prepaid credits across image and text models, with no monthly subscription. Credits never expire.</p></details>
             <details><summary>Where can I check availability or get help?</summary><p>See <Link className="text-link" to="/status">service status</Link>, <Link className="text-link" to="/support">support guidance</Link> and the <Link className="text-link" to="/docs">API documentation</Link>. An unavailable status source does not mean the service is healthy.</p></details>
             </div>
           </div>
