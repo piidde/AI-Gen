@@ -7,11 +7,13 @@ export default function Dialog({
   children,
   onClose,
   fallbackFocus,
+  className,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   fallbackFocus?: () => HTMLElement | null;
+  className?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -37,6 +39,7 @@ export default function Dialog({
   return (
     <dialog
       ref={ref}
+      className={className}
       aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault();

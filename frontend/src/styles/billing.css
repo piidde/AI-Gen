@@ -79,3 +79,70 @@
 }
 
 .billing-page .billing-packages > .table-head { padding: 0; gap: 16px; }
+
+dialog.payment-success { width: min(520px, calc(100vw - 32px)); padding: 0; overflow-x: hidden; }
+dialog.payment-success > h2 { padding: 22px 28px 0; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+dialog.payment-success .dialog-body { margin-top: 0; padding: 0 28px; }
+dialog.payment-success > h2:focus-visible { outline: none; }
+/* The success view renders its own Done action; Escape still closes it. */
+dialog.payment-success .dialog-actions { display: none; }
+.payment-success-hero {
+  margin: 16px -28px 0;
+  padding: 26px 28px 24px;
+  border-top: var(--border-strong);
+  border-bottom: var(--border-strong);
+  background: var(--highlight);
+  text-align: center;
+}
+.payment-success-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: var(--border-strong);
+  border-radius: 50%;
+  background: var(--panel);
+  animation: payment-success-pop .45s cubic-bezier(.2, 1.4, .4, 1) both;
+}
+.payment-success-mark .icon { width: 28px; height: 28px; fill: none; stroke: var(--text); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.payment-success-label { margin-top: 14px; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+.payment-success-amount {
+  margin: 4px 0 8px;
+  font-size: clamp(40px, 9vw, 56px);
+  font-weight: 900;
+  font-stretch: 75%;
+  line-height: 1;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+}
+.payment-success-note { font-size: 13px; }
+.payment-success-details { margin: 20px 0 14px; }
+.payment-success-details > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.payment-success-details > div:last-child { border-bottom: 0; }
+.payment-success-details dt { color: var(--muted); }
+.payment-success-details dd { margin: 0; min-width: 0; text-align: right; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.payment-success-ref { font-family: var(--font-mono); font-size: 12px; }
+.payment-success-hint { color: var(--muted); font-size: 13px; }
+.payment-success-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 24px; padding-top: 18px; border-top: 2px solid var(--text); }
+.payment-success-actions > .button { flex: 1 1 160px; }
+.payment-success-actions [role="alert"] { flex-basis: 100%; }
+
+@keyframes payment-success-pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .payment-success-mark { animation: none; } }
+@media (max-width: 520px) {
+  dialog.payment-success > h2 { padding: 18px 20px 0; }
+  dialog.payment-success .dialog-body { padding: 0 20px; }
+  .payment-success-hero { margin: 14px -20px 0; padding: 18px 20px; }
+  .payment-success-mark { width: 44px; height: 44px; }
+  .payment-success-mark .icon { width: 22px; height: 22px; }
+  .payment-success-details { margin: 12px 0 10px; }
+  .payment-success-details > div { padding: 8px 0; font-size: 13px; }
+  .payment-success-actions { margin: 14px 0 20px; padding-top: 14px; }
+}

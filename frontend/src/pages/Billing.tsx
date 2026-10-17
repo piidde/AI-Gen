@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import Button from "../components/Button";
 import Dialog from "../components/Dialog";
+import Icon from "../components/Icon";
 import PageHeading from "../components/PageHeading";
 import BillingDetailsForm from "../components/BillingDetailsForm";
 import FilterSelect from "../components/FilterSelect";
@@ -20,7 +21,7 @@ const creditedStatuses = new Set(["paid", "dispute_won"]);
 const receiptStatuses = new Set(["paid", "refunded", "disputed", "dispute_won", "dispute_lost"]);
 const CONFIRMATION_POLLS = 20;
 
-function PaymentReceipt({ payment }: { payment: PaymentDto }) {
+function PaymentReceipt({ payment, label = "Receipt", className = "text-link" }: { payment: PaymentDto; label?: string; className?: string }) {
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   if (!receiptStatuses.has(payment.status)) return <span className="muted">—</span>;
@@ -39,8 +40,34 @@ function PaymentReceipt({ payment }: { payment: PaymentDto }) {
       setPending(false);
     }
   }
-  return <><button className="text-link" disabled={pending} onClick={() => void open()}>{pending ? "Opening…" : "Receipt"}<span className="sr-only"> for payment from {formatLocalTime(payment.created_at, false)}</span></button>
+  return <><button className={className} disabled={pending} onClick={() => void open()}>{pending ? "Opening…" : label}<span className="sr-only"> for payment from {formatLocalTime(payment.created_at, false)}</span></button>
     {message && <span className="small" role="alert"> {message}</span>}</>;
+}
+
+function PaymentSuccess({ payment, balanceMicros, onClose, fallbackFocus }: {
+  payment: PaymentDto; balanceMicros: string | undefined; onClose: () => void; fallbackFocus: () => HTMLElement | null;
+}) {
+  return <Dialog title="Payment successful" className="payment-success" onClose={onClose} fallbackFocus={fallbackFocus}>
+    <div className="payment-success-hero">
+      <span className="payment-success-mark" aria-hidden="true"><Icon name="check" /></span>
+      <p className="payment-success-label">Credits added</p>
+      <p className="payment-success-amount" data-testid="payment-success-credits">+{formatUsd(payment.credits_micros)}</p>
+      <p className="payment-success-note">Stripe confirmed your payment. The credits are ready to use now.</p>
+    </div>
+    <dl className="payment-success-details">
+      <div><dt>Amount paid</dt><dd>{formatMinor(payment.amount_minor, payment.currency)}</dd></div>
+      <div><dt>Credits added</dt><dd>{formatUsd(payment.credits_micros)} USD-value</dd></div>
+      <div><dt>New balance</dt><dd><strong>{balanceMicros ? formatUsd(balanceMicros) : "…"}</strong></dd></div>
+      <div><dt>Date</dt><dd><time dateTime={payment.created_at}>{formatLocalTime(payment.created_at, false)}</time></dd></div>
+      <div><dt>Payment method</dt><dd>Card via Stripe</dd></div>
+      <div><dt>Reference</dt><dd className="payment-success-ref">{payment.id}</dd></div>
+    </dl>
+    <p className="payment-success-hint">Stripe also emails a receipt to the address used at checkout. Ready to call the API? <Link className="text-link" to="/dashboard/api-keys">Create an API key</Link></p>
+    <div className="payment-success-actions">
+      <PaymentReceipt payment={payment} label="View receipt" className="button secondary" />
+      <Button onClick={onClose}>Done</Button>
+    </div>
+  </Dialog>;
 }
 
 export default function Billing() {
@@ -60,6 +87,10 @@ export default function Billing() {
   const activeCurrency = currencies.includes(currency) ? currency : currencies[0] ?? currency;
   const visibleOffers = (offers.data?.data ?? []).filter(offer => offer.currency === activeCurrency).sort((a, b) => a.amount_minor - b.amount_minor);
   const awaiting = (payments.data?.data ?? []).some(payment => payment.status === "checkout_open");
+  // The newest credited payment is the one this checkout return confirms.
+  const confirmedPayment = checkoutReturn === "success" && !awaiting
+    ? [...(payments.data?.data ?? [])].filter(payment => creditedStatuses.has(payment.status)).sort((a, b) => b.created_at.localeCompare(a.created_at))[0]
+    : undefined;
 
   // After Stripe redirects back, credits arrive only through the signed webhook; poll until it lands.
   useEffect(() => {
@@ -95,7 +126,7 @@ export default function Billing() {
 
   return <div className="billing-page">
     <PageHeading title="Billing" description="Credits, purchases and payment history." />
-    {checkoutReturn === "success" && <section className="notice" role="status"><h2>{awaiting ? "Confirming your payment" : "Payment complete"}</h2>
+    {checkoutReturn === "success" && !confirmedPayment && <section className="notice" role="status"><h2>{awaiting ? "Confirming your payment" : "Payment complete"}</h2>
       <p>{awaiting ? polls >= CONFIRMATION_POLLS ? "Stripe has not confirmed the payment yet. It will appear below as soon as it does; you do not need to pay again." : "Stripe is confirming the payment. Credits are added automatically once it is confirmed." : "Your payment is confirmed. The credits are in your balance."}</p>
       <Button className="secondary" onClick={dismissReturn}>Dismiss</Button></section>}
     {checkoutReturn === "cancelled" && <section className="notice" role="status"><h2>Checkout cancelled</h2><p>No payment was taken. You can start a new purchase at any time.</p><Button className="secondary" onClick={dismissReturn}>Dismiss</Button></section>}
@@ -137,6 +168,8 @@ export default function Billing() {
       </>)}
     </section>
     <BillingDetailsForm />
+    {confirmedPayment && <PaymentSuccess payment={confirmedPayment} balanceMicros={credits.data?.available_credits_micros}
+      onClose={dismissReturn} fallbackFocus={() => historyHeading.current} />}
     {selected && <Dialog title="Review purchase" onClose={close} fallbackFocus={() => historyHeading.current}>
       <dl className="billing-summary"><dt>You pay</dt><dd><strong>{formatMinor(selected.amount_minor, selected.currency)}</strong></dd>
         <dt>Credits added</dt><dd>{formatUsd(selected.credits_micros)} USD-value credits</dd></dl>

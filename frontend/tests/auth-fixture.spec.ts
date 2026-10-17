@@ -537,10 +537,16 @@ test("billing buys credits through Stripe checkout and credits only after server
   expect(checkout.headers["idempotency-key"]).toMatch(/^[0-9a-f-]{36}$/);
   await expect(page.getByRole("heading", { name: "Confirming your payment" })).toBeVisible();
   await expect(page.getByTestId("billing-balance")).toHaveText("$25.00");
-  await expect(page.getByRole("heading", { name: "Payment complete" })).toBeVisible({ timeout: 15_000 });
+  const success = page.getByRole("dialog", { name: "Payment successful" });
+  await expect(success).toBeVisible({ timeout: 15_000 });
+  await expect(success.getByTestId("payment-success-credits")).toHaveText("+$10.00");
+  await expect(success).toContainText("€10.00");
+  await expect(success).toContainText("$35.00");
+  await expect(success.getByRole("link", { name: "Create an API key" })).toHaveAttribute("href", "/dashboard/api-keys");
   await expect(page.getByTestId("billing-balance")).toHaveText("$35.00");
   await expect(page.locator("tbody tr").first()).toContainText("Paid");
-  await page.getByRole("button", { name: "Dismiss" }).click();
+  await success.getByRole("button", { name: "Done" }).click();
+  await expect(success).toBeHidden();
   await expect(page).not.toHaveURL(/checkout=/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
