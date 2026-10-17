@@ -90,6 +90,7 @@ type Backend = {
   accounts: Map<string, Account>; calls: { method: string; path: string; headers: Record<string, string>; body: unknown }[];
   incidents: unknown[]; failures: Map<string, { status: number; code: string; message: string }>; hold: Set<string>;
   admins: Set<string>; maxConcurrent: number;
+  announcements: { id: string; title: string; body: string; category: string; published_at: string; updated_at: string }[];
 };
 
 function adminOps(backend: Backend) {
@@ -135,12 +136,41 @@ async function installBackend(context: BrowserContext, backend: Backend) {
     const accountId = token.replace("fixture-access-", "");
     if (!token.startsWith("fixture-access-")) return fail(401, "authentication_required", "A valid API key or Supabase access token is required.");
     if (path === "/v1/internal/admin-check") return json({ authorized: backend.admins.has(accountId) });
+    if (path === "/v1/announcements") return json({ data: backend.announcements });
     if (path.startsWith("/v1/internal/")) {
       if (!backend.admins.has(accountId)) return fail(403, "admin_required", "This operation requires an administrator account.");
       if (path === "/v1/internal/ops") return json(adminOps(backend));
       if (path === "/v1/internal/requests") return json({ data: [{ id: uuid(0x501), created_at: new Date().toISOString(), completed_at: null,
         account_id: second.id, api_key_prefix: "tw_live_ab12", model: "gpt-5.5", capability: "text", state: "submitting", error_category: null,
         input_tokens: null, output_tokens: null, units: 0, reserved_micros: "64000", charged_micros: null, provider_micros: null, duration_ms: null }] });
+      if (path === "/v1/internal/announcements" && method === "POST") {
+        const now = new Date().toISOString();
+        const id = uuid(0x600 + backend.announcements.length);
+        backend.announcements.unshift({ id, ...(body as { title: string; body: string; category: string }), published_at: now, updated_at: now });
+        return json({ id, updated: true });
+      }
+      if (path.startsWith("/v1/internal/announcements/") && method === "DELETE") {
+        backend.announcements = backend.announcements.filter(item => !path.endsWith(item.id));
+        return json({ id: path.split("/").pop(), deleted: true });
+      }
+      if (path === "/v1/internal/offers" && method === "POST") {
+        const offer = body as Backend["offers"][number] & { reason: string };
+        const existing = backend.offers.find(item => item.id === offer.id && item.currency === offer.currency);
+        const next = { id: offer.id, currency: offer.currency, amount_minor: offer.amount_minor, credits_micros: offer.credits_micros, active: offer.active,
+          price_version: existing ? existing.price_version + 1 : 1 };
+        backend.offers = [...backend.offers.filter(item => item !== existing), next];
+        return json({ updated: true });
+      }
+      if (path === "/v1/internal/upstream-sync" && method === "GET") return json({ changes: backend.upstreamChanges, state: {
+        last_attempt_at: "2026-10-17T08:17:00Z", last_success_at: "2026-10-17T08:17:00Z", consecutive_failures: 0, last_error: null,
+        package_amount_minor: 15000, package_credits: "19980000", model_count: 31 } });
+      if (path.startsWith("/v1/internal/upstream-changes/") && method === "POST") {
+        const change = backend.upstreamChanges.find(item => path.endsWith(`/${item.id}`) && item.status === "pending");
+        if (!change) return fail(409, "upstream_change_not_pending", "This change is no longer pending. Reload to see the current state.");
+        const decision = body as { reason: string; apply: boolean };
+        Object.assign(change, { status: decision.apply ? "applied" : "dismissed", resolution_reason: decision.reason, resolved_at: new Date().toISOString() });
+        return json({ id: String(change.id), status: change.status });
+      }
       if (path === "/v1/internal/controls" && method === "POST") {
         backend.maxConcurrent = (body as { max_concurrent_per_account: number }).max_concurrent_per_account;
         return json({ updated: true });
@@ -239,7 +269,9 @@ async function installBackend(context: BrowserContext, backend: Backend) {
 let backend: Backend;
 
 test.beforeEach(async ({ context }) => {
-  backend = { accounts: new Map(), calls: [], incidents: [], failures: new Map(), hold: new Set(), admins: new Set(), maxConcurrent: 3 };
+  backend = { accounts: new Map(), calls: [], incidents: [], failures: new Map(), hold: new Set(), admins: new Set(), maxConcurrent: 3,
+    announcements: [{ id: uuid(0x5ff), title: "Model restoration notice", body: "The following models have been restored:\n\ngpt-image-2\ngpt-image-2.5",
+      category: "feature", published_at: "2026-10-16T07:18:00Z", updated_at: "2026-10-16T07:18:00Z" }] };
   // Deny unexpected network access; the fixture must never contact a real service.
   await context.route("**/*", async route => {
     const url = new URL(route.request().url());
@@ -876,6 +908,48 @@ test("key metadata is isolated per account", async ({ page }) => {
   await signIn(page, "/dashboard/api-keys");
   await expect(page.getByRole("heading", { name: "Create your first API key" })).toBeVisible();
   await expect(page.locator("body")).not.toContainText("Production");
+});
+
+test("announcements show a filterable changelog and clear the unread dot once opened", async ({ page }) => {
+  await signIn(page, "/dashboard");
+  const link = page.getByRole("link", { name: /^Announcements/ });
+  await expect(link.getByRole("img", { name: "New announcements" })).toBeVisible();
+  await link.click();
+  await expect(page.getByRole("heading", { name: "Stay informed with every update" })).toBeVisible();
+  const item = page.locator(".announcements-timeline li");
+  await expect(item).toHaveCount(1);
+  await expect(item).toContainText("Model restoration notice");
+  await expect(item).toContainText("gpt-image-2.5");
+  await expect(link.getByRole("img", { name: "New announcements" })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Important" }).click();
+  await expect(page.getByText("No announcements match this filter.")).toBeVisible();
+  await page.getByRole("tab", { name: "All" }).click();
+  await page.getByRole("searchbox", { name: "Search announcements" }).fill("image-2.5");
+  await expect(item).toHaveCount(1);
+  await page.reload();
+  await expect(page.locator(".announcements-timeline li")).toHaveCount(1);
+  await page.getByRole("link", { name: "Overview", exact: true }).click();
+  await expect(page.getByRole("link", { name: /^Announcements/ }).getByRole("img", { name: "New announcements" })).toHaveCount(0);
+});
+
+test("administrators paste and delete announcements from the admin panel", async ({ page }) => {
+  backend.admins.add(user.id);
+  page.on("dialog", dialog => void dialog.accept());
+  await signIn(page, "/dashboard/admin");
+  await page.getByRole("tab", { name: "Announcements" }).click();
+  await page.getByLabel("Title").fill("Scheduled maintenance");
+  await page.getByLabel("Text").fill("Line one\nLine two");
+  await page.getByRole("button", { name: "Publish announcement" }).click();
+  await expect(page.getByText("Announcement published.")).toBeVisible();
+  expect(backend.calls.find(call => call.method === "POST" && call.path === "/v1/internal/announcements")?.body)
+    .toEqual({ title: "Scheduled maintenance", body: "Line one\nLine two", category: "feature" });
+  const list = page.locator(".admin-announcement-list li");
+  await expect(list).toHaveCount(2);
+  await list.first().getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByText("Announcement deleted.")).toBeVisible();
+  await expect(list).toHaveCount(1);
+  await page.goto("/dashboard/announcements");
+  await expect(page.locator(".announcements-timeline li")).toHaveCount(1);
 });
 
 test("the admin panel is hidden from customers and refused by the server", async ({ page }) => {

@@ -74,3 +74,4 @@
     padding-inline: 0;
   }
 }
+.dashboard-nav .nav-dot { width: 8px; height: 8px; margin-left: auto; border-radius: 50%; background: var(--deal); }

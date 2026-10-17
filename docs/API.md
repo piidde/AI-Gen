@@ -39,6 +39,7 @@ The response includes X-Request-Id. Generation responses also include X-Takewing
 | GET /v1/dashboard/savings | Account token or API key | period (default all): settled charges versus operator-entered official prices; reports compared and excluded request counts. |
 | GET, PUT /v1/account/preferences | Supabase user token | Low-balance alert switch, threshold_micros and product-updates flag. |
 | GET, PUT /v1/account/billing-profile | Supabase user token | Optional billing name, company, address, two-letter country code and VAT ID. |
+| GET /v1/announcements | Supabase user | Product announcements (newest 200, newest first) shown under /dashboard/announcements. Plain-text bodies; line breaks are significant. |
 | GET /v1/status | None | Published incidents: open ones and those resolved within 7 days. Empty means nothing reported, not verified health. Cached 60 s. |
 | GET /v1/api-keys | Supabase user token | List key metadata. |
 | POST /v1/api-keys | Supabase user token | Create a key and return its secret once. |
@@ -49,7 +50,7 @@ The response includes X-Request-Id. Generation responses also include X-Takewing
 | GET /v1/billing/payments/{id}/receipt | Supabase user token | Stripe receipt link for an owned, confirmed payment; 409 until Stripe issues one. No invoices are generated. |
 | POST /stripe/webhook | Stripe-Signature | Process trusted payment, refund, and dispute events, including closed disputes. |
 
-Administrator routes are under /v1/internal. They require a verified Supabase user ID listed in ADMIN_USER_IDS. They provide operational summaries, account inspection/suspension, API-key revocation, audited credit adjustment, platform/provider controls, model configuration, official reference prices for savings (`POST /v1/internal/models/{id}/official-prices`), incident publishing (`POST /v1/internal/incidents`), and purchase-offer configuration, a metadata-only cross-account request feed (`GET /v1/internal/requests`), the per-account concurrency limit (`POST /v1/internal/controls`), and model enablement on the current verified price (`POST /v1/internal/models/{id}/enabled`). The admin panel at /dashboard/admin uses these routes.
+Administrator routes are under /v1/internal. They require a verified Supabase user ID listed in ADMIN_USER_IDS. They provide operational summaries, account inspection/suspension, API-key revocation, audited credit adjustment, platform/provider controls, model configuration, official reference prices for savings (`POST /v1/internal/models/{id}/official-prices`), incident publishing (`POST /v1/internal/incidents`), announcement publishing, editing and deletion (`POST /v1/internal/announcements`, `PUT`/`DELETE /v1/internal/announcements/{id}`; audited without a separate reason), and purchase-offer configuration, a metadata-only cross-account request feed (`GET /v1/internal/requests`), the per-account concurrency limit (`POST /v1/internal/controls`), and model enablement on the current verified price (`POST /v1/internal/models/{id}/enabled`). The admin panel at /dashboard/admin uses these routes.
 
 All /v1 routes are rate-limited at the edge per credential and per IP; excess calls return 429 rate_limited.
 

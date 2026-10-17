@@ -53,6 +53,8 @@ const databaseErrors: Record<string, { status: number; message: string }> = {
   payment_not_found: { status: 404, message: "The payment was not found." },
   invalid_incident: { status: 400, message: "The incident update is invalid." },
   incident_not_found: { status: 404, message: "The incident was not found." },
+  invalid_announcement: { status: 400, message: "The announcement is invalid." },
+  announcement_not_found: { status: 404, message: "The announcement was not found." },
 };
 
 export function mapDatabaseError(message: string): HttpError {

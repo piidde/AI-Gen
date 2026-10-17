@@ -52,17 +52,17 @@ export function usePolling(reload: () => void, intervalMs: number, paused: boole
   }, [reload, intervalMs, paused]);
 }
 
-export type Mutation = { pending: boolean; error: string; done: string; run: (path: string, body: unknown, done: string) => Promise<boolean>; reset: () => void };
+export type Mutation = { pending: boolean; error: string; done: string; run: (path: string, body: unknown, done: string, method?: "POST" | "PUT" | "DELETE") => Promise<boolean>; reset: () => void };
 
-// One audited POST at a time; the caller reloads the affected data after success.
+// One audited change at a time; the caller reloads the affected data after success.
 export function useMutation(): Mutation {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState("");
-  async function run(path: string, body: unknown, message: string): Promise<boolean> {
+  async function run(path: string, body: unknown, message: string, method: "POST" | "PUT" | "DELETE" = "POST"): Promise<boolean> {
     setPending(true); setError(""); setDone("");
     try {
-      await apiFetch(path, { method: "POST", body });
+      await apiFetch(path, { method, body });
       setDone(message);
       return true;
     } catch (cause) {

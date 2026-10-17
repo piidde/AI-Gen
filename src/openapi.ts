@@ -15,6 +15,7 @@ const ref = (name: string): Schema => ({ $ref: `#/components/schemas/${name}` })
 const data = (schema: Schema): Schema => object({ data: array(schema) });
 const currency = { type: "string", enum: ["eur", "usd"] };
 const capability = { type: "string", enum: ["text", "image", "video"] };
+const announcementCategory = { type: "string", enum: ["feature", "important", "platform"] };
 const state = { type: "string", enum: ["queued", "submitting", "provider_pending", "succeeded", "failed", "unknown", "expired"] };
 const reason = str(3, 500);
 const updated = object({ updated: { const: true } });
@@ -71,6 +72,8 @@ const schemas: Record<string, Schema> = {
   PreferencesUpdate: object({ low_balance_enabled: bool, threshold_micros: nullable({ type: "string", pattern: "^[1-9]\\d{0,15}$" }), product_updates: bool }),
   BillingProfile: object({ kind: nullable({ enum: ["personal", "business"] }), name: nullable(str(0, 120)), company: nullable(str(0, 160)), address_line1: nullable(str(0, 160)), address_line2: nullable(str(0, 160)),
     city: nullable(str(0, 100)), postal_code: nullable(str(0, 20)), region: nullable(str(0, 100)), country_code: nullable({ type: "string", pattern: "^[A-Za-z]{2}$" }), vat_id: nullable(str(0, 32)) }),
+  Announcement: object({ id: uuid, title: str(), body: str(), category: announcementCategory, published_at: date, updated_at: date }),
+  AnnouncementInput: object({ title: str(3, 160), body: str(1, 20000), category: announcementCategory }),
   Status: object({ checked_at: date, updated_at: nullable(date), incidents: array(object({ id: uuid, title: str(), impact: str(), service: str(), model_ids: array(str()),
     timeline: array(object({ at: date, message: str() })), started_at: date, updated_at: date, resolved_at: nullable(date) })) }),
   ApiKey: object({ id: uuid, name: str(), prefix: str(), created_at: date, last_used_at: nullable(date), revoked_at: nullable(date) }, ["id", "name", "prefix", "created_at"]),
@@ -133,6 +136,7 @@ export function createOpenApiDocument(origin: string) {
       "/v1/dashboard/savings": { get: operation("savings", "Compare settled charges with operator-entered official prices", ref("Savings"), { parameters: [period] }) },
       "/v1/account/preferences": { get: operation("preferences", "Read notification preferences", ref("Preferences"), { security: userSecurity }), put: operation("savePreferences", "Save notification preferences", ref("Preferences"), { security: userSecurity, body: ref("PreferencesUpdate") }) },
       "/v1/account/billing-profile": { get: operation("billingProfile", "Read billing details", ref("BillingProfile"), { security: userSecurity }), put: operation("saveBillingProfile", "Save billing details", ref("BillingProfile"), { security: userSecurity, body: ref("BillingProfile") }) },
+      "/v1/announcements": { get: operation("announcements", "Product announcements, newest first (up to 200)", data(ref("Announcement")), { security: userSecurity }) },
       "/v1/status": { get: operation("status", "Published incidents (open and resolved within 7 days)", ref("Status"), { security: [] }) },
       "/v1/api-keys": { get: operation("listKeys", "List owned key metadata", data(ref("ApiKey")), { security: userSecurity }), post: operation("createKey", "Create a display-once API key", ref("CreatedApiKey"), { security: userSecurity, body: object({ name: str(1, 60) }), success: { "201": response("Secret is returned only on creation", ref("CreatedApiKey")) } }) },
       "/v1/api-keys/{id}": { delete: operation("revokeKey", "Revoke an owned API key", object({ id: uuid, revoked: { const: true } }), { security: userSecurity, parameters: [path("id")] }) },
@@ -155,6 +159,8 @@ export function createOpenApiDocument(origin: string) {
       "/v1/internal/models/{id}/official-prices": { post: operation("configureOfficialPrices", "Set official reference prices for the current price version (savings only)", object({ model: str(), version: integer(1) }), { security: userSecurity, parameters: [path("id", str())], body: object({ reason, source_note: str(5, 500), input_micros: nullable(priceMicros), output_micros: nullable(priceMicros), unit_micros: nullable(priceMicros) }) }) },
       "/v1/internal/models/{id}/responses-api": { post: operation("configureResponsesApi", "Enable or disable /v1/responses for a text model", object({ model: str(), responses_api: bool }), { security: userSecurity, parameters: [path("id", str())], body: object({ reason, enabled: bool }) }) },
       "/v1/internal/incidents": { post: operation("publishIncident", "Publish or update an incident with a timeline message", object({ id: uuid, updated: { const: true } }), { security: userSecurity, body: object({ reason, id: nullable(uuid), title: nullable(str(3, 160)), impact: nullable(str(3, 2000)), service: nullable(str(2, 80)), model_ids: nullable(array(str(1, 120))), message: str(3, 1000), resolved: bool }) }) },
+      "/v1/internal/announcements": { post: operation("publishAnnouncement", "Publish an audited product announcement", object({ id: uuid, updated: { const: true } }), { security: userSecurity, body: ref("AnnouncementInput") }) },
+      "/v1/internal/announcements/{id}": { put: operation("editAnnouncement", "Edit an audited product announcement", object({ id: uuid, updated: { const: true } }), { security: userSecurity, parameters: [path("id")], body: ref("AnnouncementInput") }), delete: operation("deleteAnnouncement", "Delete an audited product announcement", object({ id: uuid, deleted: { const: true } }), { security: userSecurity, parameters: [path("id")] }) },
       "/v1/internal/offers": { post: operation("configureOffer", "Configure an audited credit purchase offer", updated, { security: userSecurity, body: object({ reason, id: str(1, 80), currency, amount_minor: integer(1, 2_147_483_647), credits_micros: priceMicros, active: bool }) }) },
     },
   };

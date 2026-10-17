@@ -131,6 +131,12 @@ app.get("/v1/status", async (c) => {
   return c.json(status);
 });
 
+app.get("/v1/announcements", requireAccount(), async (c) => {
+  requireUser(c);
+  const data = await rpc<unknown[]>(database(c.env), "tw_list_announcements");
+  return c.json({ data });
+});
+
 app.post("/v1/chat/completions", requireAccount(), async (c) => {
   if (c.get("account").authType !== "api_key") throw new HttpError(403, "api_key_required", "Use a Takewing API key for generation requests.");
   return handleChat(c, await readJson(c, c.env), getIdempotencyKey(c, false));
@@ -773,6 +779,39 @@ app.post("/v1/internal/incidents", requireAccount(), async (c) => {
     p_message: body.data.message, p_resolved: body.data.resolved,
   });
   return c.json({ id, updated: true });
+});
+
+const announcementBody = z.object({
+  title: z.string().trim().min(3).max(160), body: z.string().trim().min(1).max(20000),
+  category: z.enum(["feature", "important", "platform"]),
+}).strict();
+
+app.post("/v1/internal/announcements", requireAccount(), async (c) => {
+  const actor = requireAdmin(c);
+  const body = announcementBody.safeParse(await readJson(c, c.env));
+  if (!body.success) throw new HttpError(400, "invalid_announcement", "The announcement is invalid.");
+  const id = await rpc<string>(database(c.env), "tw_admin_save_announcement", {
+    p_actor: actor, p_id: null, p_title: body.data.title, p_body: body.data.body, p_category: body.data.category,
+  });
+  return c.json({ id, updated: true });
+});
+
+app.put("/v1/internal/announcements/:id", requireAccount(), async (c) => {
+  const actor = requireAdmin(c);
+  const id = c.req.param("id"); assertUuid(id);
+  const body = announcementBody.safeParse(await readJson(c, c.env));
+  if (!body.success) throw new HttpError(400, "invalid_announcement", "The announcement is invalid.");
+  await rpc(database(c.env), "tw_admin_save_announcement", {
+    p_actor: actor, p_id: id, p_title: body.data.title, p_body: body.data.body, p_category: body.data.category,
+  });
+  return c.json({ id, updated: true });
+});
+
+app.delete("/v1/internal/announcements/:id", requireAccount(), async (c) => {
+  const actor = requireAdmin(c);
+  const id = c.req.param("id"); assertUuid(id);
+  await rpc(database(c.env), "tw_admin_delete_announcement", { p_actor: actor, p_id: id });
+  return c.json({ id, deleted: true });
 });
 
 app.onError((cause, c) => {

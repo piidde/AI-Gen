@@ -645,6 +645,10 @@ execution counts remain separate. The five latest requests come from all recorde
 history, retaining historical model/key labels and the shared metadata dialog.
 New-history previews show purchase, key and quickstart links instead of an empty chart.
 Announcements reuse the public archive; the existing shared incident notice remains.
+Signed-in customers also get /dashboard/announcements: a backend-fed changelog
+(GET /v1/announcements) with type tabs, search and an unread dot in the navigation
+(last-seen time kept per browser). Administrators publish, edit and delete entries
+under the Admin panel's Announcements tab. The public /updates archive stays static.
 
 Savings consume a supplied mock summary, independent of the chart period. The view
 shows comparison coverage and separately qualifies incomplete historical coverage

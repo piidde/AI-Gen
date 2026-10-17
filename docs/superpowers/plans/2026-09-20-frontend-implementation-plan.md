@@ -2130,3 +2130,22 @@ deployed Worker version d6136b11. Live checks: /healthz, /v1/models, /dashboard/
 Verification: backend npm test 60/60; auth fixture 60/60 incl. 2 admin tests; main
 suite 7 catalogue/filter failures unrelated to this change (EUR estimate, filter URL).
 Not verified: the panel signed in as a real admin against production data.
+
+### H-075 - 2026-10-17 - Customer announcements and admin publishing
+
+Owner asked for a signed-in news dashboard like GrsAI's "Announcements" page, with
+admins pasting entries in the admin panel. `/dashboard/announcements` (nav entry with
+an unread dot, last-seen per browser) shows a dark hero with totals, type tabs
+(new features / important / platform updates), search and a timeline; bodies are plain
+text with preserved line breaks. Admin panel tab "Announcements" publishes, edits and
+deletes entries via `/v1/internal/announcements` (audited, no reason field). Migration
+`20261017120000_announcements.sql` adds `private.announcements`; the public /updates
+archive stays static.
+
+Delivery: committed alone (built from a clean worktree so concurrent upstream-sync work
+stayed out); migration `announcements` applied with `supabase db push`; Worker deployed.
+Verification (clean worktree): backend npm test 61/61 incl. a new announcement DB test;
+npm run build (typecheck, frontend build, wrangler dry-run) passed; frontend typecheck and
+build passed; auth fixture: both new announcement tests pass on desktop and mobile. Full
+runs showed 1-3 unrelated failures only while another session ran the suite on the same
+port; the failing overview test passes when re-run alone.

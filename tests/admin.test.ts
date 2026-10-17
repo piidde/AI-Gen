@@ -77,7 +77,7 @@ test("admin offers list includes inactive offers", async () => {
 
 test("admin functions are not executable by client roles", async () => {
   const db = await freshDb();
-  for (const fn of ["tw_admin_recent_requests(null, 10)", "tw_admin_list_offers()", "tw_ops_summary()"]) {
+  for (const fn of ["tw_admin_recent_requests(null, 10)", "tw_admin_list_offers()", "tw_ops_summary()", "tw_admin_delete_announcement(null, null)"]) {
     await db.exec("set role authenticated");
     try {
       await assert.rejects(db.query(`select public.${fn}`), /permission denied/);
@@ -85,4 +85,28 @@ test("admin functions are not executable by client roles", async () => {
       await db.exec("reset role");
     }
   }
+});
+
+test("announcements publish, edit and delete newest first, validated and audited", async () => {
+  const db = await freshDb();
+  assert.deepEqual(await rpc(db, "tw_list_announcements"), []);
+  const first = await rpc<string>(db, "tw_admin_save_announcement", ADMIN, null, "Model restored", "gpt-image-2\ngpt-image-2.5", "feature");
+  await db.exec("update private.announcements set published_at = now() - interval '1 day'");
+  const second = await rpc<string>(db, "tw_admin_save_announcement", ADMIN, null, "  Maintenance  ", "Short pause tonight.", "platform");
+  let list = await rpc(db, "tw_list_announcements");
+  assert.deepEqual(list.map((a: { id: string }) => a.id), [second, first]);
+  assert.equal(list[0].title, "Maintenance");
+  assert.equal(list[1].body, "gpt-image-2\ngpt-image-2.5");
+  await rpc(db, "tw_admin_save_announcement", ADMIN, first, "Models restored", "All back.", "important");
+  list = await rpc(db, "tw_list_announcements");
+  assert.equal(list[1].category, "important");
+  assert.equal(list.length, 2);
+  assert.match(await rpcError(db, "tw_admin_save_announcement", ADMIN, null, "x", "body", "feature"), /invalid_announcement/);
+  assert.match(await rpcError(db, "tw_admin_save_announcement", ADMIN, null, "Title", "body", "rumour"), /invalid_announcement/);
+  assert.match(await rpcError(db, "tw_admin_save_announcement", ADMIN, "00000000-0000-4000-8000-00000000ffff", "Title", "body", "feature"), /announcement_not_found/);
+  await rpc(db, "tw_admin_delete_announcement", ADMIN, second);
+  assert.deepEqual((await rpc(db, "tw_list_announcements")).map((a: { id: string }) => a.id), [first]);
+  assert.match(await rpcError(db, "tw_admin_delete_announcement", ADMIN, second), /announcement_not_found/);
+  const actions = await db.query<{ action: string }>("select action from private.audit_log where action like 'announcement_%' order by id");
+  assert.deepEqual(actions.rows.map((r) => r.action), ["announcement_published", "announcement_published", "announcement_edited", "announcement_deleted"]);
 });

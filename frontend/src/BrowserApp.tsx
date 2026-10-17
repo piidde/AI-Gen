@@ -15,6 +15,7 @@ import { AuthProvider } from './auth/AuthProvider';
 import App from './App';
 import DashboardModels from './pages/DashboardModels';
 import Admin from "./pages/Admin";
+import Announcements from "./pages/Announcements";
 export default function BrowserApp() { return <AuthProvider><App>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
@@ -30,6 +31,7 @@ export default function BrowserApp() { return <AuthProvider><App>
           }
         >
           <Route index element={<Overview />} />
+          <Route path="announcements" element={<Announcements />} />
           <Route path="models" element={<DashboardModels />} />
           <Route path="usage" element={<Usage />} />
           <Route path="billing" element={<Billing />} />

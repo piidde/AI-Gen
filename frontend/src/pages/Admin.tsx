@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AdminAnnouncements from "../components/AdminAnnouncements";
 import AdminControls from "../components/AdminControls";
 import AdminModels from "../components/AdminModels";
 import AdminOffers from "../components/AdminOffers";
@@ -11,7 +12,7 @@ import { formatUsd, useApiResource, type Resource } from "../data/api";
 import { usePolling, type AdminRequestDto, type OpsDto } from "../data/admin";
 import "../styles/admin.css";
 
-const sections = ["Live", "Controls", "Models", "Offers"] as const;
+const sections = ["Live", "Controls", "Models", "Offers", "Announcements"] as const;
 type Section = typeof sections[number];
 
 export default function Admin() {
@@ -40,7 +41,8 @@ function AdminConsole() {
         : section === "Live" ? <AdminLive ops={ops} />
         : section === "Controls" ? <AdminControls summary={ops.data.summary} reload={ops.reload} />
         : section === "Models" ? <AdminModels models={ops.data.models} globalMarkupBps={ops.data.summary.markup_bps} reload={ops.reload} />
-        : <AdminOffers offers={ops.data.offers} reload={ops.reload} />}
+        : section === "Offers" ? <AdminOffers offers={ops.data.offers} reload={ops.reload} />
+        : <AdminAnnouncements />}
     </div>
   </div>;
 }

@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { useApiResource } from "../data/api";
+import { markSeen, readSeenAt, type AnnouncementDto } from "../data/announcements";
 import Brand from "./Brand";
 import Icon from "./Icon";
 import type { IconName } from "./Icon";
@@ -11,6 +12,7 @@ import "../styles/dashboard-layout.css";
 
 const navigation: { path: string; label: string; icon: IconName }[] = [
   { path: "/dashboard", label: "Overview", icon: "overview" },
+  { path: "/dashboard/announcements", label: "Announcements", icon: "bell" },
   { path: "/dashboard/models", label: "Models", icon: "models" },
   { path: "/dashboard/usage", label: "Requests", icon: "usage" },
   { path: "/dashboard/billing", label: "Billing", icon: "billing" },
@@ -35,6 +37,12 @@ export default function DashboardLayout() {
   const footerRef = useRef<HTMLDivElement>(null);
   // Only hides the entry for others; /v1/internal enforces administrator access itself.
   const adminCheck = useApiResource<{ authorized: boolean }>("/v1/internal/admin-check");
+  const { pathname } = useLocation();
+  const announcements = useApiResource<{ data: AnnouncementDto[] }>("/v1/announcements");
+  const newestAnnouncement = announcements.data?.data[0]?.published_at ?? null;
+  const [seenAt, setSeenAt] = useState(readSeenAt);
+  const onAnnouncements = pathname === "/dashboard/announcements";
+  const unreadAnnouncements = !onAnnouncements && newestAnnouncement !== null && (seenAt === null || newestAnnouncement > seenAt);
   const email = user?.email ?? "Signed-in account";
   const displayName =
     readMetadataString(user?.user_metadata?.full_name) ??
@@ -78,6 +86,13 @@ export default function DashboardLayout() {
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [accountMenuOpen]);
+
+  useEffect(() => {
+    if (onAnnouncements && newestAnnouncement && newestAnnouncement !== seenAt) {
+      markSeen(newestAnnouncement);
+      setSeenAt(newestAnnouncement);
+    }
+  }, [onAnnouncements, newestAnnouncement, seenAt]);
 
   useLayoutEffect(() => {
     const sidebar = sidebarRef.current;
@@ -129,6 +144,9 @@ export default function DashboardLayout() {
               >
                 <Icon name={item.icon} />
                 {item.label}
+                {item.path === "/dashboard/announcements" && unreadAnnouncements && (
+                  <span className="nav-dot" role="img" aria-label="New announcements" />
+                )}
               </NavLink>
             ))}
             {adminCheck.data?.authorized && (

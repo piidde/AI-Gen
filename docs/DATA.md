@@ -34,6 +34,8 @@ access tokens and passes the authenticated account ID to ownership-filtered RPCs
   low-balance switch, integer-micro threshold, product-updates flag and alert
   arming state; `billing_profiles` stores optional billing details;
   `service_incidents` stores published incidents with a timeline.
+- `announcements` (migration `20261017120000_announcements.sql`) stores admin-published
+  product announcements (title, plain-text body, category feature/important/platform).
 - `model_prices.official_*` columns hold operator-entered official list prices used
   only for the savings comparison; they never affect charges.
 
