@@ -2168,8 +2168,9 @@ closed/sync reasons. Public: `npm run catalogue:sync` regenerates
 from it; `.github/workflows/catalogue-sync.yml` opens a nightly PR. Public selling price
 changed from credits/111,000 to credits/66,600 (2x), matching the backend.
 
-Delivery: uncommitted; migration not applied; not deployed; GitHub Actions PR permission
-not set. Verification: backend npm test 68/68 (7 new sync tests incl. live-response
+Delivery: committed dbf5a74 and pushed; migration `upstream_catalog_sync` applied with
+`supabase db push`; Worker 3d248261 deployed with both crons. GitHub Actions PR permission
+not set yet. Verification: backend npm test 68/68 (7 new sync tests incl. live-response
 fixtures, idempotency, reservation price freeze, role checks); live fetch parsed 31
 models and the USD 150 package; `tsc` passes when env types are generated without the
 local `.dev.vars` (with it, `npm run typecheck` fails on the existing optional-vs-required
