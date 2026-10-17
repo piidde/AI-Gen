@@ -100,7 +100,7 @@ function ResolveDialog({ change, apply, onClose, reload }: { change: UpstreamCha
     {mutation.done ? <p role="status">{mutation.done}</p> : <form onSubmit={event => { event.preventDefault(); void submit(); }}>
       <p>{kindLabels[change.kind]}: {cost(change.previous)} → {cost(change.proposed)}</p>
       <p>{outcomes[change.kind][apply ? 0 : 1]}</p>
-      <div className="field"><label htmlFor="upstream-reason">Reason for the audit log</label>
+      <div className="field"><label htmlFor="upstream-reason">Reason for the audit log (at least 3 characters)</label>
         <input id="upstream-reason" autoFocus required minLength={3} maxLength={500} value={reason} onChange={event => setReason(event.target.value)} /></div>
       <Button type="submit" disabled={reason.trim().length < 3 || mutation.pending}>{mutation.pending ? "Saving…" : apply ? "Confirm" : "Dismiss change"}</Button>
       {mutation.error && <p role="alert">{mutation.error}</p>}
@@ -117,7 +117,7 @@ function ShrinkDialog({ onClose, reload }: { onClose: () => void; reload: () => 
   return <Dialog title="Accept the smaller GrsAI list?" onClose={onClose}>
     {mutation.done ? <p role="status">{mutation.done}</p> : <form onSubmit={event => { event.preventDefault(); void submit(); }}>
       <p>Every model missing from the current GrsAI list is disabled. Check grsai.com first: a broken response looks the same.</p>
-      <div className="field"><label htmlFor="shrink-reason">Reason for the audit log</label>
+      <div className="field"><label htmlFor="shrink-reason">Reason for the audit log (at least 3 characters)</label>
         <input id="shrink-reason" autoFocus required minLength={3} maxLength={500} value={reason} onChange={event => setReason(event.target.value)} /></div>
       <Button type="submit" className="danger" disabled={reason.trim().length < 3 || mutation.pending}>{mutation.pending ? "Syncing…" : "Accept and sync"}</Button>
       {mutation.error && <p role="alert">{mutation.error}</p>}

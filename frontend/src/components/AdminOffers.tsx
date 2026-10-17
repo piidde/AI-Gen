@@ -124,7 +124,7 @@ export default function AdminOffers({ offers, reload }: { offers: AdminOfferDto[
           <input id="offer-id" maxLength={80} value={form.id} onChange={event => setForm({ ...form, id: event.target.value.trim() })}
             placeholder={amountMinor ? suggestedId(form.currency, amountMinor) : `${form.currency}-10`} />
           <p>Left empty, it is created from the price. Saving an ID that already exists in this currency updates that offer.</p></div>
-        <div className="field"><label htmlFor="offer-reason">Reason for the audit log</label>
+        <div className="field"><label htmlFor="offer-reason">Reason for the audit log (at least 3 characters)</label>
           <input id="offer-reason" required minLength={3} maxLength={500} value={reason} onChange={event => setReason(event.target.value)} placeholder="For example, launch starter pack" /></div>
         <div className="form-footer">
           <Button type="submit" disabled={missing.length > 0 || mutation.pending}>{mutation.pending ? "Saving…" : existing ? "Update offer" : "Create offer"}</Button>

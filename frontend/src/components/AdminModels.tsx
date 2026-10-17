@@ -79,7 +79,7 @@ function ToggleDialog({ model, onClose, reload }: { model: AdminModelDto; onClos
   return <Dialog title={`${enable ? "Enable" : "Disable"} ${model.name}?`} onClose={onClose}>
     {mutation.done ? <p role="status">{mutation.done}</p> : <form onSubmit={event => { event.preventDefault(); void submit(); }}>
       <p>{enable ? `Customers can use it immediately at price version ${model.current_price_version}.` : "New requests for this model are rejected immediately. Running requests finish normally."}</p>
-      <div className="field"><label htmlFor="toggle-reason">Reason for the audit log</label>
+      <div className="field"><label htmlFor="toggle-reason">Reason for the audit log (at least 3 characters)</label>
         <input id="toggle-reason" autoFocus required minLength={3} maxLength={500} value={reason} onChange={event => setReason(event.target.value)} /></div>
       <Button type="submit" className={enable ? "" : "danger"} disabled={reason.trim().length < 3 || mutation.pending}>{mutation.pending ? "Saving…" : enable ? "Enable model" : "Disable model"}</Button>
       {mutation.error && <p role="alert">{mutation.error}</p>}
@@ -130,7 +130,7 @@ function PriceDialog({ model, onClose, reload }: { model: AdminModelDto; onClose
       <div className="field"><label htmlFor="price-markup">Own markup (multiplier, empty = global)</label><input id="price-markup" inputMode="decimal" value={markup} onChange={event => setMarkup(event.target.value)} /></div>
       <div className="field"><label htmlFor="price-source">Price source</label><input id="price-source" required minLength={5} maxLength={500} value={source} onChange={event => setSource(event.target.value)} placeholder="For example, grsai.com/dashboard/models on 2026-10-08" /></div>
       <label className="admin-check"><input type="checkbox" checked={enabled} onChange={event => setEnabled(event.target.checked)} /> Enabled after saving</label>
-      <div className="field"><label htmlFor="price-reason">Reason for the audit log</label><input id="price-reason" required minLength={3} maxLength={500} value={reason} onChange={event => setReason(event.target.value)} /></div>
+      <div className="field"><label htmlFor="price-reason">Reason for the audit log (at least 3 characters)</label><input id="price-reason" required minLength={3} maxLength={500} value={reason} onChange={event => setReason(event.target.value)} /></div>
       <Button type="submit" disabled={!valid || mutation.pending}>{mutation.pending ? "Saving…" : "Save price version"}</Button>
       {mutation.error && <p role="alert">{mutation.error}</p>}
     </form>}

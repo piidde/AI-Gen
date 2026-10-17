@@ -64,7 +64,7 @@ export default function AdminControls({ summary, reload }: { summary: OpsSummary
         <div className="field"><label htmlFor="admin-ttl">Result retention (hours)</label>
           <input id="admin-ttl" type="number" min={1} max={48} required value={ttl} onChange={event => setTtl(event.target.value)} />
           <p>How long future results stay downloadable (1–48).</p></div>
-        <div className="field"><label htmlFor="admin-controls-reason">Reason for the audit log</label>
+        <div className="field"><label htmlFor="admin-controls-reason">Reason for the audit log (at least 3 characters)</label>
           <input id="admin-controls-reason" required minLength={3} maxLength={500} value={controlsReason} onChange={event => setControlsReason(event.target.value)} placeholder="For example, launch: raise limit to 5" /></div>
         <div className="form-footer">
           <Button type="submit" disabled={!controlsValid || controls.pending}>{controls.pending ? "Saving…" : "Save controls"}</Button>
@@ -86,7 +86,7 @@ export default function AdminControls({ summary, reload }: { summary: OpsSummary
         <div className="field"><label htmlFor="admin-markup">Global markup (multiplier)</label>
           <input id="admin-markup" inputMode="decimal" required value={markup} onChange={event => setMarkup(event.target.value)} placeholder="2.0" />
           <p>Customer price = GrsAI price × markup, unless a model has its own markup. 2.0 means +100 %.</p></div>
-        <div className="field"><label htmlFor="admin-provider-reason">Reason for the audit log</label>
+        <div className="field"><label htmlFor="admin-provider-reason">Reason for the audit log (at least 3 characters)</label>
           <input id="admin-provider-reason" required minLength={3} maxLength={500} value={providerReason} onChange={event => setProviderReason(event.target.value)} placeholder="For example, topped up GrsAI credits" /></div>
         <div className="form-footer">
           <Button type="submit" disabled={!providerValid || provider.pending}>{provider.pending ? "Saving…" : "Save provider"}</Button>
