@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { catalogue } from '../src/content/catalogue';
-import { publishedReference, publishedDifference, bestImageSettings } from '../src/content/publishedPrices';
+import { publishedReference, publishedDifference, bestImageSettings, openaiImageUsd } from '../src/content/publishedPrices';
 
 test('every model card exposes its prices and percentage disposition', async ({ page }, info) => {
   await page.goto('/models');
@@ -11,7 +11,9 @@ test('every model card exposes its prices and percentage disposition', async ({ 
     await expect(card).not.toContainText(/Public API ID pending|Comparison unavailable/);
     const expectedSavings = model.rates.filter(rate => {
       const reference = publishedReference(model, rate, bestImageSettings(model));
-      return rate.component !== 'cached-input' && rate.credits !== null && reference.status === 'available' && publishedDifference(rate.credits, reference.usd)?.direction === 'lower';
+      // Basic GPT Image 2.5 (auto quality) badges its saving against official 1K High.
+      const official = model.upstreamId === 'gpt-image-2.5' ? openaiImageUsd(model.upstreamId, '1K', 'high') : reference.status === 'available' ? reference.usd : null;
+      return rate.component !== 'cached-input' && rate.credits !== null && official !== null && publishedDifference(rate.credits, official)?.direction === 'lower';
     }).length;
     await expect(card.locator('.landing-saving')).toHaveCount(expectedSavings);
     if (model.upstreamId === 'gemini-3-pro') await expect(card).toContainText('No verified current comparison for this alias.');
@@ -29,12 +31,13 @@ test('every model card exposes its prices and percentage disposition', async ({ 
 
 test("researched catalogue groups all variants and shows exact reference rates", async ({ page }) => {
   await page.goto("/models");
-  await expect(page.locator(".model-card")).toHaveCount(29);
+  await expect(page.locator(".model-card")).toHaveCount(catalogue.length);
   await expect(page.getByText("Fictional prices", { exact: false })).toHaveCount(0);
   await page.getByRole("searchbox").fill("gpt-image-2");
   const card = page.locator('[data-model-id="gpt-image-2"]');
-  await expect(card).toContainText("$0.005");
-  await expect(card).toContainText("8% below Low reference");
+  // 2x the USD 150 cost is above the official Low reference, so no saving is claimed.
+  await expect(card).toContainText("$0.009");
+  await expect(card).not.toContainText("below Low reference");
   await expect(card).toContainText("/ request");
   await expect(card).not.toContainText("Public API ID pending");
   await expect(card).toContainText("Official API example");
@@ -42,7 +45,7 @@ test("researched catalogue groups all variants and shows exact reference rates",
   await page.getByRole("option", { name: "EUR", exact: true }).click();
   await expect(page).toHaveURL(/currency=EUR/);
   await expect(page.getByRole("status").filter({ hasText: "EUR estimate unavailable" })).toBeVisible();
-  await expect(card).toContainText("$0.005");
+  await expect(card).toContainText("$0.009");
   await page.reload();
   await expect(page.getByLabel("Display currency")).toHaveText("EUR");
 });

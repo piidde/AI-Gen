@@ -120,6 +120,16 @@ minor-unit amounts and credit quantities. Actual provider prices, markup values,
 credit packages, conversion assumptions, payment fees, and introductory discounts
 remain **OPEN**; no offer is seeded.
 
+**DECIDED (owner, 2026-10-17):** customers pay 2.0x the acquisition cost, and the
+cost basis is the USD 150 GrsAI package (credits / 133,200 USD), replacing the assumed
+0.14 USD/CNY. Prices and availability are synced from GrsAI automatically under the
+rules in [ADR-008](decisions/ADR-008-grsai-catalogue-sync.md): increases apply at once,
+decreases and new models wait for an admin, closed or removed models are disabled.
+Public displays use the same formula (credits x 2 / 133,200). **OPEN (owner):** at 2x,
+eight image variants exceed their official reference price, contradicting the
+2026-09-20 rule below that our price never exceeds the official price; decide per-model
+markups or accept it.
+
 Frontend pricing research (2026-09-20 to 2026-09-21):
 
 **DECIDED:** research current GRSAI model prices and package bonuses as the frontend

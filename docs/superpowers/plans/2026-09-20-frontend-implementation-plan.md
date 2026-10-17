@@ -2149,3 +2149,32 @@ npm run build (typecheck, frontend build, wrangler dry-run) passed; frontend typ
 build passed; auth fixture: both new announcement tests pass on desktop and mobile. Full
 runs showed 1-3 unrelated failures only while another session ran the suite on the same
 port; the failing overview test passes when re-run alone.
+
+### H-076 - 2026-10-17 - Automatic GrsAI catalogue and price sync (ADR-008)
+
+Owner asked for models and prices to stay current automatically and decided: customers
+pay 2.0x the USD 150 package cost; increases apply at once, decreases and new models
+wait for an admin, closed/removed models are disabled. GrsAI's dashboard bundle exposed
+unauthenticated JSON endpoints (`eb.grsaiapi.com/client/serverGrsai/getModelListV2`,
+`/client/goods/getGoodsList`), so nothing is scraped from HTML.
+
+Backend: `src/upstream-catalog.ts` (validated fetch, hourly cron `17 * * * *`, admin
+emails), migration `20261017140000_upstream_catalog_sync.sql` (`tw_sync_upstream_catalog`,
+resolve/status RPCs, `upstream_changes`, `upstream_sync_state`, admin enable refused for
+GrsAI-closed models), admin routes `/v1/internal/upstream-sync` and
+`/v1/internal/upstream-changes/{id}`. Admin panel tab "GrsAI sync"; Models shows
+closed/sync reasons. Public: `npm run catalogue:sync` regenerates
+`frontend/src/content/upstreamSnapshot.ts`; `catalogue.ts` reads credits and closed flags
+from it; `.github/workflows/catalogue-sync.yml` opens a nightly PR. Public selling price
+changed from credits/111,000 to credits/66,600 (2x), matching the backend.
+
+Delivery: uncommitted; migration not applied; not deployed; GitHub Actions PR permission
+not set. Verification: backend npm test 68/68 (7 new sync tests incl. live-response
+fixtures, idempotency, reservation price freeze, role checks); live fetch parsed 31
+models and the USD 150 package; `tsc` passes when env types are generated without the
+local `.dev.vars` (with it, `npm run typecheck` fails on the existing optional-vs-required
+secret typing, unrelated); frontend typecheck/build pass; Playwright main suite 147 passed,
+failures only in tests that also fail on HEAD (filterSelect URL history, foundation
+copy/scroll, network-dependent EUR estimate); test:auth 70 passed / 2 skipped incl. a new
+GrsAI-sync admin test. Open: at 2x eight image variants exceed their official reference
+(OD-014); `gpt-6.1-sol` and `nano-banana-2.1` need editorial catalogue rows.

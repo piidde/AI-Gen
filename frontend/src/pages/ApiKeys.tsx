@@ -107,6 +107,7 @@ export default function ApiKeys() {
         <p>Created “{name.trim()}”. Copy the secret now and store it in your server environment.</p>
         <div className="demo-key" data-testid="new-api-key">{secret}</div><CopyButton text={secret} label="Copy API key" />
         <p>This is the only time the full key is shown. Closing this dialog, navigating away or reloading removes it from this page.</p>
+        <p>Next, once the secret is stored: pick a model on <Link className="text-link" to="/dashboard/models">Models</Link> and send your first request with the <Link className="text-link" to="/docs">quickstart</Link>.</p>
       </>}
       {action === "revoke" && <>
         <p>Revoking “{selected?.name}” immediately stops new requests that use it. Its history stays visible. This cannot be undone.</p>

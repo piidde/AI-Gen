@@ -18,6 +18,12 @@ Cloudflare Queues. The Worker polls GrsAI, copies allowlisted media into private
 R2, and serves downloads through authenticated routes. A five-minute scheduled
 handler recovers queue work, marks stale submissions unresolved, releases old
 reservations according to the 24-hour policy, and removes expired R2 objects.
+A second, hourly cron (`17 * * * *`) runs the GrsAI catalogue sync
+(`src/upstream-catalog.ts`, [ADR-008](decisions/ADR-008-grsai-catalogue-sync.md)): it reads
+GrsAI's public model list and USD 150 package, validates them, and lets
+`tw_sync_upstream_catalog` version prices and disable or re-enable models in one
+transaction. The public catalogue's credits come from the generated
+`frontend/src/content/upstreamSnapshot.ts`, refreshed by a nightly GitHub Action PR.
 
 PostgreSQL is authoritative for request and payment state. Atomic SQL functions
 reserve customer credits and provider-group spend, snapshot prices, settle usage,

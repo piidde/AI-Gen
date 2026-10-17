@@ -25,6 +25,13 @@ access tokens and passes the authenticated account ID to ownership-filtered RPCs
   provider group/key ID, usage, state, bounded reservation, and result expiry.
 - `credit_ledger` records auditable balance movements with unique event keys.
 - `model_prices` keeps verified cost inputs, limits, evidence note, and version.
+  Versions written by the GrsAI sync have `verified_by = 'upstream-sync'`.
+- `models.upstream_closed`, `upstream_note` and `sync_disabled_reason` record GrsAI
+  availability and whether the sync (not an admin) disabled a model.
+- `upstream_sync_state` (singleton) holds the last sync, failure count, package basis
+  and the last normalized GrsAI list; `upstream_changes` records every detected change
+  with status applied, pending, superseded or dismissed (migration `20261017140000`,
+  [ADR-008](decisions/ADR-008-grsai-catalogue-sync.md)).
 - `stripe_quotes` binds an immutable purchase amount/credit quantity to one
   account, Stripe session, and PaymentIntent; `stripe_events` serializes and
   deduplicates webhook deliveries. A private transaction helper records a

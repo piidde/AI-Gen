@@ -18,6 +18,23 @@ export type AdminModelDto = {
   price_verified_at: string | null; max_input_tokens: number | null; max_output_tokens: number | null; max_units: number | null;
   unit: "tokens" | "request" | "second" | null; input_micros: Micros | null; output_micros: Micros | null; unit_micros: Micros | null;
   markup_bps: string | null; source_note: string | null; parameter_schema: Record<string, unknown>; responses_api: boolean;
+  upstream_closed: boolean; upstream_note: string | null;
+  sync_disabled_reason: "upstream_closed" | "upstream_missing" | "suspicious_price" | "capability_changed" | null;
+};
+
+// GrsAI catalogue sync (ADR-008). Costs are GrsAI micros before the customer markup.
+export type UpstreamCost = { input_micros: Micros | null; output_micros: Micros | null; unit_micros: Micros | null };
+export type UpstreamChangeDto = {
+  id: number; model: string; name: string; capability: "text" | "image" | "video";
+  kind: "price_increase" | "price_decrease" | "suspicious_price" | "new_model" | "closed" | "reopened" | "missing" | "capability_changed";
+  status: "applied" | "pending" | "superseded" | "dismissed";
+  previous: Partial<UpstreamCost> | null; proposed: Partial<UpstreamCost> | null; note: string | null;
+  created_at: string; resolved_at: string | null; resolution_reason: string | null;
+};
+export type UpstreamSyncDto = {
+  state: { last_attempt_at: string | null; last_success_at: string | null; consecutive_failures: number; last_error: string | null;
+    package_amount_minor: number | null; package_credits: string | null; model_count: number | null };
+  changes: UpstreamChangeDto[];
 };
 
 export type AdminOfferDto = { id: string; currency: "eur" | "usd"; amount_minor: number; credits_micros: Micros; active: boolean; price_version: number };

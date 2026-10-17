@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { catalogue, packages, snapshot } from "../src/content/catalogue";
+import { upstreamSnapshot } from "../src/content/upstreamSnapshot";
 import { addAmounts, creditsToUsd, decimalAmount, formatAmount, rateCost, usdRateCost, compareRate } from "../src/lib/pricing";
 import type { ReferenceRate } from "../src/content/catalogue";
 
@@ -10,10 +11,13 @@ test("reference inventory preserves every documented tariff and unknown cache", 
   const rows = [...tariffSection.matchAll(/^\| `([^`]+)` \| (\d+) \|(?: (\d+) \| ([\d?]+) \|)?$/gm)];
   expect(rows).toHaveLength(29);
   expect(new Set(catalogue.map(model => model.upstreamId)).size).toBe(29);
-  for (const [, id, input, output, cache] of rows) {
+  // The documented table is the 2026-09-20 baseline; current credits come from the generated snapshot.
+  for (const [, id] of rows) {
     const model = catalogue.find(model => model.upstreamId === id)!;
+    const live = upstreamSnapshot.models[id]!;
     expect(model).toBeDefined();
-    expect(model.rates.map(rate => rate.credits)).toEqual(output ? [input, output, cache === "?" ? null : cache] : [input]);
+    expect(model.rates.map(rate => rate.credits)).toEqual(model.modality === "text" ? [live.input ?? null, live.output ?? null, live.cache ?? null] : [live.request ?? null]);
+    expect(model.availability).toBe(live.closed ? "unavailable-notice" : "unknown");
     expect(model.publicApiId).toBeNull();
     expect(model.support.status).toBe("awaiting-evidence");
     expect(model.availability).not.toBe("available");
@@ -86,28 +90,30 @@ test("display rounds once, preserves tiny nonzero values and rejects malformed a
 });
 
 test("comparisons fail closed for evidence, unit, settings and freshness gaps", () => {
+  // Dates are relative to the snapshot, which the catalogue sync moves forward.
+  const day = snapshot.checkedOn;
   const rate: ReferenceRate = {
     component: "input", credits: "66600", unit: "tokens", per: "1000000", conditions: "text-standard",
     comparison: { status: "verified", reason: "Synthetic test equivalence" },
-    official: [{ usd: "2", unit: "tokens", per: "1000000", conditions: "text-standard", source: "https://example.test/rate", recheckOn: "2026-11-21" }],
+    official: [{ usd: "2", unit: "tokens", per: "1000000", conditions: "text-standard", source: "https://example.test/rate", recheckOn: "2999-12-31" }],
   };
-  expect(compareRate(rate, 0, "2026-09-20")).toEqual({ status: "available", percent: "50.0" });
-  expect(compareRate({ ...rate, credits: "199800" }, 0, "2026-09-20")).toEqual({ status: "error", reason: "Reference price exceeds the equivalent official price. Reconciliation required." });
-  expect(compareRate({ ...rate, credits: "133200" }, 0, "2026-09-20")).toEqual({ status: "available", percent: "0.0" });
-  expect(compareRate({ ...rate, credits: "133201" }, 0, "2026-09-20")).toEqual({ status: "error", reason: "Reference price exceeds the equivalent official price. Reconciliation required." });
-  expect(compareRate({ ...rate, credits: "133199" }, 0, "2026-09-20")).toEqual({ status: "available", percent: "<0.1" });
+  expect(compareRate(rate, 0, day)).toEqual({ status: "available", percent: "50.0" });
+  expect(compareRate({ ...rate, credits: "199800" }, 0, day)).toEqual({ status: "error", reason: "Reference price exceeds the equivalent official price. Reconciliation required." });
+  expect(compareRate({ ...rate, credits: "133200" }, 0, day)).toEqual({ status: "available", percent: "0.0" });
+  expect(compareRate({ ...rate, credits: "133201" }, 0, day)).toEqual({ status: "error", reason: "Reference price exceeds the equivalent official price. Reconciliation required." });
+  expect(compareRate({ ...rate, credits: "133199" }, 0, day)).toEqual({ status: "available", percent: "<0.1" });
   for (const official of [
     { ...rate.official[0]!, unit: "requests" as const },
     { ...rate.official[0]!, per: "1" },
     { ...rate.official[0]!, conditions: "image-output-only" },
     { ...rate.official[0]!, usd: "0" },
-  ]) expect(compareRate({ ...rate, official: [official] }, 0, "2026-09-20").status).toBe("unavailable");
-  expect(compareRate(rate, 0, "2026-11-21").status).toBe("unavailable");
+  ]) expect(compareRate({ ...rate, official: [official] }, 0, day).status).toBe("unavailable");
+  expect(compareRate(rate, 0, "2999-12-31").status).toBe("unavailable");
   expect(compareRate(rate, 0, "2026-09-31").status).toBe("unavailable");
-  expect(compareRate(rate, 0, "2026-09-19").status).toBe("unavailable");
-  expect(compareRate({ ...rate, official: [{ ...rate.official[0]!, recheckOn: null }] }, 0, "2026-09-20").status).toBe("unavailable");
-  expect(compareRate(rate, 4, "2026-09-20").status).toBe("unavailable");
+  expect(compareRate(rate, 0, "2000-01-01").status).toBe("unavailable");
+  expect(compareRate({ ...rate, official: [{ ...rate.official[0]!, recheckOn: null }] }, 0, day).status).toBe("unavailable");
+  expect(compareRate(rate, 4, day).status).toBe("unavailable");
   for (const model of catalogue) for (const reference of model.rates) {
-    expect(compareRate(reference, 0, "2026-09-20").status).toBe("unavailable");
+    expect(compareRate(reference, 0, day).status).toBe("unavailable");
   }
 });

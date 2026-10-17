@@ -1,0 +1,141 @@
+{
+ "code": 0,
+ "data": {
+  "defaultGoods": null,
+  "list": [
+   {
+    "amount": 1000,
+    "count": 100000,
+    "currency": "cny",
+    "currencyTag": "¥",
+    "desc": "",
+    "id": "67cc40a2246de04716414bb4",
+    "tag": "",
+    "title": "10元"
+   },
+   {
+    "amount": 2000,
+    "count": 250000,
+    "currency": "cny",
+    "currencyTag": "¥",
+    "desc": "",
+    "id": "680e03404750ae64520f50e3",
+    "tag": "送25%",
+    "title": "20元"
+   },
+   {
+    "amount": 4900,
+    "count": 750000,
+    "currency": "cny",
+    "currencyTag": "¥",
+    "desc": "",
+    "id": "680e03b14750ae64520f50e4",
+    "tag": "送50%",
+    "title": "49元"
+   },
+   {
+    "amount": 9900,
+    "count": 1600000,
+    "currency": "cny",
+    "currencyTag": "¥",
+    "desc": "",
+    "id": "680e041a4750ae64520f50e5",
+    "tag": "送60%",
+    "title": "99元"
+   },
+   {
+    "amount": 49900,
+    "count": 9000000,
+    "currency": "cny",
+    "currencyTag": "¥",
+    "desc": "",
+    "id": "680e045e4750ae64520f50e6",
+    "tag": "送80%",
+    "title": "499元"
+   },
+   {
+    "amount": 99900,
+    "count": 20000000,
+    "currency": "cny",
+    "currencyTag": "¥",
+    "desc": "",
+    "id": "680e046b4750ae64520f50e7",
+    "tag": "送100%",
+    "title": "999元"
+   }
+  ],
+  "usdList": [
+   {
+    "amount": 500,
+    "count": 333000,
+    "currency": "usd",
+    "currencyTag": "$",
+    "desc": "",
+    "id": "68ad6c2c60159288990729f8",
+    "tag": "",
+    "title": "$5"
+   },
+   {
+    "amount": 1000,
+    "count": 732600,
+    "currency": "usd",
+    "currencyTag": "$",
+    "desc": "",
+    "id": "68ad6c6160159288990729f9",
+    "tag": "Gift 10%",
+    "title": "$10"
+   },
+   {
+    "amount": 3000,
+    "count": 2597400,
+    "currency": "usd",
+    "currencyTag": "$",
+    "desc": "",
+    "id": "68ad6cee60159288990729fa",
+    "tag": "Gift 30%",
+    "title": "$30"
+   },
+   {
+    "amount": 6000,
+    "count": 5994000,
+    "currency": "usd",
+    "currencyTag": "$",
+    "desc": "",
+    "id": "68ad6eb160159288990729fb",
+    "tag": "Gift 50%",
+    "title": "$60"
+   },
+   {
+    "amount": 10000,
+    "count": 11322000,
+    "currency": "usd",
+    "currencyTag": "$",
+    "desc": "",
+    "id": "68ad85499e23688d1f0feea2",
+    "tag": "Gift 70%",
+    "title": "$100"
+   },
+   {
+    "amount": 15000,
+    "count": 19980000,
+    "currency": "usd",
+    "currencyTag": "$",
+    "desc": "",
+    "id": "68ad85769e23688d1f0feea3",
+    "tag": "Gift 100%",
+    "title": "$150"
+   },
+   {
+    "amount": 100000,
+    "count": 133200000,
+    "currency": "usd",
+    "currencyTag": "$",
+    "desc": "",
+    "id": "68face0838e3d2d508040c14",
+    "tag": "Gift 100%",
+    "title": "$1000"
+   }
+  ]
+ },
+ "msg": "success"
+}

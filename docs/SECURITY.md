@@ -23,7 +23,10 @@ verifies Supabase access tokens, authenticates Takewing API keys by SHA-256 dige
 and routes account-owned data through private database functions. Privileged
 credentials, upstream access, routing, pricing, credit deduction, and payment
 secrets stay server-side. External requests, webhooks, configuration, and
-necessary upstream responses are validated at boundaries. Database execution and
+necessary upstream responses are validated at boundaries. The GrsAI catalogue sync
+calls GrsAI's unauthenticated dashboard endpoints without credentials, bounds the
+response size and time, and validates every field; a malformed or shrunken list
+changes nothing and alerts admins after three failures (ADR-008). Database execution and
 behavioral tests remain pre-launch gates (OD-001/002).
 
 ## Browser-auth production gates

@@ -1,8 +1,11 @@
 import { Link, NavLink } from "react-router-dom";
 import Brand from "./Brand";
+import { useOptionalAuth } from "../auth/AuthProvider";
 import "../styles/public-chrome.css";
 
 export default function PublicHeader() {
+  // Signed-out markup until the session resolves, so prerendered HTML hydrates unchanged.
+  const signedIn = Boolean(useOptionalAuth()?.user);
   return <header className="public-chrome-header">
     <Brand />
     <nav className="public-chrome-nav" aria-label="Main navigation">
@@ -12,6 +15,7 @@ export default function PublicHeader() {
       <NavLink to="/support">Support</NavLink>
     </nav>
     <div className="public-chrome-account">
+      {signedIn ? <Link className="button" to="/dashboard">Dashboard</Link> : <>
       <Link to="/login">Sign in</Link>
       <Link className="button" to="/signup">
         <svg className="key-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -19,6 +23,7 @@ export default function PublicHeader() {
         </svg>
         Get API key for free
       </Link>
+      </>}
     </div>
   </header>;
 }

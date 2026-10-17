@@ -74,6 +74,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+/** For pages also rendered outside AuthProvider (prerendered public pages); undefined there. */
+export function useOptionalAuth(): AuthContextValue | undefined {
+  return useContext(AuthContext);
+}
+
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
   if (!context) {

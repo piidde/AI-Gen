@@ -12,6 +12,13 @@ Run them in order and tick them off here (or in the release notes).
 - [x] `20261010120000_admin_panel.sql` applied on 2026-10-09. On 2026-10-17 the remote
       migration history was repaired to match the local file versions, so
       `npx supabase db push` only applies genuinely new migrations.
+- [ ] `20261017140000_upstream_catalog_sync.sql` (GrsAI sync, ADR-008), applied before
+      deploying the Worker with the hourly cron. The first sync (at :17 or Admin > GrsAI
+      sync > Sync now) raises enabled models' cost about 7.25% to the USD 150 basis,
+      disables models GrsAI lists as closed (currently every Gemini model) and adds
+      `gpt-6.1-sol` and `nano-banana-2.1` disabled for review.
+- [ ] GitHub: allow Actions to create pull requests (Settings → Actions → General) so
+      `.github/workflows/catalogue-sync.yml` can open the nightly public snapshot PR.
 - [x] Check that browser roles still have no table access:
       `select has_table_privilege('authenticated', 'private.account_preferences', 'select');` returns `false`.
 

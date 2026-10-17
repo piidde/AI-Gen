@@ -1,10 +1,18 @@
 import { useState } from "react";
 import Button from "./Button";
 import Dialog from "./Dialog";
+import Icon from "./Icon";
+import { ProviderLogo } from "./ProviderLogo";
 import { formatUsd, microsToDecimal, usdToMicros } from "../data/api";
 import { bpsToMultiplier, multiplierToBps, useMutation, type AdminModelDto } from "../data/admin";
 
 const units = { text: "tokens", image: "request", video: "second" } as const;
+const capabilityIcons = { text: "text", image: "image", video: "video" } as const;
+
+const syncReasons: Record<NonNullable<AdminModelDto["sync_disabled_reason"]>, string> = {
+  upstream_closed: "Off by sync; returns when GrsAI reopens it", upstream_missing: "Off by sync; returns when GrsAI lists it again",
+  suspicious_price: "Off by sync: price jump, see GrsAI sync", capability_changed: "Off by sync: type changed, see GrsAI sync",
+};
 
 // Mirrors the backend: ceil(provider price × markup).
 function customerPrice(micros: string | null, bps: number | null): string {
@@ -28,7 +36,7 @@ export default function AdminModels({ models, globalMarkupBps, reload }: { model
   const [filter, setFilter] = useState("");
   const visible = models.filter(model => `${model.id} ${model.name}`.toLowerCase().includes(filter.trim().toLowerCase()));
   return <section className="panel">
-    <div className="table-head"><h2>Models</h2><span className="small muted">{models.filter(model => model.enabled).length} of {models.length} enabled</span></div>
+    <div className="table-head"><h2 className="admin-title"><Icon name="models" />Models</h2><span className="small muted">{models.filter(model => model.enabled).length} of {models.length} enabled</span></div>
     <div className="filters"><input className="search" type="search" aria-label="Filter models" placeholder="Filter models" value={filter} onChange={event => setFilter(event.target.value)} /></div>
     <div className="table-scroll" role="region" aria-label="Model catalogue" tabIndex={0}>
       <table><thead><tr>{["MODEL", "TYPE", "STATUS", "GRSAI PRICE", "CUSTOMER PRICE", "LIMITS", "VERSION"].map(label => <th scope="col" key={label}>{label}</th>)}
@@ -37,16 +45,19 @@ export default function AdminModels({ models, globalMarkupBps, reload }: { model
           const bps = model.markup_bps === null ? globalMarkupBps : Number(model.markup_bps);
           const [provider, customer] = priceLines(model, bps);
           return <tr key={model.id}>
-            <td><strong>{model.name}</strong><div className="small muted mono">{model.id}</div></td>
-            <td>{model.capability}</td>
-            <td><span className={`status badge ${model.enabled ? "" : "revoked"}`}>{model.enabled ? "Enabled" : "Disabled"}</span></td>
+            <td><div className="admin-model"><span className="admin-model-logo"><ProviderLogo name={`${model.name} ${model.id}`} size={22} /></span>
+              <div><strong>{model.name}</strong><div className="small muted mono">{model.id}</div></div></div></td>
+            <td><span className="admin-capability"><Icon name={capabilityIcons[model.capability]} />{model.capability}</span></td>
+            <td><span className={`status badge ${model.enabled ? "" : "revoked"}`}>{model.enabled ? "Enabled" : "Disabled"}</span>
+              {model.upstream_closed && <div className="small muted" title={model.upstream_note ?? undefined}>Closed at GrsAI</div>}
+              {model.sync_disabled_reason && <div className="small muted">{syncReasons[model.sync_disabled_reason]}</div>}</td>
             <td>{provider}</td>
             <td>{customer}{model.markup_bps !== null && <div className="small muted">own markup ×{bpsToMultiplier(model.markup_bps)}</div>}</td>
             <td className="small">{model.capability === "text" ? `${model.max_input_tokens ?? "–"} in / ${model.max_output_tokens ?? "–"} out` : `max ${model.max_units ?? "–"}`}</td>
             <td>{model.current_price_version ?? "–"}</td>
             <td><div className="key-actions">
               <Button className="secondary" onClick={() => setEditing(model)}>Edit price</Button>
-              <Button className={model.enabled ? "danger" : ""} disabled={!model.enabled && !model.unit} onClick={() => setToggling(model)}>{model.enabled ? "Disable" : "Enable"}</Button>
+              <Button className={model.enabled ? "danger" : ""} disabled={!model.enabled && (!model.unit || model.upstream_closed)} onClick={() => setToggling(model)}>{model.enabled ? "Disable" : "Enable"}</Button>
             </div></td>
           </tr>;
         })}</tbody></table>

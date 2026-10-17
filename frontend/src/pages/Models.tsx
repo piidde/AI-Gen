@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import type { CatalogueReference } from "../content/catalogue";
 
 import { queryChoice, updateQuery } from "../lib/queryState";
-import PageHeading from "../components/PageHeading";
 import CodingSetup from "../components/CodingSetup";
 import PublicCatalogueShell from "../components/PublicCatalogueShell";
 import CatalogueBasis, { useCatalogueCurrency } from "../components/CatalogueBasis";
@@ -24,6 +23,7 @@ const sections: { title: string; note: string; match: (model: CatalogueReference
   { title: "Image models", note: "Per-request pricing. Choose your model and resolution.", match: model => model.modality === "image" },
 ];
 
+// Without publicPage it is embedded in the dashboard, which provides the heading and chrome.
 export default function Models({ publicPage = false }: { publicPage?: boolean }) {
   const [params, setParams] = usePublicSearchParams();
   // Retain the earlier Gemini filter URL while displaying the provider's name.
@@ -38,10 +38,10 @@ export default function Models({ publicPage = false }: { publicPage?: boolean })
   );
   const groups = groupFamilies(shown);
   const content = <div className="catalogue-overview">
-    {publicPage ? <header className="catalogue-hero">
+    {publicPage && <header className="catalogue-hero">
       <div><span className="catalogue-eyebrow">THE MODEL COLLECTION</span><h1>Great models.<br /><span>Less overhead.</span></h1><p>Coding models for Codex and your harness, chat models for your apps, image models for your ideas. One API key, one shared credit balance.</p></div>
       <div className="catalogue-hero-note"><span>Models &amp; pricing</span><strong>Choose your model.<br />Pay as you go.</strong><p>No subscription. Credits never expire.</p><a href="#model-collection" className="text-link">Explore the collection ↓</a></div>
-    </header> : <PageHeading title="Models & pricing" description="Find your model. Compare image and text API prices at a glance." />}
+    </header>}
     <CatalogueBasis showExplanation={false} />
     <>
       <div className="catalog-filter" id="model-collection">

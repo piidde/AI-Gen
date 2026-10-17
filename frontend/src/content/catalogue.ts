@@ -1,5 +1,10 @@
 // Dated reference content only. No row authorizes an offer or exposes a public API ID.
 // Source details, exclusions and owner review: docs/MODEL_PRICING.md.
+// Credits and availability come from the generated upstreamSnapshot.ts (npm run
+// catalogue:sync, ADR-008); rows here hold only editorial evidence. A row whose model
+// GrsAI no longer lists is left out.
+import { upstreamSnapshot, type UpstreamPrice } from "./upstreamSnapshot";
+
 export type ReviewStatus = { status: "verified" | "unavailable" | "awaiting-evidence"; reason: string };
 export type OfficialRate = {
   usd: string;
@@ -35,10 +40,10 @@ export type CatalogueReference = {
 };
 
 export const snapshot = {
-  version: "grsai-reference-2026-09-20",
-  checkedOn: "2026-09-20",
+  version: `grsai-reference-${upstreamSnapshot.checkedOn}`,
+  checkedOn: upstreamSnapshot.checkedOn,
   creditsPerUsd: "66600",
-  rateSource: "https://grsai.com/dashboard/models",
+  rateSource: upstreamSnapshot.source,
   packageSource: "https://eb.grsaiapi.com/client/goods/getGoodsList",
   publication: "reference-only-owner-approved",
 } as const;
@@ -46,41 +51,41 @@ export const snapshot = {
 const support: ReviewStatus = { status: "awaiting-evidence", reason: "B01/B02: AIAPI.deals support, public API ID and production price not approved." };
 const textLimitations = ["Upstream context limits, token accounting, tools, vision and streaming require integration evidence."];
 
-type ImageRow = [id: string, family: string, provider: "OpenAI" | "Google", resolutions: string[], credits: string, gaps: string[]];
+type ImageRow = [id: string, family: string, provider: "OpenAI" | "Google", resolutions: string[], gaps: string[]];
 const images: ImageRow[] = [
-  ["gpt-image-2.5", "GPT Image 2.5", "OpenAI", ["1K"], "600", ["A1"]],
-  ["gpt-image-2.5-sunburst", "GPT Image 2.5", "OpenAI", ["1K", "2K", "4K"], "2400", ["A2"]],
-  ["gpt-image-2.5-flare", "GPT Image 2.5", "OpenAI", ["1K", "2K", "4K"], "2000", ["A2", "A3"]],
-  ["gpt-image-2-vip", "GPT Image 2", "OpenAI", ["1K", "2K", "4K"], "2000", ["A4"]],
-  ["gpt-image-2", "GPT Image 2", "OpenAI", ["1K"], "600", []],
-  ["nano-banana-pro", "Nano Banana Pro", "Google", ["1K", "2K", "4K"], "1800", ["A5"]],
-  ["nano-banana-2-lite", "Nano Banana 2 Lite", "Google", ["1K"], "440", []],
-  ["nano-banana-2", "Nano Banana 2", "Google", ["1K", "2K", "4K"], "1200", ["A5"]],
-  ["nano-banana-fast", "Nano Banana 2 Lite", "Google", ["1K"], "440", []],
-  ["nano-banana-2-cl", "Nano Banana 2", "Google", ["1K"], "6000", ["A5", "A7"]],
-  ["nano-banana-pro-cl", "Nano Banana Pro", "Google", ["1K"], "10000", ["A5", "A7"]],
-  ["nano-banana-2-2k-cl", "Nano Banana 2", "Google", ["2K"], "9000", ["A5", "A7"]],
-  ["nano-banana-pro-4k-vip", "Nano Banana Pro", "Google", ["4K"], "18000", ["A5", "A7"]],
-  ["nano-banana-pro-vip", "Nano Banana Pro", "Google", ["1K", "2K"], "10000", ["A5", "A7"]],
-  ["nano-banana-2-4k-cl", "Nano Banana 2", "Google", ["4K"], "13000", ["A5", "A7"]],
+  ["gpt-image-2.5", "GPT Image 2.5", "OpenAI", ["1K"], ["A1"]],
+  ["gpt-image-2.5-sunburst", "GPT Image 2.5", "OpenAI", ["1K", "2K", "4K"], ["A2"]],
+  ["gpt-image-2.5-flare", "GPT Image 2.5", "OpenAI", ["1K", "2K", "4K"], ["A2", "A3"]],
+  ["gpt-image-2-vip", "GPT Image 2", "OpenAI", ["1K", "2K", "4K"], ["A4"]],
+  ["gpt-image-2", "GPT Image 2", "OpenAI", ["1K"], []],
+  ["nano-banana-pro", "Nano Banana Pro", "Google", ["1K", "2K", "4K"], ["A5"]],
+  ["nano-banana-2-lite", "Nano Banana 2 Lite", "Google", ["1K"], []],
+  ["nano-banana-2", "Nano Banana 2", "Google", ["1K", "2K", "4K"], ["A5"]],
+  ["nano-banana-fast", "Nano Banana 2 Lite", "Google", ["1K"], []],
+  ["nano-banana-2-cl", "Nano Banana 2", "Google", ["1K"], ["A5", "A7"]],
+  ["nano-banana-pro-cl", "Nano Banana Pro", "Google", ["1K"], ["A5", "A7"]],
+  ["nano-banana-2-2k-cl", "Nano Banana 2", "Google", ["2K"], ["A5", "A7"]],
+  ["nano-banana-pro-4k-vip", "Nano Banana Pro", "Google", ["4K"], ["A5", "A7"]],
+  ["nano-banana-pro-vip", "Nano Banana Pro", "Google", ["1K", "2K"], ["A5", "A7"]],
+  ["nano-banana-2-4k-cl", "Nano Banana 2", "Google", ["4K"], ["A5", "A7"]],
 ];
 
-type TextRow = [id: string, family: string, input: string, output: string, cache: string | null, official: [string, string, string] | null, threshold: string | null];
+type TextRow = [id: string, family: string, official: [string, string, string] | null, threshold: string | null];
 const texts: TextRow[] = [
-  ["gpt-6-astra", "GPT-6", "80000", "400000", "8000", ["10", "50", "1"], "272000"],
-  ["gpt-5.6-terra", "GPT-5.6", "18000", "104000", "1800", ["2", "12", "0.20"], "272000"],
-  ["gpt-5.6-sol", "GPT-5.6", "44000", "260000", "4500", ["4", "20", "0.40"], "272000"],
-  ["gpt-5.5", "GPT-5.5", "44000", "270000", "4500", ["5", "30", "0.50"], "272000"],
-  ["gemini-3.5-flash", "Gemini Flash", "24000", "200000", null, ["1.50", "9", "0.15"], null],
-  ["gemini-3.1-flash-lite", "Gemini Flash-Lite", "5000", "30000", null, ["0.25", "1.50", "0.025"], null],
-  ["gemini-3.5-flash-lite", "Gemini Flash-Lite", "6000", "50000", null, ["0.30", "2.50", "0.03"], null],
-  ["gemini-3.7-flash", "Gemini Flash", "12000", "70000", null, ["0.75", "3.75", "0.075"], null],
-  ["gemini-3.8-flash", "Gemini Flash", "12000", "70000", null, ["0.75", "3.75", "0.075"], null],
-  ["gemini-3.1-pro", "Gemini Pro", "30000", "140000", null, null, null],
-  ["gemini-3-flash", "Gemini Flash", "8000", "60000", null, null, null],
-  ["gemini-3-pro", "Gemini Pro", "30000", "140000", null, null, null],
-  ["gemini-2.5-flash", "Gemini Flash", "6000", "40000", null, ["0.30", "2.50", "0.03"], null],
-  ["gemini-2.5-pro", "Gemini Pro", "25000", "125000", null, ["1.25", "10", "0.125"], "200000"],
+  ["gpt-6-astra", "GPT-6", ["10", "50", "1"], "272000"],
+  ["gpt-5.6-terra", "GPT-5.6", ["2", "12", "0.20"], "272000"],
+  ["gpt-5.6-sol", "GPT-5.6", ["4", "20", "0.40"], "272000"],
+  ["gpt-5.5", "GPT-5.5", ["5", "30", "0.50"], "272000"],
+  ["gemini-3.5-flash", "Gemini Flash", ["1.50", "9", "0.15"], null],
+  ["gemini-3.1-flash-lite", "Gemini Flash-Lite", ["0.25", "1.50", "0.025"], null],
+  ["gemini-3.5-flash-lite", "Gemini Flash-Lite", ["0.30", "2.50", "0.03"], null],
+  ["gemini-3.7-flash", "Gemini Flash", ["0.75", "3.75", "0.075"], null],
+  ["gemini-3.8-flash", "Gemini Flash", ["0.75", "3.75", "0.075"], null],
+  ["gemini-3.1-pro", "Gemini Pro", null, null],
+  ["gemini-3-flash", "Gemini Flash", null, null],
+  ["gemini-3-pro", "Gemini Pro", null, null],
+  ["gemini-2.5-flash", "Gemini Flash", ["0.30", "2.50", "0.03"], null],
+  ["gemini-2.5-pro", "Gemini Pro", ["1.25", "10", "0.125"], "200000"],
 ];
 
 const longContext: Record<string, [string, string, string | null]> = {
@@ -91,18 +96,21 @@ const longContext: Record<string, [string, string, string | null]> = {
   "gemini-2.5-pro": ["2.50", "15", "0.25"],
 };
 
+const listed = (id: string): UpstreamPrice | undefined => upstreamSnapshot.models[id];
+
 export const catalogue: CatalogueReference[] = [
-  ...images.map(([upstreamId, family, provider, listedResolutions, credits, gaps]): CatalogueReference => ({
+  ...images.filter(([id]) => listed(id)).map(([upstreamId, family, provider, listedResolutions, gaps]): CatalogueReference => ({
     upstreamId, publicApiId: null, family, provider, modality: "image", listedResolutions, gaps, support,
     identity: ["nano-banana-fast", "nano-banana-2-lite", "gpt-image-2", "gpt-image-2.5-sunburst", "gpt-image-2.5-flare"].includes(upstreamId)
       ? { status: "verified", reason: "Official identifier documented; intermediary routing unverified." }
       : { status: "awaiting-evidence", reason: `Alias/channel mapping: ${gaps.join(", ")}.` },
-    availability: gaps.includes("A2") ? "unavailable-notice" : "unknown",
+    availability: listed(upstreamId)!.closed ? "unavailable-notice" : "unknown",
     limitations: ["Listed resolutions only; per request is not per image. Quality, input costs, output counts and routing require evidence.", "No verified speed or stability comparison."],
-    rates: [{ component: "image-request", credits, unit: "requests", per: "1", conditions: "Listed flat request tariff; accepted settings unverified", official: [],
+    rates: [{ component: "image-request", credits: listed(upstreamId)!.request ?? null, unit: "requests", per: "1", conditions: "Listed flat request tariff; accepted settings unverified", official: [],
       comparison: { status: "unavailable", reason: "No equivalent official total per request; token/output-only prices cannot substitute." } }],
   })),
-  ...texts.map(([upstreamId, family, input, output, cache, official, threshold]): CatalogueReference => {
+  ...texts.filter(([id]) => listed(id)).map(([upstreamId, family, official, threshold]): CatalogueReference => {
+    const live = listed(upstreamId)!;
     const provider = upstreamId.startsWith("gpt-") ? "OpenAI" : "Google";
     const source = provider === "OpenAI" ? `https://developers.openai.com/api/docs/models/${upstreamId}` : "https://ai.google.dev/gemini-api/docs/pricing";
     // All sources must be revalidated before publication; this is only the known promotional deadline.
@@ -112,7 +120,7 @@ export const catalogue: CatalogueReference[] = [
       upstreamId, publicApiId: null, family, provider, modality: "text", listedResolutions: [], support,
       identity: official ? { status: "verified", reason: "Exact official ID documented; intermediary served version unverified." }
         : { status: "awaiting-evidence", reason: "A8: preview alias/version or retirement unresolved." },
-      availability: "unknown", gaps: official ? [] : ["A8"], limitations: textLimitations,
+      availability: live.closed ? "unavailable-notice" : "unknown", gaps: official ? [] : ["A8"], limitations: textLimitations,
       rates: (["input", "output", "cached-input"] as const).map((component, index): ReferenceRate => {
         const references: OfficialRate[] = [];
         const usd = official?.[index];
@@ -120,7 +128,7 @@ export const catalogue: CatalogueReference[] = [
         if (usd !== undefined) references.push({ usd, unit: "tokens", per: "1000000", conditions, source, recheckOn });
         const long = longContext[upstreamId]?.[index];
         if (long != null) references.push({ usd: long, unit: "tokens", per: "1000000", conditions: conditions.replace(`<=${threshold}`, `>${threshold}`), source, recheckOn });
-        const credits = [input, output, cache][index]!;
+        const credits = [live.input, live.output, live.cache][index] ?? null;
         return { component, credits, unit: "tokens", per: "1000000", conditions: "Directory tariff; upstream context/accounting equivalence unverified", official: references,
           comparison: { status: official && credits !== null ? "awaiting-evidence" : "unavailable",
             reason: !official ? "A8: official model mapping unresolved." : credits === null ? "Upstream cache tariff unknown, not zero." : "Confirm upstream context, token buckets and equivalent Standard settings before comparison." } };

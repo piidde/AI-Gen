@@ -9,10 +9,10 @@ test('homepage deal cards use shared catalogue prices and honest comparisons', a
   const cards = page.locator('.deal-card');
   await expect(cards).toHaveCount(4);
   const expected: Record<string, { percent: string; official: string }> = {
-    'nano-banana-pro': { percent: '87', official: '$0.134' },
-    'gpt-6-astra': { percent: '92', official: '$10.00' },
-    'gpt-image-2.5': { percent: '89', official: '$0.053' },
-    'gemini-3.8-flash': { percent: '85', official: '$0.75' },
+    'nano-banana-pro': { percent: '79', official: '$0.134' },
+    'gpt-6-astra': { percent: '87', official: '$10.00' },
+    'gpt-image-2.5': { percent: '82', official: '$0.053' },
+    'gemini-3.8-flash': { percent: '75', official: '$0.75' },
   };
   for (const deal of deals) {
     const card = cards.filter({ has: page.getByRole('heading', { name: deal.name, exact: true }) });
@@ -62,15 +62,17 @@ test('savings calculator compares official and AIAPI.deals bills', async ({ page
     await expect(result.locator('.deal-calculator-saved')).toHaveText(usdTotal(subtract(official, ours)));
     await expect(result).toContainText(`up to ${rate.percent}% less`);
   };
-  await expect(calculator.getByRole('button', { name: deals[0]!.name, exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await check(0, 10000);
-  const height = await calculator.evaluate(element => element.getBoundingClientRect().height);
-  const textIndex = deals.findIndex(deal => deal.modality === 'text');
-  await calculator.getByRole('button', { name: deals[textIndex]!.name, exact: true }).click();
+  const textIndex = deals.findIndex(deal => deal.id === 'gpt-6-astra');
+  const imageIndex = deals.findIndex(deal => deal.modality === 'image');
+  await expect(calculator.getByRole('button', { name: deals[textIndex]!.name, exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(calculator.getByRole('button', { name: '100M', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await check(textIndex, 100);
+  const height = await calculator.evaluate(element => element.getBoundingClientRect().height);
+  await calculator.getByRole('button', { name: deals[imageIndex]!.name, exact: true }).click();
   // Switching between image and text keeps the volume row, and the card height, stable.
   expect(await calculator.evaluate(element => element.getBoundingClientRect().height)).toBe(height);
-  await check(textIndex, 100);
+  await check(imageIndex, 10000);
+  await calculator.getByRole('button', { name: deals[textIndex]!.name, exact: true }).click();
   await calculator.getByRole('button', { name: '1B', exact: true }).click();
   await check(textIndex, 1000);
   await expect(calculator).toContainText('Input tokens only');

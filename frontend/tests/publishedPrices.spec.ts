@@ -17,7 +17,7 @@ test('image cards have static context and only positive savings badges', async (
   await expect(page.getByLabel(/Comparison resolution|Comparison quality/)).toHaveCount(0);
   for (const id of ['nano-banana-fast', 'nano-banana-2-lite']) {
     const card = page.locator(`[data-model-id="${id}"]`);
-    await expect(card.locator('.landing-saving')).toHaveText('Save up to 88%');
+    await expect(card.locator('.landing-saving')).toHaveText('Save up to 80%');
     await expect(card.locator('.price-reference-basis')).toContainText('1K · official image output');
     await expect(card.getByRole('link', { name: /Official pricing/ })).toHaveCount(0);
     await card.getByRole('button', { name: /View details/ }).click();
@@ -26,7 +26,7 @@ test('image cards have static context and only positive savings badges', async (
   }
   expect(imageOptions(catalogue.find(model => model.upstreamId === 'gpt-image-2-vip')!).qualities).toEqual(['medium']);
   const sunburst = page.locator('[data-model-id="gpt-image-2.5-sunburst"]');
-  await expect(sunburst.locator('.landing-saving')).toHaveText('Save up to 94%');
+  await expect(sunburst.locator('.landing-saving')).toHaveText('Save up to 91%');
   await expect(sunburst.locator('.landing-official .discounted')).toHaveCount(1);
   await expect(sunburst.locator('.price-reference-basis')).toContainText('Max quality');
   for (const badge of await page.locator('.landing-saving').allTextContents()) expect(badge).toMatch(/^(Save up to .*%|8% below Low reference|One flat price)$/);
@@ -53,20 +53,21 @@ test('every catalogue row has a deliberate published-reference disposition', () 
 });
 
 test('percentages use exact values, retain higher costs and never invent zero savings', () => {
-  expect(publishedDifference('600', '0.05268')).toEqual({ direction: 'lower', percent: '89' });
-  expect(publishedDifference('1800', '0.1344')).toEqual({ direction: 'lower', percent: '87' });
-  expect(publishedDifference('10000', '0.1344')).toEqual({ direction: 'lower', percent: '32' });
-  expect(publishedDifference('111000', '1')).toEqual({ direction: 'equal', percent: '0' });
-  expect(publishedDifference('110999', '1')).toEqual({ direction: 'lower', percent: '<1' });
+  expect(publishedDifference('600', '0.05268')).toEqual({ direction: 'lower', percent: '82' });
+  expect(publishedDifference('1800', '0.1344')).toEqual({ direction: 'lower', percent: '79' });
+  // At 2x cost some premium channels exceed the official reference; that is shown, not hidden.
+  expect(publishedDifference('10000', '0.1344')).toEqual({ direction: 'higher', percent: '12' });
+  expect(publishedDifference('66600', '1')).toEqual({ direction: 'equal', percent: '0' });
+  expect(publishedDifference('66599', '1')).toEqual({ direction: 'lower', percent: '<1' });
   expect(publishedDifference('66600', '0')).toBeNull();
 });
 
  test('selling price applies approved package and markup exactly', () => {
  const cost = sellingPrice('2400');
- expect(cost.numerator * 111000n).toBe(cost.denominator * 2400n);
+ expect(cost.numerator * 66600n).toBe(cost.denominator * 2400n);
  const sunburst=catalogue.find(model=>model.upstreamId==='gpt-image-2.5-sunburst')!;
  expect(bestImageSettings(sunburst)).toEqual({resolution:'2K',quality:'max'});
- expect(publishedDifference('2400','0.01317')).toEqual({direction:'higher',percent:'65'});
+ expect(publishedDifference('2400','0.01317')).toEqual({direction:'higher',percent:'174'});
  });
 
 test('auto-only tiers use the common Low benchmark without assuming High output', () => {
@@ -76,14 +77,14 @@ test('auto-only tiers use the common Low benchmark without assuming High output'
  expect(settings).toEqual({resolution:'1K',quality:'low'});
  const reference=publishedReference(model,model.rates[0]!,settings);
  expect(reference.status==='available' && reference.usd).toBe('0.00588');
- expect(publishedDifference('600','0.00588')).toEqual({direction:'lower',percent:'8'});
+ expect(publishedDifference('600','0.00588')).toEqual({direction:'higher',percent:'54'});
  }
 });
 
 test('basic GPT Image2.5 qualifies its savings against official High pricing', async ({page}) => {
  await page.goto('/models?q=gpt-image-2.5');
  const card=page.locator('[data-model-id="gpt-image-2.5"]');
- await expect(card.locator('.landing-saving')).toHaveText('Save up to 89%');
+ await expect(card.locator('.landing-saving')).toHaveText('Save up to 82%');
  await expect(card.locator('.price-reference-basis')).toContainText('Auto quality · official 1K High savings reference');
  await expect(card.locator('.landing-official')).toContainText('$0.006');
  await expect(card.locator('.landing-official')).toContainText('$0.053');

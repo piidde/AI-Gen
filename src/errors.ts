@@ -53,6 +53,10 @@ const databaseErrors: Record<string, { status: number; message: string }> = {
   payment_not_found: { status: 404, message: "The payment was not found." },
   invalid_incident: { status: 400, message: "The incident update is invalid." },
   incident_not_found: { status: 404, message: "The incident was not found." },
+  model_upstream_closed: { status: 409, message: "GrsAI currently lists this model as closed; enable it once GrsAI reopens it." },
+  upstream_change_not_pending: { status: 409, message: "This change is no longer pending. Reload to see the current state." },
+  upstream_change_not_applicable: { status: 409, message: "This change cannot be applied automatically; dismiss it and adjust the model manually." },
+  invalid_upstream_catalog: { status: 502, message: "The GrsAI catalogue had an unexpected format; nothing was changed." },
   invalid_announcement: { status: 400, message: "The announcement is invalid." },
   announcement_not_found: { status: 404, message: "The announcement was not found." },
 };

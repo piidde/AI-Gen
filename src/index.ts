@@ -10,6 +10,7 @@ import { adminAuth, database, rpc } from "./database.js";
 import { HttpError, safeErrorMessage } from "./errors.js";
 import { chooseProviderKey, fetchProviderResult, pollMedia, submitMedia } from "./provider.js";
 import { handleChat, handleResponses } from "./text.js";
+import { syncUpstreamCatalog, UPSTREAM_SYNC_CRON } from "./upstream-catalog.js";
 import { rateLimit } from "./rate-limit.js";
 import { decryptPayload, encryptPayload, formatCredits, formatUsdMicros, hex, hmacSha256, newApiKey, requireConfiguredInt, sha256, stableJson } from "./security.js";
 import type { Env, QueueBatch, StoredMedia } from "./types.js";
@@ -762,6 +763,34 @@ app.post("/v1/internal/models/:id/responses-api", requireAccount(), async (c) =>
   return c.json({ model: c.req.param("id"), responses_api: body.data.enabled });
 });
 
+app.get("/v1/internal/upstream-sync", requireAccount(), async (c) => {
+  requireAdmin(c);
+  return c.json(await rpc<unknown>(database(c.env), "tw_admin_upstream_sync"));
+});
+
+// Runs the hourly sync now. accept_shrink overrides the guard against a list that halved.
+app.post("/v1/internal/upstream-sync", requireAccount(), async (c) => {
+  const actor = requireAdmin(c);
+  const body = z.object({ accept_shrink: z.boolean().default(false), reason: z.string().trim().min(3).max(500).optional() })
+    .strict().safeParse(await readJson(c, c.env));
+  if (!body.success || (body.data.accept_shrink && !body.data.reason)) {
+    throw new HttpError(400, "invalid_upstream_sync", "Accepting a smaller model list requires a reason.");
+  }
+  return c.json(await syncUpstreamCatalog(c.env, body.data.accept_shrink ? { actor, reason: body.data.reason! } : null));
+});
+
+app.post("/v1/internal/upstream-changes/:id", requireAccount(), async (c) => {
+  const actor = requireAdmin(c);
+  const id = c.req.param("id");
+  if (!/^\d{1,18}$/.test(id)) throw new HttpError(409, "upstream_change_not_pending", "This change is no longer pending.");
+  const body = z.object({ reason: z.string().trim().min(3).max(500), apply: z.boolean() }).strict().safeParse(await readJson(c, c.env));
+  if (!body.success) throw new HttpError(400, "invalid_upstream_change", "A reason and a decision are required.");
+  await rpc(database(c.env), "tw_admin_resolve_upstream_change", {
+    p_actor: actor, p_reason: body.data.reason, p_change_id: id, p_apply: body.data.apply,
+  });
+  return c.json({ id, status: body.data.apply ? "applied" : "dismissed" });
+});
+
 app.post("/v1/internal/incidents", requireAccount(), async (c) => {
   const actor = requireAdmin(c);
   const body = z.object({
@@ -1085,7 +1114,16 @@ async function sendLowBalanceAlerts(env: Env): Promise<void> {
   }
 }
 
-export async function scheduled(_controller: ScheduledController, env: Env): Promise<void> {
+export async function scheduled(controller: ScheduledController, env: Env): Promise<void> {
+  if (controller.cron === UPSTREAM_SYNC_CRON) {
+    try {
+      const result = await syncUpstreamCatalog(env);
+      writeLog("upstream_sync.done", { status: result.status, changes: result.status === "synced" ? result.changes.length : 0 });
+    } catch {
+      writeLog("scheduled.step_failed", { step: "upstream_sync" });
+    }
+    return;
+  }
   const db = database(env);
   // Each step is isolated so one failing RPC does not stop the remaining recovery work.
   const step = async (name: string, run: () => Promise<unknown>) => {

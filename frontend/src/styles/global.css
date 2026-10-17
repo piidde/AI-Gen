@@ -1364,3 +1364,13 @@ body[data-consent-banner-visible] {
 /* Plain inline (not inline-flex) so the name keeps the surrounding text baseline. */
 .mention { white-space: nowrap; font-weight: 600; }
 .mention .provider-logo { margin-right: .3em; vertical-align: -0.15em; }
+.model-name { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; white-space: nowrap; }
+
+.capability-filters { display: flex; flex-wrap: wrap; gap: 10px; }
+.capability-filters button { border: 2px solid var(--text); border-radius: 999px; background: var(--panel); color: var(--text); padding: 9px 18px; font: inherit; font-weight: 700; cursor: pointer; }
+.capability-filters button:hover { background: #fff5bd; }
+.capability-filters button[aria-pressed="true"] { background: var(--highlight); }
+.models-view-tabs { width: fit-content; max-width: 100%; overflow-x: auto; margin-bottom: 24px; }
+.models-view-tabs button { white-space: nowrap; font-size: 14px; padding: 8px 14px; }
+.models-usage-hint, .models-catalogue-note { margin-bottom: 20px; color: var(--muted); }
+.models-usage-hint .text-link, .models-catalogue-note .text-link { font-size: inherit; }

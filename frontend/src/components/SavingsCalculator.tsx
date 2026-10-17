@@ -8,8 +8,12 @@ const volumes = { image: [1000, 10000, 100000], text: [10, 100, 1000] } as const
 const volumeLabel = (modality: "image" | "text", volume: number) =>
   modality === "image" ? volume.toLocaleString("en-US") : volume >= 1000 ? `${volume / 1000}B` : `${volume}M`;
 
+// GPT-6 Astra is preselected on page load (owner request, 2026-10-17); card order is unchanged.
+const defaultDealIndex = deals.findIndex(deal => deal.id === "gpt-6-astra");
+if (defaultDealIndex < 0) throw new Error("Missing default calculator deal: gpt-6-astra");
+
 export default function SavingsCalculator() {
-  const [dealIndex, setDealIndex] = useState(0);
+  const [dealIndex, setDealIndex] = useState(defaultDealIndex);
   const [volumeIndex, setVolumeIndex] = useState(1);
   const deal = deals[dealIndex]!;
   // Text models are compared on input tokens; output is listed on the card.

@@ -14,6 +14,12 @@ const paths = {
   profile: "M13 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0M3 18v-2a7 7 0 0 1 14 0v2",
   bell: "M4 14h12l-2-3V7a4 4 0 0 0-8 0v4ZM8 17h4",
   admin: "M10 2 3 5v5c0 4 3 7 7 8 4-1 7-4 7-8V5Z",
+  live: "M2 10h4l2-5 4 10 2-5h4",
+  tag: "M3 3h7l7 7-7 7-7-7ZM7 7h.01",
+  megaphone: "M3 8v4h3l8 4V4L6 8ZM6 12l1 5h2l-1-4",
+  sync: "M16 7a6 6 0 0 0-11-1M4 13a6 6 0 0 0 11 1M5 2v4h4M15 18v-4h-4",
+  video: "M2 5h11v10H2ZM13 9l5-3v8l-5-3",
+  plus: "M10 4v12M4 10h12",
 } as const;
 
 export type IconName = keyof typeof paths;

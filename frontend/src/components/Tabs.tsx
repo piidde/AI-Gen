@@ -1,4 +1,5 @@
 import { useId, useRef } from "react";
+import Icon, { type IconName } from "./Icon";
 
 export default function Tabs<T extends string>({
   label,
@@ -7,6 +8,7 @@ export default function Tabs<T extends string>({
   onChange,
   panelId,
   className = "",
+  icons,
 }: {
   label: string;
   options: readonly T[];
@@ -14,6 +16,7 @@ export default function Tabs<T extends string>({
   onChange: (value: T) => void;
   panelId: string;
   className?: string;
+  icons?: Partial<Record<T, IconName>>;
 }) {
   const id = useId();
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -44,6 +47,7 @@ export default function Tabs<T extends string>({
             refs.current[next]?.focus();
           }}
         >
+          {icons?.[option] && <Icon name={icons[option]} />}
           {option}
         </button>
       ))}

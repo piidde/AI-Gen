@@ -3,17 +3,22 @@ import AdminAnnouncements from "../components/AdminAnnouncements";
 import AdminControls from "../components/AdminControls";
 import AdminModels from "../components/AdminModels";
 import AdminOffers from "../components/AdminOffers";
+import AdminUpstream from "../components/AdminUpstream";
 import Button from "../components/Button";
 import FilterSelect from "../components/FilterSelect";
-import { MetricIcon } from "../components/Icon";
+import Icon, { MetricIcon, type IconName } from "../components/Icon";
 import PageHeading from "../components/PageHeading";
+import { ProviderLogo } from "../components/ProviderLogo";
 import Tabs from "../components/Tabs";
 import { formatUsd, useApiResource, type Resource } from "../data/api";
 import { usePolling, type AdminRequestDto, type OpsDto } from "../data/admin";
 import "../styles/admin.css";
 
-const sections = ["Live", "Controls", "Models", "Offers", "Announcements"] as const;
+const sections = ["Live", "Controls", "Models", "GrsAI sync", "Offers", "Announcements"] as const;
 type Section = typeof sections[number];
+const sectionIcons: Record<Section, IconName> = {
+  Live: "live", Controls: "settings", Models: "models", "GrsAI sync": "sync", Offers: "tag", Announcements: "megaphone",
+};
 
 export default function Admin() {
   const check = useApiResource<{ authorized: boolean }>("/v1/internal/admin-check");
@@ -34,13 +39,14 @@ function AdminConsole() {
   const ops = useApiResource<OpsDto>("/v1/internal/ops");
   return <div className="admin-page">
     <PageHeading title="Admin" description="Live operations and platform controls. Every change is written to the audit log with your reason." />
-    <Tabs label="Admin sections" options={sections} value={section} onChange={setSection} panelId="admin-section" className="admin-tabs" />
+    <Tabs label="Admin sections" options={sections} value={section} onChange={setSection} panelId="admin-section" className="admin-tabs" icons={sectionIcons} />
     <div id="admin-section" role="tabpanel">
       {ops.error && <section className="notice error" role="alert"><p>{ops.error}</p><Button className="secondary" onClick={ops.reload}>Try again</Button></section>}
       {!ops.data ? !ops.error && <p role="status">Loading operations…</p>
         : section === "Live" ? <AdminLive ops={ops} />
         : section === "Controls" ? <AdminControls summary={ops.data.summary} reload={ops.reload} />
         : section === "Models" ? <AdminModels models={ops.data.models} globalMarkupBps={ops.data.summary.markup_bps} reload={ops.reload} />
+        : section === "GrsAI sync" ? <AdminUpstream />
         : section === "Offers" ? <AdminOffers offers={ops.data.offers} reload={ops.reload} />
         : <AdminAnnouncements />}
     </div>
@@ -93,7 +99,7 @@ function AdminLive({ ops }: { ops: Resource<OpsDto> }) {
         <p>{summary.active_accounts} accounts · {summary.active_keys} active keys</p></div>
     </section>
     <section className="panel admin-requests">
-      <div className="table-head"><h2>Requests</h2>
+      <div className="table-head"><h2 className="admin-title"><Icon name="requests" />Requests</h2>
         <span className="small muted" role="status">{paused ? "Paused" : "Live, every 5 s"}{updatedAt && ` · updated ${updatedAt.toLocaleTimeString()}`}</span></div>
       <div className="filters">
         <FilterSelect id="admin-request-state" label="Request state" value={state} options={stateOptions} onChange={setState} />
@@ -105,7 +111,7 @@ function AdminLive({ ops }: { ops: Resource<OpsDto> }) {
           <tbody>{requests.data?.data.map(request => <tr key={request.id}>
             <td><time dateTime={request.created_at} title={request.id}>{new Date(request.created_at).toLocaleTimeString()}</time></td>
             <td><span className={stateClass(request.state)}>{request.state.replace("_", " ")}</span></td>
-            <td>{request.model}</td>
+            <td><span className="model-name"><ProviderLogo name={request.model} />{request.model}</span></td>
             <td className="mono" title={request.account_id}>{request.account_id.slice(0, 8)}</td>
             <td className="mono">{request.api_key_prefix ?? "–"}</td>
             <td>{usage(request)}</td>

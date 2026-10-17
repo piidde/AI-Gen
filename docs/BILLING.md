@@ -36,6 +36,14 @@ request keeps its price version and markup snapshot if configuration changes
 while it is running. Missing costs, limits, markup, usage, or provider budget fail
 closed.
 
+**DECIDED (owner, 2026-10-17):** provider cost is GrsAI list credits valued at the
+USD 150 package (cost micros = ceil(credits x 15,000 x 10,000 / 19,980,000) while the
+package gives 19,980,000 credits) and customers pay 2.0x that cost (global markup
+20000 bps). The hourly GrsAI sync ([ADR-008](decisions/ADR-008-grsai-catalogue-sync.md))
+keeps costs current: an increase becomes a new price version immediately, a decrease
+waits for an admin under Admin > GrsAI sync, and a jump beyond 3x disables the model
+until decided. Public catalogue displays use credits x 2 / 133,200 USD.
+
 ## DECIDED — customer-facing policies (2026-09-20)
 
 - Purchase bonuses add wallet credits; they do not reduce a model's credit rate.

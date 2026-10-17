@@ -649,6 +649,10 @@ Signed-in customers also get /dashboard/announcements: a backend-fed changelog
 (GET /v1/announcements) with type tabs, search and an unread dot in the navigation
 (last-seen time kept per browser). Administrators publish, edit and delete entries
 under the Admin panel's Announcements tab. The public /updates archive stays static.
+Admin tabs carry icons and model rows show provider logos. The Offers tab lists offers
+as cards and its form previews the customer package, accepts "€10"/"10,50" style input,
+derives the offer ID from the price when left empty (for example eur-10), and names the
+missing fields beside the disabled save button. The audit reason stays mandatory.
 
 Savings consume a supplied mock summary, independent of the chart period. The view
 shows comparison coverage and separately qualifies incomplete historical coverage
@@ -906,3 +910,15 @@ Auth-provider icons remain visible on the light buttons. Price calculations,
 reference data, routes and mock/live business boundaries were not changed by this
 rollout. See [the rollout log](superpowers/plans/2026-10-07-deal-style-rollout.md)
 and H-070 for verification. No commit, push or deployment was performed.
+
+### Signed-in model journey (2026-10-17)
+
+`/dashboard/models` has two tabs: **Available to your keys** (live `/v1/models`,
+provider logos, All/Coding/Chat/Image filter buttons instead of a dropdown, and a
+base-URL/API-key hint) and **Full catalogue** (`?view=catalogue`, the public
+catalogue embedded without its hero, labelled as comparison-only). Gaps closed in
+the signup → key → first request journey: the public header shows **Dashboard**
+instead of sign-in/sign-up once a session exists (signed-out markup is rendered
+until the session resolves, so prerendered pages hydrate unchanged); the Overview
+first-request checklist includes "Pick a model"; the key-created dialog points to
+Models and the quickstart.

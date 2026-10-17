@@ -21,6 +21,8 @@ Accepted records:
   Worker API, Supabase/PostgreSQL, queues, private result storage, and Stripe.
 - [ADR-007: Cloudflare Email Sending for account alerts](ADR-007-cloudflare-email-sending.md) —
   low-balance emails from the Worker cron through the `EMAIL` binding.
+- [ADR-008: Automatic GrsAI catalogue and price sync](ADR-008-grsai-catalogue-sync.md) —
+  hourly backend price/availability sync at 2x the USD 150 package cost, nightly public snapshot PR.
 
 Track unresolved choices and evidence in [OPEN_DECISIONS.md](../OPEN_DECISIONS.md).
 An assumption or investigation is not an accepted ADR. When the team explicitly

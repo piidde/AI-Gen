@@ -14,11 +14,12 @@ export function imageOptions(model: CatalogueReference) {
     ? ['low', 'medium', 'high', 'xhigh', 'max'] : ['low', 'medium', 'high'];
   return { resolutions, qualities };
 }
-// USD150 buys19,980,000 credits; retail adds20% to that acquisition cost.
+// USD 150 buys 19,980,000 credits; the customer pays twice that acquisition cost
+// (owner decision 2026-10-17, same 2.0x markup the backend charges).
 export function sellingPrice(credits: string) {
   const value = decimalAmount(credits);
   if (value.numerator < 0n) throw new Error('Negative model tariff');
-  return { numerator: value.numerator * 120n, denominator: value.denominator * 133200n * 100n };
+  return { numerator: value.numerator * 2n, denominator: value.denominator * 133200n };
 }
 
 // Maximum among explicitly listed comparison presets, not a cross-model bargain.

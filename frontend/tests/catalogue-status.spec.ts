@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { catalogue } from "../src/content/catalogue";
 
 test("availability keeps overview card footer geometry stable", async ({ page }) => {
   for (const width of [2560, 1440, 390]) {
@@ -30,7 +31,9 @@ test("availability keeps overview card footer geometry stable", async ({ page })
       expect(Math.max(...geometry.map(item => item.footerTop)) - Math.min(...geometry.map(item => item.footerTop))).toBeLessThan(1);
     }
     await page.goto("/models?capability=Text");
-    await expect(page.locator(".catalogue-collection.catalogue-has-status")).toHaveCount(0);
+    // Only the chat collection (Gemini) can carry GrsAI closure notices among text models.
+    const textNotices = catalogue.some(model => model.modality === "text" && model.availability !== "unknown");
+    await expect(page.locator(".catalogue-collection.catalogue-has-status")).toHaveCount(textNotices ? 1 : 0);
     expect(await page.locator(".catalogue-collection .reference-card footer").first().evaluate(node => getComputedStyle(node).display)).toBe("flex");
   }
 });

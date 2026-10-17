@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Button from "./Button";
+import Icon from "./Icon";
 import { microsToDecimal, usdToMicros } from "../data/api";
 import { bpsToMultiplier, multiplierToBps, useMutation, type OpsSummaryDto } from "../data/admin";
 
@@ -53,7 +54,7 @@ export default function AdminControls({ summary, reload }: { summary: OpsSummary
 
   return <div className="admin-grid">
     <section className="panel setting-section">
-      <h2>Service controls</h2>
+      <h2 className="admin-title"><Icon name="settings" />Service controls</h2>
       <p>Applies to new requests immediately. Running requests are not interrupted.</p>
       <form onSubmit={event => { event.preventDefault(); void saveControls(accepting); }}>
         <label className="admin-check"><input type="checkbox" checked={accepting} onChange={event => setAccepting(event.target.checked)} /> Accept new generation requests</label>
@@ -75,7 +76,7 @@ export default function AdminControls({ summary, reload }: { summary: OpsSummary
       </form>
     </section>
     <section className="panel setting-section">
-      <h2>GrsAI provider</h2>
+      <h2 className="admin-title"><Icon name="wallet" />GrsAI provider</h2>
       <p>The budget caps total GrsAI spend, including reservations for running requests. It cannot be set below what is already used.</p>
       {group ? <form onSubmit={event => { event.preventDefault(); void saveProvider(); }}>
         <label className="admin-check"><input type="checkbox" checked={providerEnabled} onChange={event => setProviderEnabled(event.target.checked)} /> Provider enabled</label>
@@ -95,7 +96,7 @@ export default function AdminControls({ summary, reload }: { summary: OpsSummary
       </form> : <p role="alert">No provider group is configured.</p>}
     </section>
     <section className="panel setting-section admin-infra">
-      <h2>Deploy-time limits</h2>
+      <h2 className="admin-title"><Icon name="keys" />Deploy-time limits</h2>
       <p>These cannot change at runtime. Edit the named setting and deploy.</p>
       <dl>{infrastructure.map(([label, value, where]) => <div key={label}><dt>{label}</dt><dd><strong>{value}</strong><span>{where}</span></dd></div>)}</dl>
     </section>

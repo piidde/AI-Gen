@@ -90,7 +90,10 @@ type Backend = {
   accounts: Map<string, Account>; calls: { method: string; path: string; headers: Record<string, string>; body: unknown }[];
   incidents: unknown[]; failures: Map<string, { status: number; code: string; message: string }>; hold: Set<string>;
   admins: Set<string>; maxConcurrent: number;
+  offers: { id: string; currency: "eur" | "usd"; amount_minor: number; credits_micros: string; active: boolean; price_version: number }[];
   announcements: { id: string; title: string; body: string; category: string; published_at: string; updated_at: string }[];
+  upstreamChanges: { id: number; model: string; name: string; capability: string; kind: string; status: string; previous: unknown; proposed: unknown;
+    note: string | null; created_at: string; resolved_at: string | null; resolution_reason: string | null }[];
 };
 
 function adminOps(backend: Backend) {
@@ -104,7 +107,7 @@ function adminOps(backend: Backend) {
       price_verified_at: "2026-10-06T00:00:00Z", max_input_tokens: 200000, max_output_tokens: 16000, max_units: null, unit: "tokens",
       input_micros: "308000", output_micros: "1890000", unit_micros: null, markup_bps: null, source_note: "fixture source",
       parameter_schema: { type: "object", properties: {} }, responses_api: true }],
-    offers: [] };
+    offers: backend.offers };
 }
 
 const periodDays: Record<string, number | null> = { today: 0, "7d": 7, "30d": 30, "6m": 183, "1y": 365, all: null };
@@ -270,8 +273,15 @@ let backend: Backend;
 
 test.beforeEach(async ({ context }) => {
   backend = { accounts: new Map(), calls: [], incidents: [], failures: new Map(), hold: new Set(), admins: new Set(), maxConcurrent: 3,
+    offers: [{ id: "starter", currency: "eur", amount_minor: 1000, credits_micros: "10500000", active: true, price_version: 1 }],
     announcements: [{ id: uuid(0x5ff), title: "Model restoration notice", body: "The following models have been restored:\n\ngpt-image-2\ngpt-image-2.5",
-      category: "feature", published_at: "2026-10-16T07:18:00Z", updated_at: "2026-10-16T07:18:00Z" }] };
+      category: "feature", published_at: "2026-10-16T07:18:00Z", updated_at: "2026-10-16T07:18:00Z" }],
+    upstreamChanges: [
+      { id: 7, model: "gpt-5.5", name: "GPT 5.5", capability: "text", kind: "price_decrease", status: "pending", note: null,
+        previous: { input_micros: "330331", output_micros: "2027028", unit_micros: null }, proposed: { input_micros: "300301", output_micros: "2027028", unit_micros: null },
+        created_at: "2026-10-17T08:17:00Z", resolved_at: null, resolution_reason: null },
+      { id: 6, model: "gemini-2.5-pro", name: "Gemini 2.5 Pro", capability: "text", kind: "closed", status: "applied", note: "maintenance",
+        previous: { enabled: true }, proposed: { note: "maintenance" }, created_at: "2026-10-17T07:17:00Z", resolved_at: null, resolution_reason: null }] };
   // Deny unexpected network access; the fixture must never contact a real service.
   await context.route("**/*", async route => {
     const url = new URL(route.request().url());
@@ -742,12 +752,31 @@ test("dashboard models list only the live, priced models from the API", async ({
   const rows = page.getByRole("region", { name: "Available models table" }).locator("tbody tr");
   await expect(rows).toHaveCount(2);
   await expect(rows.first()).toContainText("$1");
-  await selectDropdown(page, "Filter capability", "Image");
+  await expect(rows.first().locator(".provider-logo")).toHaveCount(1);
+  const filters = page.getByRole("group", { name: "Filter capability" });
+  await filters.getByRole("button", { name: "Image" }).click();
+  await expect(filters.getByRole("button", { name: "Image" })).toHaveAttribute("aria-pressed", "true");
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("$0.08 per image");
   await page.getByRole("searchbox", { name: "Search models" }).fill("nothing");
   await expect(page.getByText("No models match these filters.")).toBeVisible();
   await expect(page.locator(".demo-bar")).toHaveCount(0);
+
+  // The full catalogue stays reachable inside the dashboard, without a second page heading.
+  await page.getByRole("tab", { name: "Full catalogue" }).click();
+  await expect(page).toHaveURL(/view=catalogue/);
+  await expect(page.locator(".model-card").first()).toBeVisible();
+  await expect(page.locator(".dashboard-main h1")).toHaveCount(1);
+  await page.getByRole("tab", { name: "Available to your keys" }).click();
+  await expect(rows.first()).toBeVisible();
+});
+
+test("signed-in visitors see a dashboard link instead of sign-up in the public header", async ({ page }) => {
+  await signIn(page, "/dashboard");
+  await page.goto("/models");
+  const account = page.locator(".public-chrome-account");
+  await expect(account.getByRole("link", { name: "Dashboard" })).toBeVisible();
+  await expect(account.getByRole("link", { name: "Sign in" })).toHaveCount(0);
 });
 
 test("requests paginate on the server and compose filters into the API query", async ({ page }, testInfo) => {
@@ -980,4 +1009,47 @@ test("the admin panel polls live requests and saves an audited concurrency limit
     .toEqual({ reason: "launch capacity", accepting_requests: true, result_ttl_hours: 2, max_concurrent_per_account: 5 });
   await page.getByRole("tab", { name: "Live" }).click();
   await expect(page.getByText("Limit 5 per account")).toBeVisible();
+});
+
+test("administrators create a credit offer and are told what is still missing", async ({ page }) => {
+  backend.admins.add(user.id);
+  await signIn(page, "/dashboard/admin");
+  await page.getByRole("tab", { name: "Offers" }).click();
+  const cards = page.getByRole("list", { name: "Credit offers" }).getByRole("listitem");
+  await expect(cards).toHaveCount(1);
+  await page.getByLabel("Customer pays (EUR)").fill("€25");
+  await page.getByLabel("Credits granted (USD)").fill("26,50");
+  await expect(page.getByText("$26.50 credits for €25.00")).toBeVisible();
+  const create = page.getByRole("button", { name: "Create offer" });
+  await expect(create).toBeDisabled();
+  await expect(page.getByText("Still needed: a reason for the audit log (3+ characters).")).toBeVisible();
+  await page.getByLabel("Reason for the audit log").fill("launch pack");
+  await create.click();
+  await expect(page.getByText("Offer eur-25 (EUR) saved.")).toBeVisible();
+  expect(backend.calls.find(call => call.method === "POST" && call.path === "/v1/internal/offers")?.body)
+    .toEqual({ reason: "launch pack", id: "eur-25", currency: "eur", amount_minor: 2500, credits_micros: "26500000", active: true });
+  await expect(cards).toHaveCount(2);
+  await page.getByRole("button", { name: "Edit starter (EUR)" }).click();
+  await expect(page.getByRole("heading", { name: "Edit starter (EUR)" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Update offer" })).toBeDisabled();
+});
+
+test("administrators review pending GrsAI price changes with an audit reason", async ({ page }) => {
+  backend.admins.add(user.id);
+  await signIn(page, "/dashboard/admin");
+  await page.getByRole("tab", { name: "GrsAI sync" }).click();
+  const pending = page.getByRole("region", { name: "Pending GrsAI changes" });
+  await expect(pending.locator("tbody tr")).toHaveCount(1);
+  await expect(pending).toContainText("Cost decrease");
+  await expect(pending).toContainText("$0.330331 in · $2.027028 out / 1M");
+  await expect(page.getByRole("region", { name: "Recent GrsAI changes" })).toContainText("Closed by GrsAI");
+  await expect(page.getByText("19,980,000 credits per package")).toBeVisible();
+  await pending.getByRole("button", { name: "Apply" }).click();
+  const confirm = page.getByRole("button", { name: "Confirm" });
+  await expect(confirm).toBeDisabled();
+  await page.getByLabel("Reason for the audit log").fill("accept lower GrsAI cost");
+  await confirm.click();
+  await expect(page.getByText("Change applied.")).toBeVisible();
+  expect(backend.calls.find(call => call.method === "POST" && call.path === "/v1/internal/upstream-changes/7")?.body)
+    .toEqual({ reason: "accept lower GrsAI cost", apply: true });
 });

@@ -175,6 +175,14 @@ must not parse the upstream's rounded money labels.
 
 ### Upstream credit rates
 
+**Baseline only (since 2026-10-17, ADR-008):** the tables below record the
+2026-09-20 research values. Current credits and GrsAI's closed flags are generated into
+`frontend/src/content/upstreamSnapshot.ts` (`npm run catalogue:sync`, nightly PR) and
+synced hourly into billing prices; do not update these tables for routine changes.
+On 2026-10-17 all 29 rows still matched; GrsAI additionally lists `gpt-6.1-sol`,
+`nano-banana-2.1` and the video model `agnes-video-2.5`, which need editorial rows
+(and OD-007 for video) before publication.
+
 Source: [GRSAI directory](https://grsai.com/dashboard/models). Each image row
 retains its resolution and evidence gaps from the inventory above. A listed flat
 rate does not prove how multiple outputs or unsupported parameters are charged.

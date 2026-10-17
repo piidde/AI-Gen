@@ -1,0 +1,67 @@
+# Nightly refresh of the public catalogue's GrsAI prices and availability (ADR-008).
+# Billing prices are synced hourly by the Worker; this only keeps the prerendered public
+# pages current. It opens (or updates) one pull request for a human to merge and deploy.
+# Requires the repository setting "Allow GitHub Actions to create and approve pull requests".
+name: GrsAI catalogue sync
+
+on:
+  schedule:
+    - cron: "40 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: catalogue-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Refresh snapshot
+        run: npm run --silent catalogue:sync | tee catalogue-sync.log
+      - name: Detect change
+        id: change
+        run: |
+          if git diff --quiet -- frontend/src/content/upstreamSnapshot.ts; then echo "changed=false" >> "$GITHUB_OUTPUT"; else echo "changed=true" >> "$GITHUB_OUTPUT"; fi
+      - name: Build the public site with the new snapshot
+        id: build
+        if: steps.change.outputs.changed == 'true'
+        continue-on-error: true
+        run: npm ci --prefix frontend && npm --prefix frontend run build
+      - name: Write pull request body
+        if: steps.change.outputs.changed == 'true'
+        run: |
+          {
+            echo "Automated refresh of \`frontend/src/content/upstreamSnapshot.ts\` from GrsAI's public model list."
+            echo
+            echo "Frontend build: **${{ steps.build.outcome }}**. A failed build usually means a featured homepage deal is no longer listed or no longer below its official reference; adjust \`homeDeals.ts\` before merging."
+            echo
+            echo '```'
+            cat catalogue-sync.log
+            echo '```'
+            echo
+            echo "Run the frontend tests locally before deploying; expected percentages in the specs may need updating."
+          } > pr-body.md
+      - uses: peter-evans/create-pull-request@v7
+        if: steps.change.outputs.changed == 'true'
+        with:
+          branch: chore/grsai-catalogue-sync
+          add-paths: frontend/src/content/upstreamSnapshot.ts
+          commit-message: Refresh public GrsAI catalogue snapshot
+          title: Refresh public GrsAI catalogue snapshot
+          body-path: pr-body.md
+          delete-branch: true
+      - name: Fail when the refreshed site does not build
+        if: steps.build.outcome == 'failure'
+        run: exit 1

@@ -16,7 +16,8 @@
     "deploy:staging": "npm run build && wrangler deploy --env staging",
     "db:new": "supabase migration new",
     "db:up": "supabase migration up",
-    "db:reset": "supabase db reset"
+    "db:reset": "supabase db reset",
+    "catalogue:sync": "tsx scripts/sync-public-catalogue.ts"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",
