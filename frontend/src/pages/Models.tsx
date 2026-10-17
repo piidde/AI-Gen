@@ -53,7 +53,7 @@ export default function Models({ publicPage = false }: { publicPage?: boolean })
       </div>
       <div className="catalog-count" role="status">{shown.length} reference variants across {groups.length} families</div>
       {sections.map(section => {
-        const variants = groups.flatMap(group => group.variants).filter(section.match);
+        const variants = shown.filter(section.match);
         return variants.length > 0 && <ModelFamily key={section.title} family={section.title} note={section.note} actions={section.actions} variants={variants} currency={currency} overview />;
       })}
       {shown.length === 0 && <section className="empty"><h2>No matching models</h2><p>Try another provider, capability or search.</p></section>}

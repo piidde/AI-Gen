@@ -69,7 +69,8 @@ test("catalogue copy failure is visible and the reference ID remains selectable"
   await page.getByRole("button", { name: /View details/ }).first().click();
   await page.getByRole("button", { name: "Copy reference ID" }).click();
   await expect(page.getByRole("dialog")).toContainText("Could not copy");
-  await expect(page.getByRole("dialog")).toContainText("gpt-image-2.5");
+  // Newest model first: GPT-6.1 Sol leads the collection.
+  await expect(page.getByRole("dialog")).toContainText("gpt-6.1-sol");
 });
 
 test("query-only typing preserves catalogue scroll position", async ({ page }) => {
@@ -88,5 +89,5 @@ test("query-only typing preserves catalogue scroll position", async ({ page }) =
   await expect(page).toHaveURL(/q=model/);
   await expect(search).toBeFocused();
   expect(await page.evaluate(() => scrollY)).toBe(before);
-  await expect(page.locator(".model-card")).toHaveCount(29);
+  await expect(page.locator(".model-card")).toHaveCount(30);
 });

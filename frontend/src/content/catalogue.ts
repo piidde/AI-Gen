@@ -52,36 +52,39 @@ const support: ReviewStatus = { status: "awaiting-evidence", reason: "B01/B02: A
 const textLimitations = ["Upstream context limits, token accounting, tools, vision and streaming require integration evidence."];
 
 type ImageRow = [id: string, family: string, provider: "OpenAI" | "Google", resolutions: string[], gaps: string[]];
+// Rows are newest model first; every model list keeps this order (owner request, 2026-10-17).
 const images: ImageRow[] = [
   ["gpt-image-2.5", "GPT Image 2.5", "OpenAI", ["1K"], ["A1"]],
   ["gpt-image-2.5-sunburst", "GPT Image 2.5", "OpenAI", ["1K", "2K", "4K"], ["A2"]],
   ["gpt-image-2.5-flare", "GPT Image 2.5", "OpenAI", ["1K", "2K", "4K"], ["A2", "A3"]],
+  ["nano-banana-2", "Nano Banana 2", "Google", ["1K", "2K", "4K"], ["A5"]],
+  ["nano-banana-2-cl", "Nano Banana 2", "Google", ["1K"], ["A5", "A7"]],
+  ["nano-banana-2-2k-cl", "Nano Banana 2", "Google", ["2K"], ["A5", "A7"]],
+  ["nano-banana-2-4k-cl", "Nano Banana 2", "Google", ["4K"], ["A5", "A7"]],
+  ["nano-banana-2-lite", "Nano Banana 2 Lite", "Google", ["1K"], []],
+  ["nano-banana-fast", "Nano Banana 2 Lite", "Google", ["1K"], []],
   ["gpt-image-2-vip", "GPT Image 2", "OpenAI", ["1K", "2K", "4K"], ["A4"]],
   ["gpt-image-2", "GPT Image 2", "OpenAI", ["1K"], []],
   ["nano-banana-pro", "Nano Banana Pro", "Google", ["1K", "2K", "4K"], ["A5"]],
-  ["nano-banana-2-lite", "Nano Banana 2 Lite", "Google", ["1K"], []],
-  ["nano-banana-2", "Nano Banana 2", "Google", ["1K", "2K", "4K"], ["A5"]],
-  ["nano-banana-fast", "Nano Banana 2 Lite", "Google", ["1K"], []],
-  ["nano-banana-2-cl", "Nano Banana 2", "Google", ["1K"], ["A5", "A7"]],
   ["nano-banana-pro-cl", "Nano Banana Pro", "Google", ["1K"], ["A5", "A7"]],
-  ["nano-banana-2-2k-cl", "Nano Banana 2", "Google", ["2K"], ["A5", "A7"]],
   ["nano-banana-pro-4k-vip", "Nano Banana Pro", "Google", ["4K"], ["A5", "A7"]],
   ["nano-banana-pro-vip", "Nano Banana Pro", "Google", ["1K", "2K"], ["A5", "A7"]],
-  ["nano-banana-2-4k-cl", "Nano Banana 2", "Google", ["4K"], ["A5", "A7"]],
 ];
 
 type TextRow = [id: string, family: string, official: [string, string, string] | null, threshold: string | null];
 const texts: TextRow[] = [
+  // GPT-6.1 Sol official Standard rates: https://openai.com/index/introducing-gpt-6-1-sol/ (checked 2026-10-17).
+  ["gpt-6.1-sol", "GPT-6.1", ["2", "10", "0.10"], "272000"],
   ["gpt-6-astra", "GPT-6", ["10", "50", "1"], "272000"],
   ["gpt-5.6-terra", "GPT-5.6", ["2", "12", "0.20"], "272000"],
   ["gpt-5.6-sol", "GPT-5.6", ["4", "20", "0.40"], "272000"],
   ["gpt-5.5", "GPT-5.5", ["5", "30", "0.50"], "272000"],
-  ["gemini-3.5-flash", "Gemini Flash", ["1.50", "9", "0.15"], null],
-  ["gemini-3.1-flash-lite", "Gemini Flash-Lite", ["0.25", "1.50", "0.025"], null],
-  ["gemini-3.5-flash-lite", "Gemini Flash-Lite", ["0.30", "2.50", "0.03"], null],
-  ["gemini-3.7-flash", "Gemini Flash", ["0.75", "3.75", "0.075"], null],
   ["gemini-3.8-flash", "Gemini Flash", ["0.75", "3.75", "0.075"], null],
+  ["gemini-3.7-flash", "Gemini Flash", ["0.75", "3.75", "0.075"], null],
+  ["gemini-3.5-flash", "Gemini Flash", ["1.50", "9", "0.15"], null],
+  ["gemini-3.5-flash-lite", "Gemini Flash-Lite", ["0.30", "2.50", "0.03"], null],
   ["gemini-3.1-pro", "Gemini Pro", null, null],
+  ["gemini-3.1-flash-lite", "Gemini Flash-Lite", ["0.25", "1.50", "0.025"], null],
   ["gemini-3-flash", "Gemini Flash", null, null],
   ["gemini-3-pro", "Gemini Pro", null, null],
   ["gemini-2.5-flash", "Gemini Flash", ["0.30", "2.50", "0.03"], null],
@@ -89,6 +92,7 @@ const texts: TextRow[] = [
 ];
 
 const longContext: Record<string, [string, string, string | null]> = {
+  "gpt-6.1-sol": ["4", "15", "0.20"],
   "gpt-6-astra": ["20", "75", "2"],
   "gpt-5.6-terra": ["4", "18", "0.40"],
   "gpt-5.6-sol": ["8", "30", "0.80"],
@@ -147,3 +151,11 @@ export const packages = [
   { usd: "150", baseCredits: "9990000", bonusCredits: "9990000", totalCredits: "19980000" },
   { usd: "1000", baseCredits: "66600000", bonusCredits: "66600000", totalCredits: "133200000" },
 ] as const;
+
+// Newest first, text models (GPT-6.1 Sol, GPT-6 Astra, ...) ahead of image models. Models
+// the catalogue does not list yet come from the GrsAI sync and sort ahead of all others.
+const recency = new Map([...catalogue.filter(model => model.modality === "text"), ...catalogue.filter(model => model.modality === "image")]
+  .map((model, index) => [model.upstreamId, index]));
+export function byRecency(a: string, b: string): number {
+  return (recency.get(a) ?? -1) - (recency.get(b) ?? -1);
+}

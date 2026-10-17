@@ -5,6 +5,7 @@ import PageHeading from "../components/PageHeading";
 import CopyButton from "../components/CopyButton";
 import Tabs from "../components/Tabs";
 import { ProviderLogo } from "../components/ProviderLogo";
+import { byRecency } from "../content/catalogue";
 import { useApiResource, type ModelDto } from "../data/api";
 import Models from "./Models";
 
@@ -42,7 +43,8 @@ function AvailableModels() {
   const [search, setSearch] = useState("");
   const shown = (models.data?.data ?? []).filter(model =>
     (category === "all" || categoryOf(model) === category) &&
-    `${model.id} ${model.name}`.toLowerCase().includes(search.trim().toLowerCase()));
+    `${model.id} ${model.name}`.toLowerCase().includes(search.trim().toLowerCase()))
+    .sort((a, b) => byRecency(a.id, b.id));
   return <>
     <p className="models-usage-hint">Send the API ID as <code>model</code> to <code>https://aiapi.deals/v1</code> with one of your <Link className="text-link" to="/dashboard/api-keys">API keys</Link>. The <Link className="text-link" to="/docs">quickstart</Link> shows complete requests.</p>
     <div className="catalog-filter">

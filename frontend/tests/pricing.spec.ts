@@ -10,7 +10,8 @@ test("reference inventory preserves every documented tariff and unknown cache", 
   const tariffSection = evidence.split("### Upstream credit rates")[1]!.split("### USD packages")[0]!;
   const rows = [...tariffSection.matchAll(/^\| `([^`]+)` \| (\d+) \|(?: (\d+) \| ([\d?]+) \|)?$/gm)];
   expect(rows).toHaveLength(29);
-  expect(new Set(catalogue.map(model => model.upstreamId)).size).toBe(29);
+  // gpt-6.1-sol was added after the baseline table (2026-10-17).
+  expect(new Set(catalogue.map(model => model.upstreamId)).size).toBe(30);
   // The documented table is the 2026-09-20 baseline; current credits come from the generated snapshot.
   for (const [, id] of rows) {
     const model = catalogue.find(model => model.upstreamId === id)!;
@@ -23,7 +24,7 @@ test("reference inventory preserves every documented tariff and unknown cache", 
     expect(model.availability).not.toBe("available");
   }
   expect(catalogue.filter(model => model.modality === "image")).toHaveLength(15);
-  expect(catalogue.filter(model => model.modality === "text")).toHaveLength(14);
+  expect(catalogue.filter(model => model.modality === "text")).toHaveLength(15);
   expect(catalogue.flatMap(model => model.rates).every(rate => rate.comparison.status !== "verified")).toBe(true);
 });
 
@@ -55,8 +56,9 @@ test("official candidates preserve recorded components, context tiers and deadli
       expect(model.rates[0]!.official[1]!.conditions).toContain(">200000");
     }
   }
-  expect(candidates).toBe(11);
+  expect(candidates).toBe(12);
   const get = (id: string) => catalogue.find(model => model.upstreamId === id)!;
+  expect(get("gpt-6.1-sol").rates.map(rate => rate.official[1]?.usd)).toEqual(["4", "15", "0.20"]);
   expect(get("gpt-6-astra").rates.map(rate => rate.official[1]?.usd)).toEqual(["20", "75", "2"]);
   expect(get("gpt-5.6-terra").rates.map(rate => rate.official[1]?.usd)).toEqual(["4", "18", "0.40"]);
   expect(get("gpt-5.6-sol").rates.map(rate => rate.official[1]?.usd)).toEqual(["8", "30", "0.80"]);

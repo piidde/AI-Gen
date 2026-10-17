@@ -68,6 +68,7 @@ Do not inherit all official-provider features into our catalogue.
 
 | Upstream ID | Family / provider | Official ID check |
 | --- | --- | --- |
+| `gpt-6.1-sol` | GPT-6.1 / OpenAI | Same ID, P0 (added 2026-10-17) |
 | `gpt-6-astra` | GPT-6 / OpenAI | Same ID, O1 |
 | `gpt-5.6-terra` | GPT-5.6 / OpenAI | Same ID, O1 |
 | `gpt-5.6-sol` | GPT-5.6 / OpenAI | Same ID, O1 |
@@ -179,9 +180,9 @@ must not parse the upstream's rounded money labels.
 2026-09-20 research values. Current credits and GrsAI's closed flags are generated into
 `frontend/src/content/upstreamSnapshot.ts` (`npm run catalogue:sync`, nightly PR) and
 synced hourly into billing prices; do not update these tables for routine changes.
-On 2026-10-17 all 29 rows still matched; GrsAI additionally lists `gpt-6.1-sol`,
-`nano-banana-2.1` and the video model `agnes-video-2.5`, which need editorial rows
-(and OD-007 for video) before publication.
+On 2026-10-17 all 29 rows still matched; GrsAI additionally lists `gpt-6.1-sol`
+(editorial catalogue row added the same day), `nano-banana-2.1` and the video model
+`agnes-video-2.5`, which still need editorial rows (and OD-007 for video).
 
 Source: [GRSAI directory](https://grsai.com/dashboard/models). Each image row
 retains its resolution and evidence gaps from the inventory above. A listed flat
@@ -258,6 +259,7 @@ flex, priority, free-tier, regional or tool charges are folded into the comparis
 
 | Official ID | Input | Output | Cached input | Condition / evidence |
 | --- | ---: | ---: | ---: | --- |
+| `gpt-6.1-sol` | 2 | 10 | 0.10 | <=272K input; P0 |
 | `gpt-6-astra` | 10 | 50 | 1 | <=272K input; P1 |
 | `gpt-5.6-sol` | 4 | 20 | 0.40 | <=272K input; P2 |
 | `gpt-5.6-terra` | 2 | 12 | 0.20 | <=272K input; P3 |
@@ -274,6 +276,8 @@ flex, priority, free-tier, regional or tool charges are folded into the comparis
 | `gemini-3.1-pro-preview` | 4 | 18 | 0.40 | >200K; alias comparison excluded, A8; P5 |
 | `gemini-3-flash-preview` | 0.50 | 3 | 0.05 | Text; alias comparison excluded, A8; P5 |
 
+- **P0:** [GPT-6.1 Sol launch post](https://openai.com/index/introducing-gpt-6-1-sol/),
+  checked 2026-10-17. Above 272K input: input 4, output 15, cached input 0.20.
 - **P1:** [Astra](https://developers.openai.com/api/docs/models/gpt-6-astra).
   Above 272K input, input/cache rates double and output becomes 75. Cache writes
   cost 12.50 below the threshold, 25 above it. Batch/Flex are half Standard;

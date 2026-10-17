@@ -13,7 +13,7 @@ test("retired entries leave discovery without deleting source records", () => {
   expect(inventory).toHaveLength(2);
   expect(inventory[0]!.upstreamId).toBe(retired.upstreamId);
   // No research alias is declared retired just because a candidate official version is.
-  expect(activeModels()).toHaveLength(29);
+  expect(activeModels()).toHaveLength(30);
 });
 
 test("reference money accepts only a fresh supplied EUR estimate and keeps USD visible", () => {
