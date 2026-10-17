@@ -9,11 +9,10 @@ Run them in order and tick them off here (or in the release notes).
 - [x] `dashboard_live` and `responses_api` migrations are applied to the Supabase
       project `pwaiidpiymmeppxebfjd` (`npx supabase db push` with the project linked,
       or paste it into the SQL editor). Earlier migrations are already applied.
-- [x] `20261010120000_admin_panel.sql` was applied through the SQL editor on 2026-10-09
-      (functions verified present). The editor records no history: run
-      `npx supabase migration repair --status applied 20261010120000` once (project linked)
-      before any `db push`, or the `drop function` in it fails on re-run.
-- [ ] Check that browser roles still have no table access:
+- [x] `20261010120000_admin_panel.sql` applied on 2026-10-09. On 2026-10-17 the remote
+      migration history was repaired to match the local file versions, so
+      `npx supabase db push` only applies genuinely new migrations.
+- [x] Check that browser roles still have no table access:
       `select has_table_privilege('authenticated', 'private.account_preferences', 'select');` returns `false`.
 
 ## 2. Worker secrets (`npx wrangler secret put <NAME>`)
@@ -50,11 +49,14 @@ Apply migration `20261010120000_admin_panel.sql` before deploying the Worker tha
 it. Signed in as an `ADMIN_USER_IDS` user, `/dashboard/admin` covers the steps below
 except official prices and incidents, which remain API-only.
 
-- [ ] Enable models and prices: `POST /v1/internal/models/{id}` (only verified prices).
+- [x] Enable models and prices: `POST /v1/internal/models/{id}` (only verified prices).
+      Five text models are live as of 2026-10-17.
 - [ ] Optional savings reference: `POST /v1/internal/models/{id}/official-prices`.
       Without it, Overview shows "No settled requests can be compared" instead of a number.
 - [ ] Credit offers: `POST /v1/internal/offers` (EUR and/or USD). Until then Billing says
-      "Credit purchases are not open yet".
+      "Credit purchases are not open yet". A test pack `test-5` (USD 5.00 for 5 USD of
+      credits) is active since 2026-10-17 for the Stripe test purchase. Real packs remain
+      OPEN (OD-014); deactivate `test-5` before switching Stripe to live mode.
 - [ ] Platform controls: `POST /v1/internal/provider` (budget, markup, accepting requests).
 - [ ] Incidents, when needed: `POST /v1/internal/incidents`.
 
