@@ -922,3 +922,10 @@ instead of sign-in/sign-up once a session exists (signed-out markup is rendered
 until the session resolves, so prerendered pages hydrate unchanged); the Overview
 first-request checklist includes "Pick a model"; the key-created dialog points to
 Models and the quickstart.
+
+Dollar display (2026-10-17, owner request): balances, totals and charges show cents.
+Balances and savings round down, so neither is overstated; other totals round to the
+nearest cent, and a non-zero amount below one cent reads "<$0.01". Unit prices and
+single-request amounts keep two significant digits below $0.10 ($0.0091, $0.064);
+customer prices round up, so a shown price is never below the charge. The API and the
+database keep exact micros (`formatUsd` / `formatUsdPrice` in `data/apiModels.ts`).

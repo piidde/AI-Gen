@@ -7,13 +7,21 @@ import { money, useUsdToEur } from "../lib/fx";
 const labels = { input: "Input", output: "Output", "cached-input": "Cache read", "image-request": "Generation" };
 export type DisplayCurrency = "USD" | "EUR";
 
+// Cents from $0.10, two significant digits below that (matches formatUsdPrice).
+function pricePlaces(numerator: bigint, denominator: bigint): number {
+  let places = 2;
+  while (places < 6 && numerator > 0n && numerator * 10n ** BigInt(places) < 10n * denominator) places++;
+  return places;
+}
+
 export default function CatalogueRates({ rates, currency, detailed = false }: {
   rates: ReferenceRate[]; currency: DisplayCurrency; detailed?: boolean;
 }) {
   const fxRate = useUsdToEur(currency === "EUR");
   return <div className="catalogue-rates">
     {rates.map(rate => {
-      const amount = rate.credits === null ? null : formatAmount(sellingPrice(rate.credits));
+      const selling = rate.credits === null ? null : sellingPrice(rate.credits);
+      const amount = selling && formatAmount(selling, pricePlaces(selling.numerator, selling.denominator));
       const unit = rate.unit === "requests" ? `per ${rate.per === "1" ? "request" : `${rate.per} requests`}` : `per ${BigInt(rate.per).toLocaleString("en-US")} tokens`;
       return <section className="reference-rate" key={rate.component} aria-label={`${labels[rate.component]} rate`}>
         <div className="bill-row"><span>{labels[rate.component]}</span><strong className={rate.credits === null ? "" : "price"}>{amount ? `${amount.approximate || (currency === 'EUR' && fxRate !== null) ? '≈ ' : ''}${money(amount.decimal, currency, fxRate)} ${currency === 'EUR' && fxRate !== null ? 'EUR' : 'USD'}` : 'Rate unavailable'}</strong></div>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { UsageRequest } from "../data/viewModels";
-import { billingLabel, requestNetCredits, usd } from "../lib/usage";
+import { billingLabel, requestNetCredits, requestUsd } from "../lib/usage";
 import { formatLocalTime } from "../lib/formatting";
 import { requestSupportDetails, safeRequestError } from "../lib/supportDetails";
 import Dialog from "./Dialog";
@@ -34,7 +34,7 @@ export default function UsageRequestTable({ requests, overview = false }: { requ
           const credits = requestNetCredits(request);
           return <tr key={request.id}>
             <td className="request-model">{request.modelName}</td>
-            <td className="request-credits">{credits === null ? <span className="muted">{request.billing.status === "pending" ? "Pending" : "Unavailable"}</span> : <>{usd(credits)}{request.billing.status === "refunded" && <span className="request-refunded">Refunded</span>}</>}</td>
+            <td className="request-credits">{credits === null ? <span className="muted">{request.billing.status === "pending" ? "Pending" : "Unavailable"}</span> : <>{requestUsd(credits)}{request.billing.status === "refunded" && <span className="request-refunded">Refunded</span>}</>}</td>
             <td>{durationLabel(request.durationMs)}</td>
             <td><span className={`request-status request-status-${request.outcome}`}>{outcomeLabels[request.outcome]}</span></td>
             <td><time dateTime={request.startedAt}>{shortLocalTime.format(new Date(request.startedAt))}</time></td>

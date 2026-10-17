@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { formatUsd, formatUsdPrice, usdStringToMicros } from "../src/data/apiModels";
 import { localDayRange, formatMoney, formatLocalTime } from "../src/lib/formatting";
 import { copyText } from "../src/lib/clipboard";
 
@@ -90,4 +91,20 @@ test("query-only typing preserves catalogue scroll position", async ({ page }) =
   await expect(search).toBeFocused();
   expect(await page.evaluate(() => scrollY)).toBe(before);
   await expect(page.locator(".model-card")).toHaveCount(30);
+});
+
+test("dollar amounts show cents, rounding balances down and prices up", () => {
+  expect(formatUsd("12345678")).toBe("$12.35");
+  expect(formatUsd("12345678", "down")).toBe("$12.34");
+  expect(formatUsd("1234567890", "down")).toBe("$1,234.56");
+  expect(formatUsd("1200")).toBe("<$0.01");
+  expect(formatUsd("0")).toBe("$0.00");
+  expect(formatUsd("-2500000")).toBe("-$2.50");
+  expect(formatUsdPrice("1201202")).toBe("$1.21");
+  expect(formatUsdPrice("1201202", "nearest")).toBe("$1.20");
+  expect(formatUsdPrice("90092")).toBe("$0.091");
+  expect(formatUsdPrice("9009")).toBe("$0.0091");
+  expect(formatUsdPrice("80000")).toBe("$0.08");
+  expect(formatUsdPrice("1200", "nearest")).toBe("$0.0012");
+  expect(usdStringToMicros("$0.270270")).toBe("270270");
 });

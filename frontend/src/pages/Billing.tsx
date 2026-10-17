@@ -57,7 +57,7 @@ function PaymentSuccess({ payment, balanceMicros, onClose, fallbackFocus }: {
     <dl className="payment-success-details">
       <div><dt>Amount paid</dt><dd>{formatMinor(payment.amount_minor, payment.currency)}</dd></div>
       <div><dt>Credits added</dt><dd>{formatUsd(payment.credits_micros)} USD-value</dd></div>
-      <div><dt>New balance</dt><dd><strong>{balanceMicros ? formatUsd(balanceMicros) : "…"}</strong></dd></div>
+      <div><dt>New balance</dt><dd><strong>{balanceMicros ? formatUsd(balanceMicros, "down") : "…"}</strong></dd></div>
       <div><dt>Date</dt><dd><time dateTime={payment.created_at}>{formatLocalTime(payment.created_at, false)}</time></dd></div>
       <div><dt>Payment method</dt><dd>Card via Stripe</dd></div>
       <div><dt>Reference</dt><dd className="payment-success-ref">{payment.id}</dd></div>
@@ -132,7 +132,7 @@ export default function Billing() {
     {checkoutReturn === "cancelled" && <section className="notice" role="status"><h2>Checkout cancelled</h2><p>No payment was taken. You can start a new purchase at any time.</p><Button className="secondary" onClick={dismissReturn}>Dismiss</Button></section>}
     <section className="billing-balance" aria-labelledby="billing-balance-title">
       <h2 id="billing-balance-title" className="metric-label">Current balance</h2>
-      {credits.error ? <p role="alert">{credits.error}</p> : <div className="value balance" data-testid="billing-balance">{credits.data ? formatUsd(credits.data.available_credits_micros) : "…"}</div>}
+      {credits.error ? <p role="alert">{credits.error}</p> : <div className="value balance" data-testid="billing-balance">{credits.data ? formatUsd(credits.data.available_credits_micros, "down") : "…"}</div>}
       <p>Credits never expire.{credits.data && BigInt(credits.data.reserved_credits_micros) > 0n && ` ${formatUsd(credits.data.reserved_credits_micros)} reserved for running requests.`}</p>
     </section>
     <section aria-labelledby="packages-title" className="billing-packages">

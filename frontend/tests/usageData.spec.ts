@@ -48,7 +48,7 @@ test("local-day ranges observe the actual DST day length", () => {
 test("micros convert exactly, including amounts beyond Number precision", () => {
   expect(microsToDecimal("1200")).toBe("0.0012");
   expect(microsToDecimal("-2500000")).toBe("-2.5");
-  expect(formatUsd("9007199254740993123456")).toBe("$9,007,199,254,740,993.123456");
+  expect(formatUsd("9007199254740993123456")).toBe("$9,007,199,254,740,993.12");
   expect(formatUsd("5000000")).toBe("$5.00");
   expect(usdToMicros("2.50")).toBe("2500000");
   expect(usdToMicros("$5")).toBe("5000000");

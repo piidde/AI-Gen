@@ -6,7 +6,7 @@ import CopyButton from "../components/CopyButton";
 import Tabs from "../components/Tabs";
 import { ProviderLogo } from "../components/ProviderLogo";
 import { byRecency } from "../content/catalogue";
-import { useApiResource, type ModelDto } from "../data/api";
+import { formatUsdPrice, useApiResource, usdStringToMicros, type ModelDto } from "../data/api";
 import Models from "./Models";
 
 const unitLabels: Record<string, string> = { request: "per image", second: "per second" };
@@ -34,6 +34,11 @@ export default function DashboardModels() {
       </>}
     </div>
   </div>;
+}
+
+// Rounded up for display, so a shown price is never below what a request is charged.
+function price(value: string | null): string {
+  return value === null ? "—" : formatUsdPrice(usdStringToMicros(value));
 }
 
 // The live list contains only models the backend has enabled and priced; prices are what requests are charged.
@@ -65,9 +70,9 @@ function AvailableModels() {
           <td><code>{model.id}</code> <CopyButton text={model.id} label={`Copy ${model.id}`} /></td>
           <td>{model.capability !== "text" ? model.capability.charAt(0).toUpperCase() + model.capability.slice(1)
             : model.endpoints?.includes("responses") ? <>Coding · <Link className="text-link" to="/docs#codex">Responses + tools</Link></> : <>Chat · <Link className="text-link" to="/docs#chat">Chat completions</Link></>}</td>
-          <td>{model.pricing.input_per_million ?? "—"}</td>
-          <td>{model.pricing.output_per_million ?? "—"}</td>
-          <td>{model.pricing.per_unit ? `${model.pricing.per_unit} ${unitLabels[model.pricing.unit] ?? `per ${model.pricing.unit}`}` : "—"}</td>
+          <td>{price(model.pricing.input_per_million)}</td>
+          <td>{price(model.pricing.output_per_million)}</td>
+          <td>{model.pricing.per_unit ? `${price(model.pricing.per_unit)} ${unitLabels[model.pricing.unit] ?? `per ${model.pricing.unit}`}` : "—"}</td>
         </tr>)}{shown.length === 0 && <tr><td colSpan={6}>No models match these filters.</td></tr>}</tbody></table></div>
         <p className="section-note">Requests are charged at the price version current when they start. Unused reserved credits are returned when a request settles.</p>
       </section>)}

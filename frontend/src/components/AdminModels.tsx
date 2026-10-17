@@ -3,7 +3,7 @@ import Button from "./Button";
 import Dialog from "./Dialog";
 import Icon from "./Icon";
 import { ProviderLogo } from "./ProviderLogo";
-import { formatUsd, microsToDecimal, usdToMicros } from "../data/api";
+import { formatUsdPrice, microsToDecimal, usdToMicros } from "../data/api";
 import { bpsToMultiplier, multiplierToBps, useMutation, type AdminModelDto } from "../data/admin";
 
 const units = { text: "tokens", image: "request", video: "second" } as const;
@@ -17,17 +17,17 @@ const syncReasons: Record<NonNullable<AdminModelDto["sync_disabled_reason"]>, st
 // Mirrors the backend: ceil(provider price × markup).
 function customerPrice(micros: string | null, bps: number | null): string {
   if (micros === null || bps === null) return "–";
-  return formatUsd(((BigInt(micros) * BigInt(bps) + 9_999n) / 10_000n).toString());
+  return formatUsdPrice(((BigInt(micros) * BigInt(bps) + 9_999n) / 10_000n).toString());
 }
 
 function priceLines(model: AdminModelDto, bps: number | null): [string, string] {
   if (!model.unit) return ["No price", "–"];
   if (model.capability === "text") {
-    return [`${formatUsd(model.input_micros ?? "0")} in · ${formatUsd(model.output_micros ?? "0")} out / 1M`,
+    return [`${formatUsdPrice(model.input_micros ?? "0", "nearest")} in · ${formatUsdPrice(model.output_micros ?? "0", "nearest")} out / 1M`,
       `${customerPrice(model.input_micros, bps)} in · ${customerPrice(model.output_micros, bps)} out / 1M`];
   }
   const per = model.capability === "image" ? "image" : "second";
-  return [`${formatUsd(model.unit_micros ?? "0")} / ${per}`, `${customerPrice(model.unit_micros, bps)} / ${per}`];
+  return [`${formatUsdPrice(model.unit_micros ?? "0", "nearest")} / ${per}`, `${customerPrice(model.unit_micros, bps)} / ${per}`];
 }
 
 export default function AdminModels({ models, globalMarkupBps, reload }: { models: AdminModelDto[]; globalMarkupBps: number | null; reload: () => void }) {

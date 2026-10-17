@@ -1,3 +1,4 @@
+import { formatUsd, formatUsdPrice, usdStringToMicros } from "../data/apiModels";
 import type { UsageRequest } from "../data/viewModels";
 import { localDayRange } from "./formatting";
 
@@ -72,17 +73,20 @@ export function requestNetCredits(request: UsageRequest): string | null {
   return null;
 }
 
-// Decimal USD (as carried in view records) to a display amount with at least cents.
+// Decimal USD (as carried in view records) to a display amount rounded to cents.
 export function usd(amount: string): string {
-  const negative = amount.startsWith("-");
-  const [whole = "0", fraction = ""] = amount.replace(/^-/, "").split(".");
-  return `${negative ? "-" : ""}$${BigInt(whole).toLocaleString("en-US")}.${fraction.padEnd(2, "0")}`;
+  return formatUsd(usdStringToMicros(amount));
+}
+
+// A single request usually costs a fraction of a cent, so it keeps two significant digits.
+export function requestUsd(amount: string): string {
+  return formatUsdPrice(usdStringToMicros(amount), "nearest");
 }
 
 export function billingLabel(request: UsageRequest): string {
   const billing = request.billing;
-  if (billing.status === "charged") return `Charged ${usd(billing.credits)}`;
-  if (billing.status === "refunded") return `Refunded ${usd(billing.refundedCredits)} of ${usd(billing.chargedCredits)}; net ${usd(requestNetCredits(request) ?? "0")}`;
+  if (billing.status === "charged") return `Charged ${requestUsd(billing.credits)}`;
+  if (billing.status === "refunded") return `Refunded ${requestUsd(billing.refundedCredits)} of ${requestUsd(billing.chargedCredits)}; net ${requestUsd(requestNetCredits(request) ?? "0")}`;
   if (billing.status === "not-charged") return "Not charged";
   return billing.status === "pending" ? "Pending: awaiting confirmation" : "Unknown: awaiting confirmation";
 }

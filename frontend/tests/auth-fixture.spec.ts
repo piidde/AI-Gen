@@ -1041,7 +1041,7 @@ test("administrators review pending GrsAI price changes with an audit reason", a
   const pending = page.getByRole("region", { name: "Pending GrsAI changes" });
   await expect(pending.locator("tbody tr")).toHaveCount(1);
   await expect(pending).toContainText("Cost decrease");
-  await expect(pending).toContainText("$0.330331 in · $2.027028 out / 1M");
+  await expect(pending).toContainText("$0.33 in · $2.03 out / 1M");
   await expect(page.getByRole("region", { name: "Recent GrsAI changes" })).toContainText("Closed by GrsAI");
   await expect(page.getByText("19,980,000 credits per package")).toBeVisible();
   await pending.getByRole("button", { name: "Apply" }).click();

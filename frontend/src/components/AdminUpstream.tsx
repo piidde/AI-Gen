@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Button from "./Button";
 import Dialog from "./Dialog";
-import { formatMinor, formatUsd, useApiResource } from "../data/api";
+import { formatMinor, formatUsdPrice, useApiResource } from "../data/api";
 import { useMutation, type UpstreamChangeDto, type UpstreamCost, type UpstreamSyncDto } from "../data/admin";
 
 const kindLabels: Record<UpstreamChangeDto["kind"], string> = {
@@ -11,8 +11,8 @@ const kindLabels: Record<UpstreamChangeDto["kind"], string> = {
 };
 
 function cost(entry: Partial<UpstreamCost> | null): string {
-  if (entry?.unit_micros) return `${formatUsd(entry.unit_micros)} / request`;
-  if (entry?.input_micros && entry.output_micros) return `${formatUsd(entry.input_micros)} in · ${formatUsd(entry.output_micros)} out / 1M`;
+  if (entry?.unit_micros) return `${formatUsdPrice(entry.unit_micros, "nearest")} / request`;
+  if (entry?.input_micros && entry.output_micros) return `${formatUsdPrice(entry.input_micros, "nearest")} in · ${formatUsdPrice(entry.output_micros, "nearest")} out / 1M`;
   return "–";
 }
 

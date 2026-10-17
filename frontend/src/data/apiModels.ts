@@ -40,11 +40,52 @@ export function microsToDecimal(micros: Micros): string {
   return `${sign}${absolute / 1_000_000n}${fraction ? `.${fraction}` : ""}`;
 }
 
-// "$1,234.50" with at least cents and every significant sub-cent digit.
-export function formatUsd(micros: Micros): string {
-  const [whole = "0", fraction = ""] = microsToDecimal(micros).replace(/^-/, "").split(".");
-  const sign = micros.startsWith("-") ? "-" : "";
-  return `${sign}$${BigInt(whole).toLocaleString("en-US")}.${fraction.padEnd(2, "0")}`;
+// Display rounding only; balances and charges stay exact micros on the server.
+// "down" (toward zero) for balances and savings so neither is overstated, "up" for
+// prices a customer will be charged so none is understated, "nearest" otherwise.
+export type Rounding = "down" | "nearest" | "up";
+
+function roundMicros(absolute: bigint, step: bigint, rounding: Rounding): bigint {
+  const rest = absolute % step;
+  if (rest === 0n || rounding === "down") return absolute - rest;
+  if (rounding === "up" || rest * 2n >= step) return absolute - rest + step;
+  return absolute - rest;
+}
+
+function dollars(absolute: bigint, places: number): string {
+  const scale = 10n ** BigInt(6 - places);
+  const units = absolute / scale;
+  const cents = 10n ** BigInt(places);
+  return `$${(units / cents).toLocaleString("en-US")}${places ? `.${(units % cents).toString().padStart(places, "0")}` : ""}`;
+}
+
+// "$1,234.50": always cents. A non-zero amount below one cent reads "<$0.01".
+export function formatUsd(micros: Micros, rounding: Rounding = "nearest"): string {
+  const value = BigInt(micros);
+  const absolute = value < 0n ? -value : value;
+  const sign = value < 0n ? "-" : "";
+  const rounded = roundMicros(absolute, 10_000n, rounding);
+  if (rounded === 0n && absolute > 0n) return `${sign}<$0.01`;
+  return `${rounded === 0n ? "" : sign}${dollars(rounded, 2)}`;
+}
+
+// Unit prices (per 1M tokens, per image) and single-request amounts: cents from $0.10,
+// two significant digits below that ($0.0091, $0.064), so small amounts do not
+// collapse to $0.00 or $0.01. Digits past the cents are dropped when zero ($0.08).
+export function formatUsdPrice(micros: Micros, rounding: Rounding = "up"): string {
+  const absolute = BigInt(micros) < 0n ? -BigInt(micros) : BigInt(micros);
+  let places = 2;
+  while (places < 6 && absolute > 0n && absolute * 10n ** BigInt(places) < 10n ** 7n) places++;
+  const text = dollars(roundMicros(absolute, 10n ** BigInt(6 - places), rounding), places).replace(/(\.\d\d\d*?)0+$/, "$1");
+  return `${BigInt(micros) < 0n ? "-" : ""}${text}`;
+}
+
+// "$1.201202" (API price strings) to micros, for display formatting.
+export function usdStringToMicros(value: string): Micros {
+  const match = /^-?\$?(\d+)(?:\.(\d{1,6}))?$/.exec(value.trim());
+  if (!match) throw new Error(`Invalid USD amount: ${value}`);
+  const micros = BigInt(match[1]!) * 1_000_000n + BigInt((match[2] ?? "").padEnd(6, "0"));
+  return (value.trim().startsWith("-") ? -micros : micros).toString();
 }
 
 // Parses a user-entered USD amount (max 6 decimals) into exact micros, or null.

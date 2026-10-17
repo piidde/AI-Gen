@@ -77,7 +77,7 @@ export default function Overview() {
     {summary.data && totals && overview.data && <>
       <section className="overview-metrics" aria-label="Account summary">
         <div><div className="metric-label"><MetricIcon name="wallet" />Account balance <span className="metric-scope">Current</span></div>
-          <div className="value balance" data-testid="overview-balance">{formatUsd(summary.data.available_credits_micros)}</div>
+          <div className="value balance" data-testid="overview-balance">{formatUsd(summary.data.available_credits_micros, "down")}</div>
           <div className="actions"><Link className="button" to="/dashboard/billing">Add credits +</Link><Link className="text-link" to="/dashboard/billing">Billing history ↗</Link></div>
           <p>Credits never expire.{BigInt(summary.data.reserved_credits_micros) > 0n && ` ${formatUsd(summary.data.reserved_credits_micros)} reserved for running requests.`}</p>
           {summary.data.suspended && <p role="alert">This account is suspended. Contact support.</p>}
@@ -90,7 +90,7 @@ export default function Overview() {
         <h2 className="metric-label">All-time savings</h2>
         {savings.error ? <p>Savings unavailable. {savings.error}</p>
           : !saved ? <p>Loading savings…</p>
-          : saved.compared_requests > 0 ? <><p className="savings-intro">{savedMicros >= 0n ? "You saved" : "Difference"}</p><p className="savings-value" data-testid="overview-savings">{formatUsd(saved.saved_micros)}</p><p>Compared with official list prices for the same usage.</p>
+          : saved.compared_requests > 0 ? <><p className="savings-intro">{savedMicros >= 0n ? "You saved" : "Difference"}</p><p className="savings-value" data-testid="overview-savings">{formatUsd(saved.saved_micros, "down")}</p><p>Compared with official list prices for the same usage.</p>
             <p>{saved.compared_requests} requests compared · {saved.excluded_no_reference + saved.excluded_not_settled} excluded{saved.excluded_no_reference > 0 ? ` (${saved.excluded_no_reference} without an official reference price)` : ""}.</p></>
           : <p>{saved.excluded_no_reference + saved.excluded_not_settled === 0 ? "No request history yet. Savings appear once settled usage can be compared." : "No settled requests can be compared with an official reference price yet."}</p>}
       </section>

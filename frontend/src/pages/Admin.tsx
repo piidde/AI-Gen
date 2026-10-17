@@ -10,7 +10,7 @@ import Icon, { MetricIcon, type IconName } from "../components/Icon";
 import PageHeading from "../components/PageHeading";
 import { ProviderLogo } from "../components/ProviderLogo";
 import Tabs from "../components/Tabs";
-import { formatUsd, useApiResource, type Resource } from "../data/api";
+import { formatUsd, formatUsdPrice, useApiResource, type Resource } from "../data/api";
 import { usePolling, type AdminRequestDto, type OpsDto } from "../data/admin";
 import "../styles/admin.css";
 
@@ -115,7 +115,7 @@ function AdminLive({ ops }: { ops: Resource<OpsDto> }) {
             <td className="mono" title={request.account_id}>{request.account_id.slice(0, 8)}</td>
             <td className="mono">{request.api_key_prefix ?? "–"}</td>
             <td>{usage(request)}</td>
-            <td>{request.charged_micros ? formatUsd(request.charged_micros) : <span className="muted" title="Reserved, not charged yet">{formatUsd(request.reserved_micros)} held</span>}</td>
+            <td>{request.charged_micros ? formatUsdPrice(request.charged_micros, "nearest") : <span className="muted" title="Reserved, not charged yet">{formatUsdPrice(request.reserved_micros, "nearest")} held</span>}</td>
             <td>{request.duration_ms === null ? "–" : `${(request.duration_ms / 1000).toFixed(1)} s`}</td>
             <td className="muted">{request.error_category ?? ""}</td>
           </tr>)}</tbody></table>
