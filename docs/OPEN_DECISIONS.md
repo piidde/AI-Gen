@@ -39,7 +39,9 @@ Queues, private R2, and a five-minute recovery schedule. Production runs on
 https://aiapi.deals (Worker `takewing-api`, account samuelfalecx, deployed
 2026-10-06) with R2 buckets, queues/DLQs and a 3-day R2 lifecycle backstop. Wrangler config exists;
 resources, secrets, domains, staging/production databases, alerts, and rollback
-are not configured. Text streaming is disabled.
+are not configured. Text streaming is disabled. **DECIDED (2026-10-20):** the Worker runs
+with the placement hint `aws:eu-central-1` next to Supabase, because each request makes
+three to four sequential database calls that took 0.4-1 s each from distant edges.
 
 ## OD-005 Object storage and result delivery
 

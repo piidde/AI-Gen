@@ -16,14 +16,21 @@ type Usage = { input: number; output: number };
 type Reservation = { request_id: string; state: string; duplicate: boolean };
 
 const encoder = new TextEncoder();
-const STREAM_IDLE_MS = 120_000;
 
 export function writeLog(event: string, fields: Record<string, string | number | boolean | null> = {}): void {
   console.log(JSON.stringify({ event, at: new Date().toISOString(), ...fields }));
 }
 
+// Every database call is a long round trip, so the model list is reused per isolate for a
+// minute. A stale entry is harmless: the reservation re-checks enablement, price and bounds.
+const MODEL_CACHE_MS = 60_000;
+let modelCache: { at: number; models: TextModel[] } | null = null;
+
 async function findTextModel(env: Env, id: string, responses: boolean): Promise<TextModel> {
-  const models = await rpc<TextModel[]>(database(env), "tw_list_models");
+  if (!modelCache || Date.now() - modelCache.at > MODEL_CACHE_MS) {
+    modelCache = { at: Date.now(), models: await rpc<TextModel[]>(database(env), "tw_list_models") };
+  }
+  const models = modelCache.models;
   const model = models.find((item) => item.id === id && item.capability === "text");
   if (!model) throw new HttpError(404, "model_unavailable", "The requested model is unavailable.");
   if (responses && !model.responses_api) {
@@ -253,60 +260,69 @@ export async function handleChat(c: AppContext, raw: unknown, idempotencyKey: st
   return new Response(readable, { headers: sseHeaders(prepared.requestId, c.get("requestId")) });
 }
 
-// Incremental SSE framing: events end with a blank line; lines may arrive split.
-export class SseParser {
-  private buffer = "";
-  push(text: string): Array<{ event: string | null; data: string }> {
-    // Normalize the whole buffer: a CRLF pair may be split across two network chunks.
-    this.buffer = (this.buffer + text).replace(/\r\n/g, "\n");
-    const events: Array<{ event: string | null; data: string }> = [];
-    let index: number;
-    while ((index = this.buffer.indexOf("\n\n")) !== -1) {
-      const block = this.buffer.slice(0, index);
-      this.buffer = this.buffer.slice(index + 2);
-      let event: string | null = null;
-      const data: string[] = [];
-      for (const line of block.split("\n")) {
-        if (line.startsWith("event:")) event = line.slice(6).trim();
-        else if (line.startsWith("data:")) data.push(line.slice(5).replace(/^ /, ""));
-      }
-      if (data.length) events.push({ event, data: data.join("\n") });
+// The provider's Responses streams broke off in 5 of 71 runs (one text delta, then
+// response.failed or silence; 2026-10-20), while 0 of 80 non-streamed calls failed. A
+// streamed request is therefore served from one verified, billed response and re-emitted
+// as the standard Responses event sequence. Clients such as Codex build their history
+// from output_item.done and response.completed, which carry the complete items.
+type OutputItem = { id?: string; type?: string; content?: Array<{ type?: string; text?: string }>; arguments?: string };
+
+export function responseEvents(body: unknown): string[] {
+  const response = body as Record<string, unknown> & { output?: OutputItem[] };
+  const output = Array.isArray(response.output) ? response.output : [];
+  const events: string[] = [];
+  let sequence = 0;
+  const emit = (type: string, fields: Record<string, unknown>) =>
+    events.push(`event: ${type}\ndata: ${JSON.stringify({ type, sequence_number: sequence++, ...fields })}\n\n`);
+  const pending = { ...response, status: "in_progress", output: [], usage: null };
+  emit("response.created", { response: pending });
+  emit("response.in_progress", { response: pending });
+  output.forEach((item, output_index) => {
+    const item_id = item.id;
+    if (item.type === "message" && Array.isArray(item.content)) {
+      emit("response.output_item.added", { output_index, item: { ...item, status: "in_progress", content: [] } });
+      item.content.forEach((part, content_index) => {
+        if (part.type === "output_text") {
+          const text = typeof part.text === "string" ? part.text : "";
+          emit("response.content_part.added", { item_id, output_index, content_index, part: { ...part, text: "" } });
+          if (text) emit("response.output_text.delta", { item_id, output_index, content_index, delta: text, logprobs: [] });
+          emit("response.output_text.done", { item_id, output_index, content_index, text, logprobs: [] });
+        } else {
+          emit("response.content_part.added", { item_id, output_index, content_index, part });
+        }
+        emit("response.content_part.done", { item_id, output_index, content_index, part });
+      });
+    } else if (item.type === "function_call") {
+      const args = typeof item.arguments === "string" ? item.arguments : "";
+      emit("response.output_item.added", { output_index, item: { ...item, status: "in_progress", arguments: "" } });
+      if (args) emit("response.function_call_arguments.delta", { item_id, output_index, delta: args });
+      emit("response.function_call_arguments.done", { item_id, output_index, arguments: args });
+    } else {
+      emit("response.output_item.added", { output_index, item });
     }
-    return events;
-  }
+    emit("response.output_item.done", { output_index, item });
+  });
+  emit("response.completed", { response });
+  return events;
 }
 
-// Outcome of a streamed response: the final response object only from response.completed.
-// providerError is the provider's error code (or incomplete reason) for the logs; it is
-// reduced to a short identifier so no message text or content can leak into them.
-export function streamedOutcome(events: Array<{ data: string }>): { completed: unknown | null; failed: boolean; providerError: string | null } {
-  let completed: unknown | null = null;
-  let failed = false;
-  let providerError: string | null = null;
-  for (const { data } of events) {
-    if (data === "[DONE]") continue;
-    let parsed: { type?: string; code?: unknown; response?: { error?: { code?: unknown; type?: unknown } | null; incomplete_details?: { reason?: unknown } | null };
-      error?: { code?: unknown; type?: unknown } };
-    try { parsed = JSON.parse(data) as typeof parsed; } catch { continue; }
-    if (parsed.type === "response.completed") completed = parsed.response ?? null;
-    else if (parsed.type === "response.failed" || parsed.type === "response.incomplete" || parsed.type === "error") {
-      failed = true;
-      const code = parsed.response?.error?.code ?? parsed.response?.error?.type ?? parsed.response?.incomplete_details?.reason
-        ?? parsed.error?.code ?? parsed.error?.type ?? parsed.code;
-      providerError = typeof code === "string" && code ? code.replace(/[^\w.-]/g, "_").slice(0, 64) : parsed.type;
-    }
-  }
-  return { completed, failed, providerError };
+type PreparedResponses = { model: TextModel; key: ProviderKey; maxOutput: number; requestId: string; phases: Phases };
+
+async function executeResponses(c: AppContext, body: Record<string, unknown>, prepared: PreparedResponses, timeoutMs?: number): Promise<unknown> {
+  const { model, key, maxOutput, requestId, phases } = prepared;
+  const db = database(c.env);
+  const started = Date.now();
+  const upstream = await callUpstream(c.env, key, "/v1/responses", { ...body, max_output_tokens: maxOutput, stream: false }, db, requestId, model.id, started, timeoutMs);
+  phases.lap("upstream_ms");
+  const { body: result, usage } = await readUsageJson(c.env, db, requestId, upstream, responsesUsage);
+  phases.lap("body_ms");
+  await storeAndSettle(c.env, db, requestId, "responses", result, usage, phases);
+  writeLog("generation.succeeded", { request_id: requestId, model: model.id, provider_key_id: key.id, input_tokens: usage.input, output_tokens: usage.output, duration_ms: Date.now() - started, ...phases.ms });
+  return result;
 }
 
-async function readChunk(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<ReadableStreamReadResult<Uint8Array>> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([reader.read(), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("idle_timeout")), STREAM_IDLE_MS); })]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
+// Coding agents can think for minutes; the keep-alives hold the client connection open.
+const STREAMED_RESPONSES_TIMEOUT_MS = 600_000;
 
 export async function handleResponses(c: AppContext, raw: unknown, idempotencyKey: string | null): Promise<Response> {
   const request = validateResponses(raw);
@@ -316,74 +332,28 @@ export async function handleResponses(c: AppContext, raw: unknown, idempotencyKe
   const key = chooseProviderKey(c.env, model.provider_group_id);
   const reservation = await reserve(c, model, key, { ...request.body, max: request.requestedMaxTokens }, request.itemCount, maxOutput, idempotencyKey);
   phases.lap("reserve_ms");
-  const jsonHeaders = (id: string) => ({ "content-type": "application/json; charset=utf-8", "x-request-id": c.get("requestId"), "x-takewing-request-id": id, "cache-control": "no-store" });
-  if (reservation.duplicate) return new Response(JSON.stringify(await duplicateResult(c, reservation)), { headers: jsonHeaders(reservation.request_id) });
-  const db = database(c.env);
   const requestId = reservation.request_id;
-  const started = Date.now();
-  const upstreamBody = { ...request.body, max_output_tokens: maxOutput, stream: request.stream };
+  const prepared = { model, key, maxOutput, requestId, phases };
+  const result = () => reservation.duplicate ? duplicateResult(c, reservation)
+    : executeResponses(c, request.body, prepared, request.stream ? STREAMED_RESPONSES_TIMEOUT_MS : undefined);
   if (!request.stream) {
-    const upstream = await callUpstream(c.env, key, "/v1/responses", upstreamBody, db, requestId, model.id, started);
-    phases.lap("upstream_ms");
-    const { body, usage } = await readUsageJson(c.env, db, requestId, upstream, responsesUsage);
-    phases.lap("body_ms");
-    await storeAndSettle(c.env, db, requestId, "responses", body, usage, phases);
-    writeLog("generation.succeeded", { request_id: requestId, model: model.id, provider_key_id: key.id, input_tokens: usage.input, output_tokens: usage.output, duration_ms: Date.now() - started, ...phases.ms });
-    return new Response(JSON.stringify(body), { headers: jsonHeaders(requestId) });
+    return new Response(JSON.stringify(await result()), { headers: { "content-type": "application/json; charset=utf-8",
+      "x-request-id": c.get("requestId"), "x-takewing-request-id": requestId, "cache-control": "no-store" } });
   }
-  // Streamed: forward provider events unchanged while reading them for the final usage.
-  // Reading continues after a client disconnect so the request is still settled.
-  const upstream = await callUpstream(c.env, key, "/v1/responses", upstreamBody, db, requestId, model.id, started, 0);
-  phases.lap("upstream_ms");
-  if (!upstream.body) await upstreamFailure(db, requestId, model.id, key, null, started);
   const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
   const writer = writable.getWriter();
-  let clientOpen = true;
-  const forward = async (chunk: Uint8Array) => {
-    if (!clientOpen) return;
-    try { await writer.write(chunk); } catch { clientOpen = false; }
-  };
+  const write = (text: string) => writer.write(encoder.encode(text)).catch(() => undefined);
   const work = (async () => {
-    const reader = upstream.body!.getReader();
-    const decoder = new TextDecoder();
-    const parser = new SseParser();
-    const limit = requireConfiguredInt(c.env.MAX_RESULT_BYTES, 268_435_456);
-    let completed: unknown | null = null;
-    let failed = false;
-    let providerError: string | null = null;
-    let broken = false;
-    let total = 0;
+    void write(": ok\n\n");
+    const ping = setInterval(() => void write(": keep-alive\n\n"), 10_000);
     try {
-      while (true) {
-        const { done, value } = await readChunk(reader);
-        if (done) break;
-        total += value.byteLength;
-        if (total > limit) throw new Error("stream_too_large");
-        await forward(value);
-        const outcome = streamedOutcome(parser.push(decoder.decode(value, { stream: true })));
-        completed = outcome.completed ?? completed;
-        failed ||= outcome.failed;
-        providerError = outcome.providerError ?? providerError;
-      }
-    } catch {
-      broken = true;
-      try { await reader.cancel(); } catch { /* Already closed. */ }
-    }
-    phases.lap("body_ms");
-    const usage = completed ? responsesUsage(completed) : null;
-    try {
-      if (usage && !broken) {
-        await storeAndSettle(c.env, db, requestId, "responses", completed, usage, phases);
-        writeLog("generation.succeeded", { request_id: requestId, model: model.id, provider_key_id: key.id, input_tokens: usage.input, output_tokens: usage.output, duration_ms: Date.now() - started, streamed: true, ...phases.ms });
-      } else {
-        // Partial output may already have been billed upstream; never guess a charge.
-        await fail(db, requestId, broken ? "provider_stream_interrupted" : failed ? "provider_stream_failed" : "provider_usage_missing", true);
-        writeLog("generation.unknown", { request_id: requestId, model: model.id, provider_key_id: key.id, duration_ms: Date.now() - started, streamed: true,
-          provider_error: providerError, completed_without_usage: completed !== null && !usage });
-      }
-    } catch {
-      writeLog("generation.settlement_unknown", { request_id: requestId, streamed: true });
+      for (const event of responseEvents(await result())) await write(event);
+    } catch (cause) {
+      const error = cause instanceof HttpError ? cause : new HttpError(500, "internal_error", "The service could not complete this request.");
+      await write(`event: response.failed\ndata: ${JSON.stringify({ type: "response.failed", sequence_number: 0, response: { id: requestId, object: "response",
+        status: "failed", error: { code: error.code, message: error.message }, request_id: c.get("requestId") } })}\n\n`);
     } finally {
+      clearInterval(ping);
       await writer.close().catch(() => undefined);
     }
   })();

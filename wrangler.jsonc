@@ -5,6 +5,9 @@
   "main": "./src/index.ts",
   "compatibility_date": "2026-09-29",
   "compatibility_flags": ["nodejs_compat"],
+  // Run next to Supabase (Frankfurt): a request makes three to four sequential database
+  // calls, each ~0.4-1 s from distant edges; placed here they take milliseconds.
+  "placement": { "region": "aws:eu-central-1" },
   "assets": {
     "directory": "./frontend/dist",
     "binding": "ASSETS",

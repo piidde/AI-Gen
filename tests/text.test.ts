@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { HttpError } from "../src/errors.js";
-import { chatCompletionChunks, chatUsage, responsesUsage, SseParser, streamedOutcome } from "../src/text.js";
+import { chatCompletionChunks, chatUsage, responseEvents, responsesUsage } from "../src/text.js";
 import { DEFAULT_INSTRUCTIONS, estimatedInputTokens, validateChat, validateResponses } from "../src/validation.js";
 import { ADMIN, configureCatalog, freshDb, rpc } from "./db-helpers.js";
 
@@ -58,27 +58,33 @@ test("the input estimate grows with payload bytes and items", () => {
   assert.ok(estimatedInputTokens({ input: "hi" }, 10) > small);
 });
 
-test("the recorded provider stream yields usage only from response.completed, regardless of chunking", () => {
-  const lf = readFileSync(new URL("./fixtures/responses-stream.txt", import.meta.url), "utf8").replace(/\r\n/g, "\n");
-  const variants = [lf, lf.replace(/\n/g, "\r\n")].flatMap((text) => [1, 7, 64, 1_000, text.length].map((size) => [text, size] as const));
-  for (const [fixture, size] of variants) {
-    const parser = new SseParser();
-    const events = [];
-    for (let i = 0; i < fixture.length; i += size) events.push(...parser.push(fixture.slice(i, i + size)));
-    const outcome = streamedOutcome(events);
-    assert.equal(outcome.failed, false);
-    assert.deepEqual(responsesUsage(outcome.completed), { input: 60, output: 18 });
-  }
-  const cut = lf.slice(0, lf.indexOf("event: response.completed"));
-  const truncated = streamedOutcome(new SseParser().push(cut));
-  assert.equal(truncated.completed, null);
-  const failed = streamedOutcome(new SseParser().push('event: response.failed\ndata: {"type":"response.failed","response":{"status":"failed"}}\n\n'));
-  assert.equal(failed.failed, true);
-  assert.equal(failed.providerError, "response.failed");
-  const coded = streamedOutcome(new SseParser().push('data: {"type":"response.failed","response":{"status":"failed","error":{"code":"server_error","message":"secret prompt text"}}}\n\n'));
-  assert.equal(coded.providerError, "server_error");
-  const odd = streamedOutcome(new SseParser().push('data: {"type":"error","error":{"code":"rate limit: <x>"}}\n\n'));
-  assert.equal(odd.providerError, "rate_limit___x_");
+// The completed response recorded from a real provider stream (text, then a tool call).
+function recordedResponse() {
+  const fixture = readFileSync(new URL("./fixtures/responses-stream.txt", import.meta.url), "utf8");
+  const line = fixture.split(/\r?\n/).find((l) => l.startsWith("data:") && l.includes('"type":"response.completed"'))!;
+  return JSON.parse(line.slice(5)).response;
+}
+
+test("a billed response is re-emitted as the standard Responses event sequence", () => {
+  const response = recordedResponse();
+  const events = responseEvents(response).map((block) => {
+    const [eventLine, dataLine] = block.trimEnd().split("\n");
+    const data = JSON.parse(dataLine!.slice(6));
+    assert.equal(eventLine, `event: ${data.type}`);
+    return data;
+  });
+  assert.deepEqual(events.map((e) => e.sequence_number), events.map((_, i) => i));
+  assert.equal(events[0].type, "response.created");
+  assert.equal(events[0].response.status, "in_progress");
+  assert.deepEqual(events[0].response.output, []);
+  const text = events.filter((e) => e.type === "response.output_text.delta").map((e) => e.delta).join("");
+  assert.equal(text, response.output[0].content[0].text);
+  assert.equal(events.find((e) => e.type === "response.function_call_arguments.done").arguments, '{"city":"Berlin"}');
+  assert.deepEqual(events.filter((e) => e.type === "response.output_item.done").map((e) => e.item), response.output);
+  const last = events.at(-1);
+  assert.equal(last.type, "response.completed");
+  assert.deepEqual(last.response, response);
+  assert.deepEqual(responsesUsage(last.response), { input: 60, output: 18 });
   assert.equal(responsesUsage({ status: "incomplete", usage: { input_tokens: 1, output_tokens: 1 } }), null);
 });
 
