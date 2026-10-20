@@ -356,6 +356,12 @@ print(response.output_text)`}</Code>
                 </tr>
                 <tr>
                   <td>
+                    <code>unresolved_requests_limit</code>
+                  </td>
+                  <td>Ten requests have an unresolved provider outcome; their credits return within 24 hours.</td>
+                </tr>
+                <tr>
+                  <td>
                     <code>idempotency_conflict</code>
                   </td>
                   <td>The key was already used with different input.</td>

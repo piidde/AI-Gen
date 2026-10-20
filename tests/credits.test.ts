@@ -70,12 +70,29 @@ test("reservation is refused for insufficient credits, suspension, unpriced boun
   await assertLedgerMatchesBalances(db);
 });
 
-test("per-account concurrency limit counts unreleased unknown requests", async () => {
+test("per-account concurrency limit counts requests in flight", async () => {
   const db = await funded();
   for (let i = 0; i < 3; i += 1) await reserveText(db, ALICE, `idem-000${i}`, `h${i}`);
   assert.match(await rpcError(db, "tw_reserve_generation", ALICE, null, "gpt-5.5", "idem-0009", hash("h9"), "text", 1000, 1000, null, null, "k"), /concurrency_limit/);
   await rpc(db, "tw_fail_generation", (await row(db, "select id from private.generation_requests order by created_at limit 1")).id, "cancelled", false);
   await reserveText(db, ALICE, "idem-0009", "h9"); // frees one slot
+});
+
+// Regression (2026-10-19): three failed provider streams blocked an account for 24 hours.
+test("unknown requests keep their reservation but free their concurrency slot, up to 10 unresolved", async () => {
+  const db = await funded(10_000_000n);
+  for (let i = 0; i < 10; i += 1) {
+    const { request_id } = await reserveText(db, ALICE, `unknown-${i}-key`, `u${i}`);
+    await rpc(db, "tw_fail_generation", request_id, "provider_stream_failed", true);
+  }
+  const held = await row(db, "select reserved_credits_micros::text as reserved from private.accounts where id=$1", [ALICE]);
+  assert.equal(BigInt(held.reserved), 10n * RESERVED_CUSTOMER);
+  assert.match(await rpcError(db, "tw_reserve_generation", ALICE, null, "gpt-5.5", "unknown-x-key", hash("ux"), "text", 1000, 1000, null, null, "k"), /unresolved_requests_limit/);
+  // The 24-hour release frees the cap again.
+  await db.exec("update private.generation_requests set created_at=now()-interval '25 hours' where state='unknown'");
+  await rpc(db, "tw_recover_expired_reservations");
+  for (let i = 0; i < 3; i += 1) await reserveText(db, ALICE, `fresh-${i}-key`, `f${i}`);
+  await assertLedgerMatchesBalances(db);
 });
 
 test("idempotency: same key and body returns the original, a different body conflicts, nothing is reserved twice", async () => {

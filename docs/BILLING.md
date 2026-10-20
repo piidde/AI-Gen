@@ -96,15 +96,18 @@ production price approval and publication-time rate rechecks remain required.
 ## Generation accounting
 
 Text reservations estimate input at about two bytes per token plus per-item framing
-and a 1,024-token allowance for provider prompt overhead, and always reserve the
+and a 1,024-token allowance for provider prompt overhead (plus 22,500 tokens for GPT/coding
+models, whose provider backend prepends a hidden prompt of up to ~22,400 tokens), and always reserve the
 model's output ceiling; settlement uses the provider's reported usage (cached input
 is billed at the full input rate). If a request's actual cost exceeds its reservation
 it is left unresolved for review, not charged by guess. Responses requests without
-instructions get a neutral default so the provider's ~4,400-token Codex prompt is not
+instructions get a neutral default so the provider's Codex prompt is not
 billed (see OD-017).
 
 `tw_reserve_generation` locks the account and provider group in one transaction,
-checks model bounds, account balance, per-account concurrency (default 3), and
+checks model bounds, account balance, per-account concurrency (default 3 requests in
+flight; `unknown` requests do not count), at most 10 unresolved `unknown` requests
+per account, and
 provider-group budget, then reserves both customer credits and provider spend.
 The append-only credit ledger records reserve, settle, release, purchase, refund,
 dispute, and administrative adjustment entries. Successful responses settle only

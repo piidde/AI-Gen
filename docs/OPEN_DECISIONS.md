@@ -73,6 +73,14 @@ customer/provider reservations, versioned costs, and a 24-hour unresolved-reques
 policy. Database execution and concurrency/webhook fault tests remain required.
 The exact accounting, tax, and financial-record retention policy remains open.
 
+**DECIDED (2026-10-20):** `unknown` requests keep their reservation but no longer count
+towards the concurrency limit; at most 10 unresolved ones are allowed per account. Three
+provider `response.failed` streams had blocked a customer for 24 hours.
+**OPEN (owner):** whether a stream that ends cleanly with the provider's
+`response.failed` should release the customer reservation at once (booking the provider
+maximum to the risk budget, as the 24-hour release does) instead of holding it for a day.
+The provider error code is now logged as `provider_error` to find the cause.
+
 ## OD-010 API keys
 
 Status: **DECIDED** for 256-bit random `tw_live_` secrets displayed once and stored
@@ -214,6 +222,18 @@ suggests the provider serves GPT through a Codex/ChatGPT backend. Risks: resale 
 terms-of-service exposure and sudden loss of access. The Worker sends neutral default
 instructions to avoid the hidden cost. **OPEN (owner):** accept the risk, ask the
 provider, or source GPT elsewhere before advertising coding models broadly.
+
+**Update 2026-10-20 (gpt-5.6-sol, measured directly at GrsAI):** the hidden prompt is now
+~22,400 tokens (some routes ~4,200 or ~7,500) and appears on chat and on Responses even
+with instructions. Chat `prompt_tokens` excludes provider-cached tokens; Responses
+`input_tokens` includes them. A cache miss therefore bills a short request ~22,400 input
+tokens (about USD 0.015 to the customer instead of 0.00004); in the 2026-10-19 customer
+test this hit 11 of 94 requests. Output limits are not enforced by the provider on either
+endpoint. Reservations now include a 22,500-token allowance. **INVESTIGATION (owner):**
+compare GrsAI's console consumption for one request with its reported usage. GrsAI lists
+a separate cache rate (gpt-5.6-sol: 4,500 vs 44,000 credits per million input), so if it
+bills cached tokens at that rate, Responses currently overcharges cached input and chat
+undercharges it.
 
 ## Launch gates
 

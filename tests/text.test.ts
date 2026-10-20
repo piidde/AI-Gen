@@ -74,6 +74,11 @@ test("the recorded provider stream yields usage only from response.completed, re
   assert.equal(truncated.completed, null);
   const failed = streamedOutcome(new SseParser().push('event: response.failed\ndata: {"type":"response.failed","response":{"status":"failed"}}\n\n'));
   assert.equal(failed.failed, true);
+  assert.equal(failed.providerError, "response.failed");
+  const coded = streamedOutcome(new SseParser().push('data: {"type":"response.failed","response":{"status":"failed","error":{"code":"server_error","message":"secret prompt text"}}}\n\n'));
+  assert.equal(coded.providerError, "server_error");
+  const odd = streamedOutcome(new SseParser().push('data: {"type":"error","error":{"code":"rate limit: <x>"}}\n\n'));
+  assert.equal(odd.providerError, "rate_limit___x_");
   assert.equal(responsesUsage({ status: "incomplete", usage: { input_tokens: 1, output_tokens: 1 } }), null);
 });
 

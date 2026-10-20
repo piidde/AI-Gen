@@ -38,13 +38,16 @@ function outputLimit(model: TextModel, requested: number | null): number {
   return Math.min(requested ?? ceiling, ceiling);
 }
 
-// Responses without instructions carry the provider's own Codex prompt (~4.4k tokens).
-const PROVIDER_PROMPT_TOKENS = 4_500;
+// The provider serves GPT (coding) models through a backend that prepends its own hidden
+// prompt and reports it as input: up to ~22.4k tokens on a prompt-cache miss, on chat and
+// responses, with or without instructions (measured 2026-10-20). Reserving it keeps such
+// requests settleable instead of failing with usage_exceeds_reservation.
+const PROVIDER_PROMPT_TOKENS = 22_500;
 
 async function reserve(c: AppContext, model: TextModel, key: ProviderKey, payload: unknown, items: number,
-  maxOutput: number, idempotencyKey: string | null, providerPrompt = 0): Promise<Reservation> {
+  maxOutput: number, idempotencyKey: string | null): Promise<Reservation> {
   const account = c.get("account");
-  const inputTokens = estimatedInputTokens(payload, items, providerPrompt);
+  const inputTokens = estimatedInputTokens(payload, items, model.responses_api ? PROVIDER_PROMPT_TOKENS : 0);
   if (model.max_input_tokens !== null && inputTokens > model.max_input_tokens) {
     throw new HttpError(413, "input_too_large", "The input exceeds this model's context window.");
   }
@@ -274,17 +277,26 @@ export class SseParser {
 }
 
 // Outcome of a streamed response: the final response object only from response.completed.
-export function streamedOutcome(events: Array<{ data: string }>): { completed: unknown | null; failed: boolean } {
+// providerError is the provider's error code (or incomplete reason) for the logs; it is
+// reduced to a short identifier so no message text or content can leak into them.
+export function streamedOutcome(events: Array<{ data: string }>): { completed: unknown | null; failed: boolean; providerError: string | null } {
   let completed: unknown | null = null;
   let failed = false;
+  let providerError: string | null = null;
   for (const { data } of events) {
     if (data === "[DONE]") continue;
-    let parsed: { type?: string; response?: unknown };
+    let parsed: { type?: string; code?: unknown; response?: { error?: { code?: unknown; type?: unknown } | null; incomplete_details?: { reason?: unknown } | null };
+      error?: { code?: unknown; type?: unknown } };
     try { parsed = JSON.parse(data) as typeof parsed; } catch { continue; }
     if (parsed.type === "response.completed") completed = parsed.response ?? null;
-    else if (parsed.type === "response.failed" || parsed.type === "response.incomplete" || parsed.type === "error") failed = true;
+    else if (parsed.type === "response.failed" || parsed.type === "response.incomplete" || parsed.type === "error") {
+      failed = true;
+      const code = parsed.response?.error?.code ?? parsed.response?.error?.type ?? parsed.response?.incomplete_details?.reason
+        ?? parsed.error?.code ?? parsed.error?.type ?? parsed.code;
+      providerError = typeof code === "string" && code ? code.replace(/[^\w.-]/g, "_").slice(0, 64) : parsed.type;
+    }
   }
-  return { completed, failed };
+  return { completed, failed, providerError };
 }
 
 async function readChunk(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<ReadableStreamReadResult<Uint8Array>> {
@@ -302,8 +314,7 @@ export async function handleResponses(c: AppContext, raw: unknown, idempotencyKe
   const model = await findTextModel(c.env, request.model, true);
   const maxOutput = outputLimit(model, request.requestedMaxTokens);
   const key = chooseProviderKey(c.env, model.provider_group_id);
-  const reservation = await reserve(c, model, key, { ...request.body, max: request.requestedMaxTokens }, request.itemCount, maxOutput, idempotencyKey,
-    "instructions" in request.body ? 0 : PROVIDER_PROMPT_TOKENS);
+  const reservation = await reserve(c, model, key, { ...request.body, max: request.requestedMaxTokens }, request.itemCount, maxOutput, idempotencyKey);
   phases.lap("reserve_ms");
   const jsonHeaders = (id: string) => ({ "content-type": "application/json; charset=utf-8", "x-request-id": c.get("requestId"), "x-takewing-request-id": id, "cache-control": "no-store" });
   if (reservation.duplicate) return new Response(JSON.stringify(await duplicateResult(c, reservation)), { headers: jsonHeaders(reservation.request_id) });
@@ -339,6 +350,7 @@ export async function handleResponses(c: AppContext, raw: unknown, idempotencyKe
     const limit = requireConfiguredInt(c.env.MAX_RESULT_BYTES, 268_435_456);
     let completed: unknown | null = null;
     let failed = false;
+    let providerError: string | null = null;
     let broken = false;
     let total = 0;
     try {
@@ -351,6 +363,7 @@ export async function handleResponses(c: AppContext, raw: unknown, idempotencyKe
         const outcome = streamedOutcome(parser.push(decoder.decode(value, { stream: true })));
         completed = outcome.completed ?? completed;
         failed ||= outcome.failed;
+        providerError = outcome.providerError ?? providerError;
       }
     } catch {
       broken = true;
@@ -365,7 +378,8 @@ export async function handleResponses(c: AppContext, raw: unknown, idempotencyKe
       } else {
         // Partial output may already have been billed upstream; never guess a charge.
         await fail(db, requestId, broken ? "provider_stream_interrupted" : failed ? "provider_stream_failed" : "provider_usage_missing", true);
-        writeLog("generation.unknown", { request_id: requestId, model: model.id, provider_key_id: key.id, duration_ms: Date.now() - started, streamed: true });
+        writeLog("generation.unknown", { request_id: requestId, model: model.id, provider_key_id: key.id, duration_ms: Date.now() - started, streamed: true,
+          provider_error: providerError, completed_without_usage: completed !== null && !usage });
       }
     } catch {
       writeLog("generation.settlement_unknown", { request_id: requestId, streamed: true });

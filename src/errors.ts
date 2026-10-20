@@ -17,6 +17,7 @@ const databaseErrors: Record<string, { status: number; message: string }> = {
   provider_budget_exhausted: { status: 503, message: "The provider spending limit has been reached." },
   insufficient_credits: { status: 402, message: "There are not enough credits for this request." },
   concurrency_limit: { status: 429, message: "Too many requests are already running for this account." },
+  unresolved_requests_limit: { status: 429, message: "Too many requests on this account have an unresolved provider outcome. Their reserved credits are returned within 24 hours." },
   account_suspended: { status: 403, message: "This account cannot make requests." },
   account_not_found: { status: 404, message: "The account was not found." },
   account_suspension_blocked: { status: 409, message: "Resolve the account balance or payment dispute before restoring access." },
