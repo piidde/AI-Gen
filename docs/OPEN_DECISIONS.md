@@ -224,7 +224,7 @@ instructions to avoid the hidden cost. **OPEN (owner):** accept the risk, ask th
 provider, or source GPT elsewhere before advertising coding models broadly.
 
 **Update 2026-10-20 (gpt-5.6-sol, measured directly at GrsAI):** the hidden prompt is now
-~22,400 tokens (some routes ~4,200 or ~7,500) and appears on chat and on Responses even
+~22,400 tokens (some routes ~4,200 or ~9,000) and appears on chat and on Responses even
 with instructions. Chat `prompt_tokens` excludes provider-cached tokens; Responses
 `input_tokens` includes them. A cache miss therefore bills a short request ~22,400 input
 tokens (about USD 0.015 to the customer instead of 0.00004); in the 2026-10-19 customer
