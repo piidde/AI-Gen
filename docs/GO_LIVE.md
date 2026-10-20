@@ -17,9 +17,8 @@ Run them in order and tick them off here (or in the release notes).
       sync > Sync now) raises enabled models' cost about 7.25% to the USD 150 basis,
       disables models GrsAI lists as closed (currently every Gemini model) and adds
       `gpt-6.1-sol` and `nano-banana-2.1` disabled for review.
-- [ ] `20261020120000_unknown_requests_free_slots.sql`: unknown requests no longer block
-      the concurrency limit (OD-009). Safe in either order with the Worker; until it is
-      applied, three unresolved requests still block an account for 24 hours.
+- [x] `20261020120000_unknown_requests_free_slots.sql` applied (confirmed 2026-10-20): unknown
+      requests no longer block the concurrency limit (OD-009).
 - [ ] GitHub: allow Actions to create pull requests (Settings → Actions → General) so
       `.github/workflows/catalogue-sync.yml` can open the nightly public snapshot PR.
 - [x] Check that browser roles still have no table access:

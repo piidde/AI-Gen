@@ -235,6 +235,16 @@ a separate cache rate (gpt-5.6-sol: 4,500 vs 44,000 credits per million input), 
 bills cached tokens at that rate, Responses currently overcharges cached input and chat
 undercharges it.
 
+**Reliability run 2026-10-20** (151 requests through aiapi.deals, ~18k GrsAI credits):
+every failure was a streamed Responses request (5 of 71: gpt-5.6-sol 2/55, gpt-6-astra 2/6,
+gpt-5.6-terra 1/10). Each emitted a one-character text delta and then either
+`response.failed` with code `upstream_error` (4) or nothing until the 120-second idle
+timeout (1). Non-streamed upstream calls (chat, chat streaming, Responses) failed 0 of 80.
+All failures became `unknown`; no successful client response went unsettled. Latency
+p50 6-7 s, p90 15-39 s, max 97 s; refusals (429) took ~2.5 s, which is our own
+database round trips before any provider call. The ~22.4k hidden prompt was billed on
+17 of 151 requests, 10 of them among 40 streamed Responses requests.
+
 ## Launch gates
 
 Before public sales, apply and review the migration, run database and financial
