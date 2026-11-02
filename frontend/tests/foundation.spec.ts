@@ -62,13 +62,13 @@ test("catalogue URL filters survive reload and history without stealing focus", 
   await expect(capability).toHaveText("All capabilities");
 });
 
-test("catalogue copy failure is visible and the reference ID remains selectable", async ({ page }) => {
+test("catalogue copy failure is visible and the model ID remains selectable", async ({ page }) => {
   await page.addInitScript(() => Object.defineProperty(navigator, "clipboard", {
     value: { writeText: async () => { throw new Error("Denied"); } }, configurable: true,
   }));
   await page.goto("/models");
   await page.getByRole("button", { name: /View details/ }).first().click();
-  await page.getByRole("button", { name: "Copy reference ID" }).click();
+  await page.getByRole("button", { name: "Copy model ID" }).click();
   await expect(page.getByRole("dialog")).toContainText("Could not copy");
   // Newest model first: GPT-6.1 Sol leads the collection.
   await expect(page.getByRole("dialog")).toContainText("gpt-6.1-sol");

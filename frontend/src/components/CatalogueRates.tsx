@@ -29,11 +29,11 @@ export default function CatalogueRates({ rates, currency, detailed = false }: {
         {detailed && <>
           <p>{rate.conditions}</p>
           {rate.official.map((official, index) => <div className="official-rate" key={index}>
-            <strong>Official reference: {money(official.usd, currency, fxRate)} per {BigInt(official.per).toLocaleString("en-US")} {official.unit}</strong>
+            <strong>Official price: {money(official.usd, currency, fxRate)} per {BigInt(official.per).toLocaleString("en-US")} {official.unit}</strong>
             <p>{official.conditions}</p>
-            <p><a className="text-link" href={official.source}>Official source</a> · checked {snapshot.checkedOn}{official.recheckOn ? ` · recheck by ${official.recheckOn}` : " · recheck required before publication"}</p>
+            <p><a className="text-link" href={official.source}>Official source</a> · checked {snapshot.checkedOn}</p>
           </div>)}
-          {rate.comparison.status !== 'verified' && <p>Comparison unavailable: {rate.comparison.reason}</p>}
+          {rate.comparison.status !== 'verified' && <p>{rate.comparison.reason}</p>}
         </>}
       </section>;
     })}

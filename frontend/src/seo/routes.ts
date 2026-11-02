@@ -25,34 +25,34 @@ export type RouteMeta = {
 };
 
 export const routeMeta: RouteMeta[] = [
-  { path: "/blog", title: "Image and text cost guides", description: "Understand image request tariffs and text token components with dated reference guides.", indexable: true, changefreq: "monthly" },
+  { path: "/blog", title: "AI API pricing guides", description: "Practical guides to image and text API pricing: what you pay for, how to estimate a workload and how our prices compare.", indexable: publishedBlogArticles.length > 0, changefreq: "monthly" },
   ...publishedBlogArticles.map(article => ({ path: `/blog/${article.slug}`, title: article.title, description: article.summary, indexable: true, changefreq: "monthly" as const })),
   { path: "/updates", title: "Updates", description: "Product announcements from AIAPI.deals.", indexable: false },
   ...updates.map(update => ({ path: `/updates/${update.slug}`, title: update.title, description: update.summary, indexable: false })),
-  ...familyPages.map(page => ({ path: `/models/${page.slug}`, title: `${page.family} models & pricing`, description: page.description, indexable: true, priority: 0.8, changefreq: "weekly" as const })),
+  ...familyPages.map(page => ({ path: `/models/${page.slug}`, title: `${page.family} API pricing`, description: page.description, indexable: true, priority: 0.8, changefreq: "weekly" as const })),
   {
     path: "/",
-    title: "Official AI models without the official price.",
+    title: "OpenAI-compatible API for GPT Image 2 and Nano Banana Pro",
     description:
-      "Image and text generation APIs built to cut your AI costs. Explore AIAPI.deals pricing, official rate references and the prepaid dashboard preview.",
+      "OpenAI-compatible API for image and text models such as GPT Image 2, Nano Banana Pro and GPT-5.6. Prepaid credits with no subscription and no surprise bills: change the base URL and keep your code.",
     indexable: true,
     priority: 1.0,
     changefreq: "weekly",
   },
   {
     path: "/models",
-    title: "Models & pricing",
+    title: "AI API pricing for image and text models",
     description:
-      "Compare AI model capabilities, providers and billing units side by side, so you can pick a model and understand what a request costs before you integrate.",
+      "AI API prices for GPT Image 2, Nano Banana Pro, GPT-5.6 and Gemini Flash next to the official prices, per image or per 1M tokens, so you know what a request costs before you integrate.",
     indexable: true,
     priority: 0.9,
     changefreq: "weekly",
   },
   {
     path: "/docs",
-    title: "Documentation and quickstart",
+    title: "OpenAI-compatible API documentation and quickstart",
     description:
-      "Documentation preparation status. Quickstart and API examples await a verified AIAPI.deals API contract.",
+      "Point the OpenAI SDK or Codex at the AIAPI.deals base URL, then call chat completions, the Responses API and asynchronous image jobs with one prepaid key.",
     indexable: true,
     priority: 0.9,
     changefreq: "weekly",
@@ -70,7 +70,7 @@ export const routeMeta: RouteMeta[] = [
     path: "/status",
     title: "Service status",
     description:
-      "Published service incidents and dated model reference notices.",
+      "Open incidents and model notices for the AIAPI.deals API.",
     indexable: true,
     priority: 0.5,
     changefreq: "daily",
@@ -87,7 +87,7 @@ export const routeMeta: RouteMeta[] = [
     path: "/privacy",
     title: "Privacy notice",
     description:
-      "Review-stage data-handling information, publication gaps and revisitable cookie preferences.",
+      "How AIAPI.deals handles account, request and payment data, and where to change your cookie preferences.",
     indexable: true,
     priority: 0.3,
     changefreq: "yearly",
@@ -96,7 +96,7 @@ export const routeMeta: RouteMeta[] = [
     path: "/terms",
     title: "Terms of service",
     description:
-      "Review-stage product policies for prepaid credits, conditional refunds and deletion; legal terms await publication.",
+      "How prepaid credits, refunds and account deletion work at AIAPI.deals.",
     indexable: true,
     priority: 0.3,
     changefreq: "yearly",

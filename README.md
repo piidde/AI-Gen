@@ -86,10 +86,9 @@ Supabase variables. The frontend does not call the upstream.
 Search indexing is opt-in and **disabled by default**. Titles, descriptions,
 canonical URLs, structured data, `robots.txt` and `sitemap.xml` are generated from
 one route registry, but stay inactive until a deployment sets
-`VITE_SITE_INDEXABLE=true`. Leave it off while the catalogue shows fictional
-prices. Before launch, also resolve the initial-HTML noindex risk and public
-prerendering work tracked in the implementation plan; the flag alone has not been
-verified sufficient. Analytics stays inert until its ID is configured and the
+`VITE_SITE_INDEXABLE=true`. Public pages are prerendered with their own robots
+meta, so the flag is sufficient (verified 2026-11-02: an indexable build allows
+crawling, lists 12 public URLs, emits llms.txt and keeps account pages noindex). Analytics stays inert until its ID is configured and the
 visitor consents. Advertising is disabled for the organic-only launch, including
 legacy advertising IDs and saved grants. See
 [ADR-004](docs/decisions/ADR-004-seo-and-measurement.md) for the decision and

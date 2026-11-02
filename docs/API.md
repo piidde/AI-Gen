@@ -4,7 +4,7 @@
 
 The Worker implements the routes below. The API is versioned under /v1 and returns JSON except for authenticated generated-file downloads. /v1/openapi.json provides the current OpenAPI 3.1 document.
 
-Use Authorization: Bearer <key>. Customer applications use a Takewing API key. The website uses its Supabase access token for account-management routes. Generation endpoints require a Takewing API key; an ordinary website login token cannot generate billable work. The provider key is never returned.
+Use Authorization: Bearer <key>. Customer applications use an AIAPI.deals API key. The website uses its Supabase access token for account-management routes. Generation endpoints require an AIAPI.deals API key; an ordinary website login token cannot generate billable work. The provider key is never returned.
 
 The dated [model evidence register](MODEL_PRICING.md) inventories 29 upstream
 image/text entries for S02.1. It separates official identities from unresolved
@@ -25,9 +25,9 @@ The response includes X-Request-Id. Generation responses also include X-Takewing
 | GET /healthz | None | Worker liveness only; it does not prove database or provider health. |
 | GET /v1/openapi.json | None | OpenAPI 3.1 route document. |
 | GET /v1/models | None | Models that are enabled, priced, and available while the platform accepts requests. |
-| POST /v1/chat/completions | Takewing API key | OpenAI-compatible chat (text only, every enabled text model). stream=true returns SSE chunks. |
-| POST /v1/responses | Takewing API key | OpenAI Responses API with tool calling, for coding models (GPT) flagged `responses_api`. Codex compatible; streams the provider's events. |
-| POST /v1/generations | Takewing API key | Create an asynchronous image or video job. Requires Idempotency-Key. |
+| POST /v1/chat/completions | API key | OpenAI-compatible chat (text only, every enabled text model). stream=true returns SSE chunks. |
+| POST /v1/responses | API key | OpenAI Responses API with tool calling, for coding models (GPT) flagged `responses_api`. Codex compatible; streams the provider's events. |
+| POST /v1/generations | API key | Create an asynchronous image or video job. Requires Idempotency-Key. |
 | GET /v1/requests/{id} | Account token or API key | Request state, charge, error category, and live result manifest. |
 | GET /v1/requests/{id}/result | Account token or API key | Retrieve a stored text response or media manifest before expiry. |
 | GET /v1/files/{requestId}/{index} | Account token or API key | Download a private generated file after ownership and expiry checks. |
@@ -78,7 +78,7 @@ Chat Idempotency-Key is optional but recommended. It must be 8-128 characters. T
 
 Send model plus model-specific input to POST /v1/generations and include a stable Idempotency-Key. Parameters are validated against the enabled model's stored JSON-schema subset before any credit or provider reservation. Unknown fields, remote reference URLs, out-of-range numbers, and unconfigured media limits are rejected.
 
-A new request returns 202 with an owned request ID, status URL, and result URL. Queue messages contain only the request ID. The encrypted input payload is held in private R2 only until submission/cleanup. Worker downloads provider results to private R2; returned file URLs point to authenticated Takewing downloads. Each request can return up to 120 files, subject to the model schema and configured result byte limit. Do not pass user-controlled remote URLs through this API.
+A new request returns 202 with an owned request ID, status URL, and result URL. Queue messages contain only the request ID. The encrypted input payload is held in private R2 only until submission/cleanup. Worker downloads provider results to private R2; returned file URLs point to authenticated AIAPI.deals downloads. Each request can return up to 120 files, subject to the model schema and configured result byte limit. Do not pass user-controlled remote URLs through this API.
 
 A repeated key with the same input returns the original request; a completed media request returns 200 after checking result ownership and expiry. A repeated key with different input returns 409. A result that reached its expiry returns 410, including when cleanup has not yet run; it is never regenerated automatically. The 2-hour default result TTL starts after the completed result has been stored. Admin TTL changes apply to future completions. Unrecognized provider job states become unresolved requests and are not polled or resubmitted indefinitely.
 

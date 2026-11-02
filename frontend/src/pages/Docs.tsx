@@ -12,9 +12,10 @@ const sections = [
   { id: "codex", title: "Use with Codex" },
   { id: "responses", title: "Responses API (tools)" },
   { id: "chat", title: "Chat completions" },
-  { id: "media", title: "Image and video jobs" },
+  { id: "media", title: "Image jobs" },
   { id: "results", title: "Results and files" },
   { id: "credits", title: "Credits and usage" },
+  { id: "limits", title: "Limits" },
   { id: "errors", title: "Errors" },
 ];
 
@@ -72,6 +73,11 @@ export default function Docs() {
               Send your key as a bearer token. Keep it on your server; never
               ship it in browser or mobile code. A key is shown once when you
               create it and can be revoked at any time.
+            </p>
+            <p>
+              Load the key from an environment variable rather than writing it
+              into your code, and create a separate key for each app so you
+              can revoke one without touching the others.
             </p>
             <Code>{`Authorization: Bearer $AIAPI_KEY`}</Code>
           </section>
@@ -215,14 +221,14 @@ print(response.output_text)`}</Code>
             </table>
             <p>
               <code>tools</code> and image input return an error. Send an{" "}
-              <code>Idempotency-Key</code> (8–128 characters) to make retries
+              <code>Idempotency-Key</code> (8 to 128 characters) to make retries
               safe: the same key and body returns the stored response; the same
               key with a different body returns <code>409</code>.
             </p>
           </section>
 
           <section id="media">
-            <h2>Image and video jobs</h2>
+            <h2>Image jobs</h2>
             <p>
               Media runs asynchronously. <code>POST /v1/generations</code>{" "}
               requires an <code>Idempotency-Key</code> and returns{" "}
@@ -305,6 +311,34 @@ print(response.output_text)`}</Code>
               credits. <code>GET /v1/usage</code> returns a summary and your
               latest 100 requests. Both accept your API key.
             </p>
+            <p>
+              Credits are prepaid, so you never spend more than your balance.
+              When it runs out, requests fail with{" "}
+              <code>insufficient_credits</code> instead of running up a bill.
+              To keep an eye on spending, switch on the low-balance email in
+              your account settings or poll <code>GET /v1/credits</code>.
+            </p>
+          </section>
+
+          <section id="limits">
+            <h2>Limits</h2>
+            <ul>
+              <li>
+                Each key and IP address has a rate limit. Excess calls return{" "}
+                <code>429</code> with <code>rate_limited</code>; wait briefly
+                and try again.
+              </li>
+              <li>
+                By default, an account can run three requests at the same
+                time. More return <code>concurrency_limit</code>.
+              </li>
+              <li>
+                At most 10 requests with an unclear outcome can hold reserved
+                credits at once. Beyond that, new requests return{" "}
+                <code>unresolved_requests_limit</code> until they are settled
+                or released after 24 hours.
+              </li>
+            </ul>
           </section>
 
           <section id="errors">

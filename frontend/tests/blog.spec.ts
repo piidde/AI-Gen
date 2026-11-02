@@ -1,56 +1,71 @@
 import { expect, test } from "@playwright/test";
+import { publishedBlogArticles } from "../src/content/blog";
+
+// The launch guides were withdrawn on 2026-10-27; article tests return with the first new article.
+const noArticles = publishedBlogArticles.length === 0;
+
+test("blog index shows an empty state while no guide is published", async ({ page }) => {
+  test.skip(!noArticles, "Guides are published");
+  await page.goto("/blog");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("AI API pricing guides");
+  await expect(page.getByRole("article")).toHaveCount(0);
+  await expect(page.locator("main")).toContainText("The first guides are on the way");
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+});
 
 test("blog index filters reviewed articles by topic without exposing drafts", async ({ page }, testInfo) => {
+  test.skip(noArticles, "No guide is published");
   await page.goto("/blog");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Reference guides");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("AI API pricing guides");
   await expect(page.getByRole("article")).toHaveCount(2);
   await expect(page.getByText("Editorial format preview")).toHaveCount(0);
   await page.getByRole("button", { name: "Image models" }).click();
   await expect(page.getByRole("article")).toHaveCount(1);
-  await expect(page.getByRole("heading", { name: "Understanding image model request rates" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Understanding text token rates" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "How AI image API pricing works: per request vs per image" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "How AI text API pricing works: input, output and cached tokens" })).toHaveCount(0);
   await page.getByRole("button", { name: "All topics" }).click();
   await expect(page.getByRole("article")).toHaveCount(2);
   await page.screenshot({ path: testInfo.outputPath("blog-index.png"), fullPage: true });
 });
 
 test("article provides navigation, evidence, attribution and copy feedback", async ({ page }, testInfo) => {
+  test.skip(noArticles, "No guide is published");
   await page.goto("/blog/understanding-text-token-rates");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Understanding text token rates");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("How AI text API pricing works: input, output and cached tokens");
   await expect(page.getByRole("navigation", { name: "On this page" })).toBeVisible();
-  await page.getByRole("navigation", { name: "On this page" }).getByRole("link", { name: "Three components, one workload" }).click();
+  await page.getByRole("navigation", { name: "On this page" }).getByRole("link", { name: "Three prices per model" }).click();
   await expect(page.locator("#three-components")).toBeFocused();
   await expect(page.locator("main time")).toHaveCount(2);
-  await expect(page.locator("main")).toContainText("Technical review: Codex");
-  await expect(page.locator("main")).toContainText("Publication review pending");
+  await expect(page.locator("main")).toContainText("Chris");
+  await expect(page.locator("main")).not.toContainText(/Codex|review pending/);
   await expect(page.getByRole("table")).toBeVisible();
   await expect(page.getByRole("img")).toHaveAttribute("alt", /token rate components/i);
-  await expect(page.getByRole("link", { name: "Model catalogue", exact: true })).toHaveAttribute("href", "/models");
-  await expect(page.getByRole("link", { name: "Documentation status", exact: true }).first()).toHaveAttribute("href", "/docs");
-  await expect(page.getByRole("link", { name: "GPT-5.6 family reference" })).toHaveAttribute("href", "/models/gpt-5-6");
+  await expect(page.getByRole("link", { name: "All models and prices", exact: true }).first()).toHaveAttribute("href", "/models");
+  await expect(page.getByRole("link", { name: "API documentation", exact: true }).first()).toHaveAttribute("href", "/docs");
+  await expect(page.getByRole("link", { name: "GPT-5.6 prices" })).toHaveAttribute("href", "/models/gpt-5-6");
   await expect(page.getByRole("link", { name: "Create an account" })).toHaveAttribute("href", "/signup");
   await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async () => undefined } }));
-  await page.getByRole("button", { name: "Copy checklist" }).click();
+  await page.getByRole("button", { name: "Copy estimate template" }).click();
   await expect(page.getByRole("status")).toContainText("Copied");
   await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async () => { throw new Error("denied"); } } }));
-  await page.getByRole("button", { name: "Copy checklist" }).click();
+  await page.getByRole("button", { name: "Copy estimate template" }).click();
   await expect(page.getByRole("status")).toContainText("Could not copy");
   await page.screenshot({ path: testInfo.outputPath("blog-article.png"), fullPage: true });
-  await page.getByRole("link", { name: "Understanding image model request rates" }).click();
+  await page.getByRole("link", { name: "How AI image API pricing works: per request vs per image" }).click();
   await expect(page).toHaveURL(/understanding-image-model-rates$/);
 });
 
 test("draft and unknown slugs render a useful not-found state", async ({ page }) => {
-  for (const slug of ["editorial-format-preview", "does-not-exist"]) {
+  for (const slug of ["editorial-format-preview", "understanding-text-token-rates", "does-not-exist"]) {
     await page.goto(`/blog/${slug}`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Article not found");
-    await expect(page.getByRole("link", { name: "Browse reference guides" })).toHaveAttribute("href", "/blog");
+    await expect(page.getByRole("link", { name: "Browse all guides" })).toHaveAttribute("href", "/blog");
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
   }
 });
 
 test("article tables and long content stay inside the mobile viewport", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "mobile", "Mobile layout check");
+  test.skip(testInfo.project.name !== "mobile" || noArticles, "Mobile layout check of a published guide");
   await page.setViewportSize({ width: 320, height: 720 });
   await page.goto("/blog/understanding-image-model-rates");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

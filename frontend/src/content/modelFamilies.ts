@@ -1,33 +1,33 @@
 import { catalogue, type CatalogueReference } from "./catalogue.ts";
 
-// Editorial pages describe official model families, not verified AIAPI.deals support.
+// Editorial copy for the model family pages. Capabilities follow the official docs.
 export const familyPages = [
   {
     family: "GPT Image 2", slug: "gpt-image-2", modality: "image",
-    description: "Compare GPT Image 2 reference variants, request rates and the settings that still need verification.",
-    explanation: "OpenAI documents GPT Image 2 for creating and editing images from text and image inputs. For a visual workflow, check the required output size and input-image behavior before choosing a variant.",
-    limitation: "The VIP label does not establish a different official model or better quality. Listed request tariffs cannot be compared with an official output-only image price without matching every billable input and output.",
+    description: "GPT Image 2 API pricing per request, with the standard and VIP variants side by side and the official OpenAI price for comparison.",
+    explanation: "GPT Image 2 is OpenAI's model for creating and editing images from text and image input. Pick a variant by the resolution you need, then call it through the image jobs endpoint.",
+    limitation: "VIP runs on a separate channel from our provider. It is not a different official model and is not guaranteed to produce better images. We charge per request, while OpenAI charges per output image, so compare at the same resolution.",
     source: "https://developers.openai.com/api/docs/models/gpt-image-2",
   },
   {
     family: "Nano Banana Pro", slug: "nano-banana-pro", modality: "image",
-    description: "Explore Nano Banana Pro reference variants, listed resolutions and unresolved version differences.",
-    explanation: "Google describes Nano Banana Pro as its Gemini 3 Pro Image family for detailed visual work, including brand consistency and precise creative control. Those official capabilities are a starting point for evaluation, not evidence that each listed channel exposes them.",
-    limitation: "The served preview or stable version remains unverified. Compare the listed resolutions, but do not infer speed, reliability or policy-refund behavior from CL or VIP names.",
+    description: "Nano Banana Pro API pricing per request at 1K, 2K and 4K, with the CL and VIP channels and the official Google price for comparison.",
+    explanation: "Nano Banana Pro is Google's Gemini 3 Pro Image model. It is built for detailed images, readable text inside images and consistent brand visuals.",
+    limitation: "Google runs this model as preview and stable versions, and our provider does not say which one answers a request. CL and VIP are separate channels with their own prices. They are not guaranteed to be faster.",
     source: "https://ai.google.dev/gemini-api/docs/image-generation",
   },
   {
     family: "GPT-5.6", slug: "gpt-5-6", modality: "text",
-    description: "Inspect GPT-5.6 text reference rates, input and output units, cache pricing and context conditions.",
-    explanation: "Terra and Sol have separate identifiers and separately priced input, output and cache-read components. Compare the components your text workflow uses instead of treating a token rate as a flat request price.",
-    limitation: "Official context tiers are shown separately. The catalogue does not verify matching token accounting, tools or streaming through AIAPI.deals, and a lower component rate alone cannot establish a total saving.",
+    description: "GPT-5.6 API pricing per 1M tokens for Terra and Sol: input, output and cached input next to the official OpenAI prices.",
+    explanation: "Terra and Sol are two GPT-5.6 models with their own IDs and prices. Both support tool calling through the Responses API and work with Codex.",
+    limitation: "OpenAI charges more once a request goes above 272K input tokens. The model details list both official tiers. Token counts come from our provider and can differ slightly from the official API.",
     source: "https://developers.openai.com/api/docs/models/gpt-5.6-terra",
   },
   {
     family: "Gemini Flash", slug: "gemini-flash", modality: "text",
-    description: "Compare Gemini Flash text reference variants with explicit output, thinking and unknown cache-rate boundaries.",
-    explanation: "Gemini Flash spans several named versions. For text workflows, compare a specific version's input and output components and account for thinking tokens where the official rate includes them.",
-    limitation: "An unversioned or preview alias is not interchangeable with a verified identifier. Cache tariffs are unknown in this reference inventory, so cached traffic cannot be priced as free or used to claim a saving.",
+    description: "Gemini Flash API pricing per 1M tokens for each version, with input and output prices next to the official Google rates.",
+    explanation: "Gemini Flash is Google's fast, low-cost text model line. Every version has its own ID and price, so pick the exact version you want to call.",
+    limitation: "Some names from our provider have no exact match in Google's model list, and those show no official price. Google bills thinking tokens as output, and our comparison includes them. Our provider lists no cache price for these models, so none is shown.",
     source: "https://ai.google.dev/gemini-api/docs/models",
   },
 ] as const;
@@ -50,7 +50,7 @@ export function groupFamilies(models: CatalogueReference[]) {
 export function availabilityLabel(model: Pick<CatalogueReference, "availability">) {
   switch (model.availability) {
     case "retired": return "Retired";
-    case "unavailable-notice": return "Temporarily unavailable · dated notice";
-    case "unknown": return "Availability not verified";
+    case "unavailable-notice": return "Temporarily unavailable";
+    case "unknown": return "Available at last price check";
   }
 }

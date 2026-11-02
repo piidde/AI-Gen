@@ -33,7 +33,7 @@ export default function ModelFamily({ family, variants, currency, linkPage = tru
     {overview ? <header className="collection-heading"><h2>{family}</h2><span>{variants.length} models</span><p>{note ?? (first.modality === 'image' ? 'Per-request pricing. Choose your model and resolution.' : 'Input and output pricing, side by side. Per 1M tokens.')}</p></header> : <header className="family-heading">
       <div className="provider-line"><ProviderLogo name={family === "Nano Banana Pro" ? family : first.provider} size={30} /><span>{first.provider}</span><span className="capability">{first.modality === "image" ? "Image" : first.provider === "OpenAI" ? "Coding · tool calling" : "Chat"}</span></div>
       <h2>{family}</h2>
-      <p>{page?.description ?? (first.modality === "image" ? "Image request variants. Compare listed options; quality and speed differences remain unverified." : "Text variants with separate input, output and cache-read rates. Integration capabilities remain unverified.")}</p>
+      <p>{page?.description ?? (first.modality === "image" ? "Per-request prices for each variant and resolution." : "Input, output and cached-input prices per 1M tokens.")}</p>
       {linkPage && page && <Link className="text-link" to={`/models/${page.slug}`}>Explore {family} →</Link>}
     </header>}
     {actions && <div className="collection-actions">{actions}</div>}
@@ -41,14 +41,14 @@ export default function ModelFamily({ family, variants, currency, linkPage = tru
       {variants.map(model => <article className="panel model-card reference-card" data-model-id={model.upstreamId} key={model.upstreamId}>
         {overview && <div className="catalogue-card-provider"><ProviderLogo name={model.upstreamId.includes("banana") ? "Nano Banana" : model.provider} /><span>{model.provider}</span></div>}
         <h3>{overview ? modelDisplayName(model.upstreamId) : model.upstreamId}</h3>
-        <p className="model-family">{model.modality === "image" ? `Listed resolutions: ${model.listedResolutions.join(" / ") || "not verified"}` : model.provider === "OpenAI" ? "Coding · tool calling · Responses API" : "Chat · chat completions"}</p>
+        <p className="model-family">{model.modality === "image" ? `Resolutions: ${model.listedResolutions.join(" / ") || "not listed"}` : model.provider === "OpenAI" ? "Coding · tool calling · Responses API" : "Chat · chat completions"}</p>
         {model.modality === "text" && model.provider === "OpenAI" && <p className="works-with" aria-label="Works with Codex CLI and Codex for VS Code">
           <span>Works with</span><span className="works-with-tool"><ToolLogo tool="codex" size={16} />Codex</span><span className="works-with-tool"><ToolLogo tool="vscode" size={16} />VS Code</span>
         </p>}
         <ModelPrices model={model} overview={overview} currency={currency} />
         <footer><button className="text-link" aria-label={`View details for ${model.upstreamId}`} onClick={() => setSelected(model)}>View details<span className="sr-only"> for {model.upstreamId}</span> ↗</button>
         <div className="catalogue-status-slot">{model.availability !== "unknown" && <span className={`availability-label ${model.availability === "unavailable-notice" ? "availability-warning" : ""}`}>
-          {model.availability === "unavailable-notice" ? "Temporarily unavailable" : availabilityLabel(model)}
+          {availabilityLabel(model)}
           {catalogueNotices.some(notice => notice.modelId === model.upstreamId) && <> · <Link className="text-link" to="/status">Notice · {snapshot.checkedOn}</Link></>}
         </span>}
         {openIncidents.some(incident => incident.modelIds.includes(model.upstreamId)) && <p className="model-status-notice">Active incident affects this model. <Link className="text-link" to="/status">View status</Link></p>}
@@ -57,17 +57,15 @@ export default function ModelFamily({ family, variants, currency, linkPage = tru
       </article>)}
     </div>
     {selected && <Dialog title={selected.upstreamId} onClose={() => setSelected(null)}>
-      <p><strong>{availabilityLabel(selected)}</strong> · checked {snapshot.checkedOn}</p>
-      <p>Reference ID: <code>{selected.upstreamId}</code></p>
-      <CopyButton text={selected.upstreamId} label="Copy reference ID" />
-      <p>Public API ID pending. This reference identifier is not a working AIAPI.deals integration ID.</p>
-      <p>{selected.identity.status === "verified" ? "Official identity documented; the served version and AIAPI.deals support remain unverified." : "Exact model or channel identity is awaiting evidence."}</p>
+      <p><strong>{availabilityLabel(selected)}</strong> · prices checked {snapshot.checkedOn}</p>
+      <p>Model ID: <code>{selected.upstreamId}</code></p>
+      <CopyButton text={selected.upstreamId} label="Copy model ID" />
+      <p>Use this ID as the <code>model</code> value in your API requests.</p>
       <ModelPrices model={selected} currency={currency} />
       <CatalogueRates rates={selected.rates} currency={currency} detailed />
-      <h3>Limitations</h3>
+      <h3>Good to know</h3>
       <ul>{selected.limitations.map(limit => <li key={limit}>{limit}</li>)}</ul>
-      {selected.gaps.length > 0 && <p>Evidence gaps: {selected.gaps.join(", ")}. Alias mapping, channel behavior or availability needs review before use.</p>}
-      <p><Link className="text-link" to="/docs">AIAPI.deals documentation status</Link> · <Link className="text-link" to="/status">Status and notices</Link></p>
+      <p><Link className="text-link" to="/docs">API documentation</Link> · <Link className="text-link" to="/status">Service status</Link></p>
     </Dialog>}
   </section>;
 }

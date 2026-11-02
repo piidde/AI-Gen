@@ -434,12 +434,59 @@ after OD-004; `_redirects` cannot express that portably.
 ### Structured data
 
 `src/seo/structuredData.ts` emits Organization, WebSite and BreadcrumbList
-JSON-LD on indexable public pages only.
+JSON-LD on indexable public pages only. Since 2026-10-27 it also emits
+`FAQPage` on `/` and `TechArticle` (author, published and updated dates) on
+blog articles that name an author. The homepage FAQ renders from
+`src/content/homeFaq.ts`, the same data the markup reads, so the two cannot
+drift. Google no longer shows FAQ rich results (May 2026) and requires no
+special markup for AI Overviews; this markup is kept because it is cheap and
+makes dates, authorship and answers machine-readable, not for a rich result.
 
 **Do not add `Product` or `Offer` markup while prices are unverified.** Marking
 up prices that are not real is a search and advertising policy violation, not a
 shortcut to rich results. That markup belongs in the same change that publishes
 verified pricing.
+
+### llms.txt
+
+Indexable builds emit `/llms.txt` (llmstxt.org format) from the route registry:
+the OpenAI-compatible integration facts, a link to `/v1/openapi.json`, and the
+indexable docs, model, guide and policy pages. Closed builds emit no file. Its
+purpose is coding agents integrating the API; no search engine ranks on it,
+and crawler studies in 2026 show few AI crawlers request it.
+
+The public footer states that AIAPI.deals is independent of OpenAI, Google and
+other model providers, because model names are used descriptively throughout.
+
+### Public copy (2026-10-27)
+
+Public pages no longer use the review-stage demo wording ("reference", "pending
+verification", "evidence gaps"). Prices are live selling prices from the GrsAI
+sync at 2x cost (ADR-008), and the catalogue IDs are the IDs `/v1/models`
+accepts, because the sync creates each model under its GrsAI ID. Real caveats
+stay visible in plain language: `catalogue.ts` maps each evidence-gap code to a
+customer note (for example, CL/VIP channels carry no speed guarantee), shown
+under "Good to know" in the model dialog. Terms and privacy render the draft
+legal texts from `src/content/legal.ts` (OD-018); the contact page states that
+contact details and the legal notice follow with the launch.
+
+Copy rules for public text, including future generated content: no dashes as
+punctuation, no stock AI phrases, short concrete sentences.
+
+The two launch guides were set back to draft on the same day; new content is
+planned separately. While no guide is published, `/blog` shows an empty state,
+is `noindex` and leaves the sitemap and `llms.txt`; article tests skip until a
+guide is published.
+
+### Keyword targeting (2026-10-27)
+
+Titles follow a one-off Sistrix US keyword check (raw reports kept
+locally in `marketing/sistrix/`, not committed). Model family pages use "<family> API pricing" as title
+and "<family> API" as H1, because model pages are what ranks for terms such as
+"gpt image 2 api" (950/month) and "nano banana api" (1,950/month). `/` targets
+"OpenAI-compatible API" and `/models` targets "AI API pricing". The homepage
+FAQ and the docs (key safety, spending control, a Limits section) answer the
+recurring cost, limit and key questions from the topic research.
 
 ### Analytics and advertising
 
@@ -465,13 +512,28 @@ Before the first public deployment:
    `/contact` and `/status` with real content. Metadata cannot compensate for a
    page that does not answer the query it ranks for.
 3. Replace the fictional model catalogue with verified models and prices.
+   Legal (draft terms and privacy notice in `frontend/src/content/legal.ts`,
+   2026-10-27, consumers included): Australian law governs because the operator
+   sells through an Australian Stripe account; EU/UK consumers keep the
+   withdrawal right and the GDPR applies. The upstream provider is deliberately
+   not named. Add the legal notice with the operator's name, address and email
+   (both texts point to it), have both texts reviewed, settle GST and EU VAT
+   collection, add the withdrawal consent checkbox to checkout, and check
+   whether a GDPR Art. 27 EU representative is needed. Open items are tracked
+   in OD-018 in `docs/OPEN_DECISIONS.md`.
 4. Set `VITE_SITE_INDEXABLE=true`, deploy, then fetch `/robots.txt` and
    `/sitemap.xml` from the live domain and confirm both are correct.
 5. Verify the `_headers` and `_redirects` files are honoured by the chosen host
    (OD-004). If the host does not read them, translate the rules to its format.
 6. Register the domain in Google Search Console and Bing Webmaster Tools, and
-   submit the sitemap.
-7. Only then configure the analytics tag ID. Advertising remains disabled.
+   submit the sitemap. Bing also reports Copilot citations, and ChatGPT search
+   draws partly on Bing.
+7. In Cloudflare, confirm the AI-crawler settings let search and user-fetch
+   crawlers through (OAI-SearchBot, ChatGPT-User, Claude-SearchBot,
+   Claude-User, PerplexityBot, Bingbot, Googlebot). Edge blocking overrides an
+   allowing `robots.txt`. Enable Crawler Hints so changes reach IndexNow.
+8. Fetch `/llms.txt` from the live domain and confirm its links resolve.
+9. Only then configure the analytics tag ID. Advertising remains disabled.
 
 ### Follow-up fixes (2026-09-18)
 

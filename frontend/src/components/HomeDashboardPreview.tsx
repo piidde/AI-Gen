@@ -8,11 +8,11 @@ export default function HomeDashboardPreview() {
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
   // The illustration is relative to the browser clock; render it client-side instead of prerendering volatile dates.
-  if (!ready) return <div className="panel home-dashboard-preview" aria-label="Dashboard preview with fictional data"><p>Loading preview...</p></div>;
+  if (!ready) return <div className="panel home-dashboard-preview" aria-label="Dashboard preview with example data"><p>Loading preview...</p></div>;
   const now = new Date();
   const previewSummary = homeDashboardPreview(now);
-  return (<div className="panel home-dashboard-preview" aria-label="Dashboard preview with fictional data">
-              <div className="home-preview-top"><span>Account / Overview</span><span>Dashboard excerpt · Fictional data</span></div>
+  return (<div className="panel home-dashboard-preview" aria-label="Dashboard preview with example data">
+              <div className="home-preview-top"><span>Account / Overview</span><span>Dashboard excerpt · Example data</span></div>
               <div className="home-preview-heading"><h3>Overview</h3><span>Last 7 days</span></div>
               <div className="home-preview-metrics">
                 <div><span>Available balance</span><strong>$25.00</strong></div>

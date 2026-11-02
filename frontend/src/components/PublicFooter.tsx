@@ -8,5 +8,8 @@ export default function PublicFooter() {
     <Link to="/status">Service status</Link><Link to="/updates">Updates</Link>
     <Link to="/contact">Contact</Link><Link to="/terms">Terms</Link>
     <Link to="/privacy">Privacy</Link><Link to="/privacy#cookie-preferences">Cookie preferences</Link>
-  </nav></footer>;
+  </nav>
+  {/* Model names are used descriptively; this states the relationship plainly. */}
+  <p className="public-footer-note">AIAPI.deals is an independent service and is not affiliated with, endorsed by or sponsored by OpenAI, Google or any other model provider. Model and product names belong to their respective owners.</p>
+  </footer>;
 }

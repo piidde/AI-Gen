@@ -1,11 +1,12 @@
 import { test, expect, type Page } from "@playwright/test";
+import { publishedBlogArticles } from "../src/content/blog";
 
 // These guard the rules that are expensive to get wrong and easy to break
 // silently: a stale canonical merges two pages in the index, a missing robots
 // directive exposes account screens, and a tag that loads before consent is a
 // compliance problem rather than a bug. Failures here are not cosmetic.
 
-const PUBLIC_ROUTES = ["/", "/models", "/docs", "/support", "/status", "/contact", "/privacy", "/terms", "/blog", "/blog/understanding-text-token-rates", "/blog/understanding-image-model-rates"];
+const PUBLIC_ROUTES = ["/", "/models", "/docs", "/support", "/status", "/contact", "/privacy", "/terms", "/blog", ...publishedBlogArticles.map(article => `/blog/${article.slug}`)];
 const PRIVATE_ROUTES = ["/login", "/signup", "/forgot-password", "/update-password"];
 
 function head(page: Page) {

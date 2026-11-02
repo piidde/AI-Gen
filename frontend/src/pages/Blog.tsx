@@ -20,10 +20,11 @@ export default function Blog() {
   const articles = topic === "All topics" ? publishedBlogArticles : publishedBlogArticles.filter(article => article.topic === topic);
 
   return <PublicCatalogueShell><div className="blog-index">
-    <header className="blog-intro"><p className="eyebrow">Reviewed reference content</p><h1>Reference guides</h1><p>Practical explanations grounded in the dated model catalogue. These technically reviewed guides avoid executable API examples and production claims while those contracts remain unverified.</p></header>
-    <div className="blog-topic-filters" aria-label="Filter guides by topic">
+    <header className="blog-intro"><p className="eyebrow">Guides</p><h1>AI API pricing guides</h1><p>Short guides on what image and text APIs charge for, how to estimate a workload, and how our prices compare with the official ones.</p></header>
+    {publishedBlogArticles.length === 0 && <p>The first guides are on the way. Until then, the <Link className="text-link" to="/models">model pages</Link> list every price.</p>}
+    {blogTopics.length > 0 && <div className="blog-topic-filters" aria-label="Filter guides by topic">
       {(["All topics", ...blogTopics] as const).map(value => <button key={value} type="button" aria-pressed={topic === value} onClick={() => setTopic(value)}>{value}</button>)}
-    </div>
+    </div>}
     <div className="blog-card-grid">
       {articles.map(article => <article className="blog-card" key={article.slug}>
         <img src={illustrations[article.hero.illustration]} alt="" />
@@ -33,6 +34,5 @@ export default function Blog() {
         <Link className="text-link" to={`/blog/${article.slug}`}>Read guide →</Link>
       </article>)}
     </div>
-    <p className="blog-publication-note">Technical review does not replace human publication approval. Publication review is pending.</p>
   </div></PublicCatalogueShell>;
 }

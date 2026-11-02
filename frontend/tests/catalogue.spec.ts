@@ -68,7 +68,7 @@ test("variant details preserve unknown cache, official settings and keyboard foc
 test("family routes deep link with metadata, original content and responsive variants", async ({ page }, info) => {
   for (const [slug, name] of [["gpt-image-2", "GPT Image 2"], ["nano-banana-pro", "Nano Banana Pro"], ["gpt-5-6", "GPT-5.6"], ["gemini-flash", "Gemini Flash"]]) {
     await page.goto(`/models/${slug}`);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText(name!);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${name} API`);
     await expect(page).toHaveTitle(new RegExp(name!.replaceAll(".", "\\.")));
     await expect(page.getByRole("heading", { name: "Before you integrate" })).toBeVisible();
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", new RegExp(`/models/${slug}$`));
@@ -101,7 +101,7 @@ test("availability notices agree between catalogue and status without live healt
     expect(Math.max(...tops) - Math.min(...tops)).toBeLessThan(1);
     await page.screenshot({ path: info.outputPath('aligned-model-notices.png'), fullPage: true });
   }
-  await expect(page.getByText("How these reference prices work", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("How we compare prices", { exact: true })).toHaveCount(0);
   await notice.getByRole("link").first().click();
   // The preview server has no backend, so the status feed must report itself unavailable.
   await expect(page.getByRole("region", { name: "Overall status" })).toContainText("Status feed unavailable");

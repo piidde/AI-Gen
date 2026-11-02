@@ -11,7 +11,7 @@ export default function ModelPrices({ model, compact = false, overview = false, 
   const settings = bestImageSettings(model);
   const autoQuality = ['gpt-image-2.5', 'gpt-image-2'].includes(model.upstreamId);
   const simpleImage = model.upstreamId === 'gpt-image-2.5';
-  const officialRange = simpleImage ? ['low', 'high'].map(quality => m(formatAmount(decimalAmount(openaiImageUsd(model.upstreamId, '1K', quality)), 3).decimal)).join('–') : null;
+  const officialRange = simpleImage ? ['low', 'high'].map(quality => m(formatAmount(decimalAmount(openaiImageUsd(model.upstreamId, '1K', quality)), 3).decimal)).join(' to ') : null;
   return <div className="landing-prices">
     {model.rates.filter(rate => rate.component !== 'cached-input').map(rate => {
       const reference = publishedReference(model, rate, settings);
@@ -47,7 +47,7 @@ export default function ModelPrices({ model, compact = false, overview = false, 
         {!overview && savingsBadge}
         {overview && reference.status === 'available' && <div className="price-reference-basis"><p>{simpleImage ? 'Auto quality · official 1K High savings reference' : image ? `${settings.resolution} · ${model.provider === 'OpenAI' ? `${settings.quality.charAt(0).toUpperCase() + settings.quality.slice(1)} quality · ` : ''}official image output` : reference.basis.replace(/; input$|; output$/, '')}</p></div>}
         {!overview && reference.status === 'available' && <div className="price-reference-basis"><p>{simpleImage ? '1K images · Automatic quality' : reference.basis}</p>
-          {simpleImage ? <p>Savings vs official 1K High pricing; our quality is automatic. Range: Low–High output. Input extra.</p> : image && <p>{autoQuality ? 'Auto output varies; Low benchmark only. ' : ''}Output example; input{model.provider === 'Google' ? ' and thinking' : ''} extra. Served settings unverified.</p>}
+          {simpleImage ? <p>Savings compare with OpenAI's 1K High price. Quality is set automatically. The official range covers Low to High output, without input.</p> : image && <p>{autoQuality ? 'Quality is automatic, so we compare with the official Low price. ' : ''}Official output price only. Input{model.provider === 'Google' ? ' and thinking' : ''} cost extra.</p>}
           <a className="text-link" href={reference.source}>Official pricing ↗</a>
         </div>}
       </section>;

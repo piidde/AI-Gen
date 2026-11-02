@@ -12,7 +12,7 @@ export default function Status() {
   const state = status.error ? "unavailable" : !status.data ? "loading" : open.length ? "incident" : "clear";
   const title = { unavailable: "Status feed unavailable", loading: "Loading status…", incident: open.length === 1 ? "Active incident" : `${open.length} active incidents`, clear: "No active incidents reported" }[state];
   return <PublicCatalogueShell><div className="service-page">
-    <header className="service-page-heading"><p className="eyebrow">Service information</p><h1>Service status</h1><p>Published incidents and dated model notices.</p></header>
+    <header className="service-page-heading"><p className="eyebrow">Service information</p><h1>Service status</h1><p>Incidents and model notices.</p></header>
     <section className={`panel service-summary state-${state === "clear" ? "resolved" : state}`} aria-label="Overall status" aria-live="polite">
       <span className="service-state">{state === "clear" ? "Operational reports" : state === "incident" ? "Incident" : "Unknown"}</span>
       <h2>{title}</h2>
@@ -29,7 +29,7 @@ export default function Status() {
         <h4>Timeline · local time</h4><ol className="incident-timeline">{incident.timeline.map(entry => <li key={entry.at}><time dateTime={entry.at}>{formatLocalTime(entry.at)}</time><p>{entry.message}</p></li>)}</ol>
       </article>)}
     </section>
-    <section className="service-section" aria-labelledby="reference-heading"><h2 id="reference-heading">Model reference notices</h2><p>Dated catalogue notices. They are separate from incidents and do not describe current service health.</p>
+    <section className="service-section" aria-labelledby="reference-heading"><h2 id="reference-heading">Model notices</h2><p>Models our provider had closed at the last price check. Outages are listed above as incidents.</p>
       <ul className="service-list" aria-label="Model availability notices">{catalogueNotices.map(notice => <li key={notice.modelId}><strong>{notice.modelId}</strong><span>{notice.label} · checked {notice.checkedOn}</span></li>)}</ul>
       <Link className="text-link" to="/models">Browse models →</Link>
     </section>

@@ -15,6 +15,8 @@ import {
   socialImage,
 } from "./config";
 import { findRouteMeta } from "./routes";
+import { faqAnswerText, homeFaq } from "../content/homeFaq";
+import { getPublishedArticle } from "../content/blog";
 
 const ELEMENT_ID = "structured-data";
 
@@ -69,6 +71,37 @@ function breadcrumbs(pathname: string): Record<string, unknown> | undefined {
   };
 }
 
+function faqPage(): Record<string, unknown> {
+  return {
+    "@type": "FAQPage",
+    mainEntity: homeFaq.map(entry => ({
+      "@type": "Question",
+      name: entry.question,
+      acceptedAnswer: { "@type": "Answer", text: faqAnswerText(entry) },
+    })),
+  };
+}
+
+// Dated, attributed guides: the author and dates are what answer engines and
+// search use to judge whether a cost explanation is current and accountable.
+function techArticle(pathname: string): Record<string, unknown> | undefined {
+  const slug = pathname.match(/^\/blog\/([^/]+)$/)?.[1];
+  const article = getPublishedArticle(slug);
+  if (!article?.author) return undefined;
+  return {
+    "@type": "TechArticle",
+    headline: article.title,
+    description: article.summary,
+    url: absoluteUrl(`/blog/${article.slug}`),
+    datePublished: article.publishedOn,
+    dateModified: article.updatedOn,
+    author: { "@type": "Person", name: article.author },
+    publisher: { "@id": `${siteOrigin}/#organization` },
+    image: socialImage,
+    inLanguage: "en",
+  };
+}
+
 /**
  * Write the JSON-LD graph for a route. Emits nothing on non-indexable
  * deployments or pages, so demo data never reaches a structured-data parser.
@@ -79,6 +112,9 @@ export function structuredData(pathname: string): string | null {
   const graph: Record<string, unknown>[] = [organization(), website()];
   const crumbs = breadcrumbs(pathname);
   if (crumbs) graph.push(crumbs);
+  if (meta.path === "/") graph.push(faqPage());
+  const article = techArticle(meta.path);
+  if (article) graph.push(article);
   return JSON.stringify({ '@context': 'https://schema.org', '@graph': graph }).replace(/</g, '\\u003c');
 }
 

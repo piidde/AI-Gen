@@ -7,6 +7,7 @@ import SavingsCalculator from "../components/SavingsCalculator";
 import ApiExample from "../components/ApiExample";
 import { snapshot } from "../content/catalogue";
 import { familyPages } from "../content/modelFamilies";
+import { homeFaq } from "../content/homeFaq";
 import { deals, maxDealPercent, share, subtract, usd, type Deal } from "../content/homeDeals";
 import type { ExactAmount } from "../lib/pricing";
 import { Mention, ProviderLogo } from "../components/ProviderLogo";
@@ -176,11 +177,7 @@ export default function Home() {
               <Link className="text-link" to="/support">Help &amp; support ↗</Link>
             </div>
             <div className="home-faq-list">
-            <details><summary>Can I generate images or text on this website?</summary><p>Generation is API-only. You use your own application or API client; this website manages your account, keys, billing and usage.</p></details>
-            <details><summary>How much can I save?</summary><p>Our cards show savings against the stated official price reference. For images, check the size and quality in the comparison note. Your total depends on the model, settings and any additional input or thinking usage.</p></details>
-            <details><summary>Are failed requests always refunded?</summary><p>Credits are restored for a failed request only when there is no upstream cost. A billed policy rejection stays charged. If a result is uncertain, inspect the request status before retrying.</p></details>
-            <details><summary>Do I need a subscription?</summary><p>No. Use prepaid credits across image and text models, with no monthly subscription. Credits never expire.</p></details>
-            <details><summary>Where can I check availability or get help?</summary><p>See <Link className="text-link" to="/status">service status</Link>, <Link className="text-link" to="/support">support guidance</Link> and the <Link className="text-link" to="/docs">API documentation</Link>. An unavailable status source does not mean the service is healthy.</p></details>
+            {homeFaq.map(entry => <details key={entry.question}><summary>{entry.question}</summary><p>{entry.answer.map((segment, index) => typeof segment === "string" ? segment : <Link key={index} className="text-link" to={segment.to}>{segment.label}</Link>)}</p></details>)}
             </div>
           </div>
         </section>

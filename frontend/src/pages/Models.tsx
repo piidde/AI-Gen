@@ -39,7 +39,7 @@ export default function Models({ publicPage = false }: { publicPage?: boolean })
   const groups = groupFamilies(shown);
   const content = <div className="catalogue-overview">
     {publicPage && <header className="catalogue-hero">
-      <div><span className="catalogue-eyebrow">THE MODEL COLLECTION</span><h1>Great models.<br /><span>Less overhead.</span></h1><p>Coding models for Codex and your harness, chat models for your apps, image models for your ideas. One API key, one shared credit balance.</p></div>
+      <div><span className="catalogue-eyebrow">THE MODEL COLLECTION</span><h1>Great models.<br /><span>Less overhead.</span></h1><p>Coding models for Codex and your harness, chat models for your apps, image models for generating and editing pictures. One API key, one shared credit balance.</p></div>
       <div className="catalogue-hero-note"><span>Models &amp; pricing</span><strong>Choose your model.<br />Pay as you go.</strong><p>No subscription. Credits never expire.</p><a href="#model-collection" className="text-link">Explore the collection ↓</a></div>
     </header>}
     <CatalogueBasis showExplanation={false} />
@@ -51,14 +51,14 @@ export default function Models({ publicPage = false }: { publicPage?: boolean })
         </div>
         <input type="search" className="search" aria-label="Search models" placeholder="Search models, providers or resolutions…" value={search} onChange={event => setParams(updateQuery(params, "q", event.target.value), { replace: true })} />
       </div>
-      <div className="catalog-count" role="status">{shown.length} reference variants across {groups.length} families</div>
+      <div className="catalog-count" role="status">{shown.length} models across {groups.length} families</div>
       {sections.map(section => {
         const variants = shown.filter(section.match);
         return variants.length > 0 && <ModelFamily key={section.title} family={section.title} note={section.note} actions={section.actions} variants={variants} currency={currency} overview />;
       })}
       {shown.length === 0 && <section className="empty"><h2>No matching models</h2><p>Try another provider, capability or search.</p></section>}
     </>
-    {publicPage && <section className="catalogue-closing"><div><span className="catalogue-eyebrow">YOUR NEXT IDEA STARTS HERE</span><h2>Find your model.<br />Build something great.</h2><p>One account for image and text APIs. Compare prices and start building today.</p></div><div className="catalogue-closing-actions"><Link className="button" to="/signup">Get started ↗</Link><Link className="text-link" to="/docs">Explore the documentation</Link></div></section>}
+    {publicPage && <section className="catalogue-closing"><div><span className="catalogue-eyebrow">ONE KEY FOR EVERY MODEL</span><h2>Pick a model.<br />Pay less for it.</h2><p>Create an account, top up credits and call any model on this page with the same API key.</p></div><div className="catalogue-closing-actions"><Link className="button" to="/signup">Get started ↗</Link><Link className="text-link" to="/docs">Explore the documentation</Link></div></section>}
   </div>;
   return publicPage ? <PublicCatalogueShell>{content}</PublicCatalogueShell> : content;
 }

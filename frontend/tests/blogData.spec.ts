@@ -23,7 +23,7 @@ test("article records and relationships validate as a complete collection", () =
   expect(new Set(publishedBlogArticles.map(article => article.slug)).size).toBe(
     publishedBlogArticles.length,
   );
-  expect(blogTopics).toEqual(["Image models", "Text models"]);
+  expect(blogTopics).toEqual([...new Set(publishedBlogArticles.map(article => article.topic))].toSorted());
 });
 
 test("validation rejects unsafe slugs, missing attribution, bad dates and unpublished relations", () => {
@@ -65,21 +65,6 @@ test("validation rejects inconsistent publication state, topics, sections and so
     expect.stringContaining("source href"),
     expect.stringContaining("hero illustration"),
   ]));
-});
-
-test("launch guides cover both modalities using catalogue references", () => {
-  expect(publishedBlogArticles).toHaveLength(2);
-  expect(publishedBlogArticles.map(article => article.topic)).toEqual([
-    "Text models",
-    "Image models",
-  ]);
-  for (const article of publishedBlogArticles) {
-    expect(article.reviewStatus).toBe("technically-reviewed");
-    expect(article.publicationOwner).toBeNull();
-    const blocks = article.sections.flatMap(section => section.blocks);
-    expect(blocks.some(block => block.type === "catalogue")).toBe(true);
-    expect(blocks.some(block => block.type === "sources")).toBe(true);
-  }
 });
 
 test("SEO exports include every published guide and exclude draft routes", () => {

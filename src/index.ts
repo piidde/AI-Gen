@@ -139,18 +139,18 @@ app.get("/v1/announcements", requireAccount(), async (c) => {
 });
 
 app.post("/v1/chat/completions", requireAccount(), async (c) => {
-  if (c.get("account").authType !== "api_key") throw new HttpError(403, "api_key_required", "Use a Takewing API key for generation requests.");
+  if (c.get("account").authType !== "api_key") throw new HttpError(403, "api_key_required", "Use an AIAPI.deals API key for generation requests.");
   return handleChat(c, await readJson(c, c.env), getIdempotencyKey(c, false));
 });
 
 app.post("/v1/responses", requireAccount(), async (c) => {
-  if (c.get("account").authType !== "api_key") throw new HttpError(403, "api_key_required", "Use a Takewing API key for generation requests.");
+  if (c.get("account").authType !== "api_key") throw new HttpError(403, "api_key_required", "Use an AIAPI.deals API key for generation requests.");
   return handleResponses(c, await readJson(c, c.env), getIdempotencyKey(c, false));
 });
 
 app.post("/v1/generations", requireAccount(), async (c) => {
   const account = c.get("account");
-  if (account.authType !== "api_key") throw new HttpError(403, "api_key_required", "Use a Takewing API key for generation requests.");
+  if (account.authType !== "api_key") throw new HttpError(403, "api_key_required", "Use an AIAPI.deals API key for generation requests.");
   const parsedBody = generationRequestSchema.safeParse(await readJson(c, c.env));
   if (!parsedBody.success) throw new HttpError(400, "invalid_request", "The media request contains invalid or unsupported fields.");
   const body = parsedBody.data;
@@ -233,7 +233,7 @@ app.get("/v1/files/:requestId/:index", requireAccount(), async (c) => {
   return new Response(object.body, { headers: {
     "content-type": item.content_type,
     "content-length": String(object.size),
-    "content-disposition": `attachment; filename="takewing-${requestId}-${index}"`,
+    "content-disposition": `attachment; filename="aiapi-${requestId}-${index}"`,
     "cache-control": "private, no-store",
     "x-content-type-options": "nosniff",
   } });
@@ -476,7 +476,7 @@ app.post("/v1/billing/checkout", requireAccount(), async (c) => {
     line_items: [{ quantity: 1, price_data: {
       currency: quote.currency,
       unit_amount: quote.amount_minor,
-      product_data: { name: "Takewing AI credits", description: `${formatCredits(quote.credits_micros)} prepaid credits` },
+      product_data: { name: "AIAPI.deals credits", description: `${formatCredits(quote.credits_micros)} prepaid credits` },
     } }],
     expires_at: expiresAt,
     success_url: `${origin.origin}/dashboard/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}`,

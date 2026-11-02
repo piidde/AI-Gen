@@ -28,7 +28,7 @@ export const siteName = "AIAPI.deals";
 export const siteTagline = "Official AI models without the official price.";
 
 export const siteDescription =
-  "Image and text generation APIs built to cut your AI costs. Explore AIAPI.deals pricing, official rate references and the prepaid dashboard preview.";
+  "OpenAI-compatible API for image and text models such as GPT Image 2, Nano Banana Pro and GPT-5.6. Prepaid credits, no subscription: change the base URL and keep your code.";
 
 /** Locale advertised to crawlers and social scrapers. */
 export const siteLocale = "en_US";

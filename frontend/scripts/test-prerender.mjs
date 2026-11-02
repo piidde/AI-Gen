@@ -19,6 +19,8 @@ try {
       const rules = (await readFile(join(output, '_redirects'), 'utf8')).split('\n').filter(line => line && !line.startsWith('#'));
       // "/" has no rewrite rule because hosts serve it natively; check it explicitly.
       const publicPaths = ['/', ...rules.filter(line => !line.includes('/spa.html')).map(line => line.trim().split(/\s+/)[0])];
+      // Updates are never indexed; the blog index only while it lists a published guide.
+      const listed = path => !path.startsWith('/updates') && (path !== '/blog' || publicPaths.some(p => p.startsWith('/blog/')));
       const page = await context.newPage();
       const titles = new Set();
       for (const path of publicPaths) {
@@ -28,10 +30,10 @@ try {
         const title = await page.title();
         assert.ok(title && !titles.has(title), path); titles.add(title);
         assert.equal(await page.locator('link[rel=canonical]').getAttribute('href'), origin + path);
-        const expected = indexable && !path.startsWith('/updates') ? 'index, follow' : 'noindex, nofollow';
+        const expected = indexable && listed(path) ? 'index, follow' : 'noindex, nofollow';
         assert.ok((await page.locator('meta[name=robots]').getAttribute('content')).startsWith(expected), path);
-        assert.equal(await page.locator('#structured-data').count(), indexable && !path.startsWith('/updates') ? 1 : 0, path);
-        if (indexable && !path.startsWith('/updates')) JSON.parse(await page.locator('#structured-data').textContent());
+        assert.equal(await page.locator('#structured-data').count(), indexable && listed(path) ? 1 : 0, path);
+        if (indexable && listed(path)) JSON.parse(await page.locator('#structured-data').textContent());
         assert.equal(await page.locator('meta[property="og:title"]').getAttribute('content'), title);
         assert.ok(await page.locator('meta[name=description]').getAttribute('content'));
         for (const asset of await page.locator('[src],link[rel=stylesheet]').evaluateAll(nodes => nodes.map(node => node.getAttribute('src') ?? node.getAttribute('href')).filter(url => url?.startsWith('/')))) {
@@ -52,8 +54,23 @@ try {
         assert.ok((await response.text()).includes('noindex, nofollow'));
       }
       const sitemap = await readFile(join(output, 'sitemap.xml'), 'utf8');
-      assert.equal((sitemap.match(/<loc>/g) ?? []).length, indexable ? publicPaths.filter(p => !p.startsWith('/updates')).length : 0);
+      assert.equal((sitemap.match(/<loc>/g) ?? []).length, indexable ? publicPaths.filter(listed).length : 0);
       assert.ok(!(await readdir(output)).some(file => file.startsWith('render')));
+      const files = await readdir(output);
+      assert.equal(files.includes('llms.txt'), indexable);
+      if (indexable) {
+        const llms = await readFile(join(output, 'llms.txt'), 'utf8');
+        assert.ok(llms.startsWith('# AIAPI.deals') && llms.includes(`${origin}/v1/openapi.json`) && llms.includes(`${origin}/docs`));
+        assert.ok(!llms.includes('/dashboard') && !llms.includes('/updates'));
+        const graphTypes = async path => {
+          await page.goto(origin + path);
+          return JSON.parse(await page.locator('#structured-data').textContent())['@graph'].map(node => node['@type']);
+        };
+        assert.ok((await graphTypes('/')).includes('FAQPage'));
+        assert.equal(await page.locator('.home-faq-list details').count(), JSON.parse(await page.locator('#structured-data').textContent())['@graph'].find(node => node['@type'] === 'FAQPage').mainEntity.length);
+        const articlePath = publicPaths.find(path => path.startsWith('/blog/'));
+        if (articlePath) assert.ok((await graphTypes(articlePath)).includes('TechArticle'), articlePath);
+      }
       const hydrated = await browser.newContext({ timezoneId: 'America/Los_Angeles', viewport: { width: 390, height: 844 } });
       try {
         const live = await hydrated.newPage();

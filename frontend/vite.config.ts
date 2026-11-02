@@ -4,17 +4,18 @@ import { resolve } from "node:path";
 import { readFile } from "node:fs/promises";
 import { publicRoutes, spaPaths } from "./src/seo/routes.ts";
 import react from "@vitejs/plugin-react";
-import { buildRedirects, buildRobotsTxt, buildSitemapXml } from "./src/seo/generate.ts";
+import { buildLlmsTxt, buildRedirects, buildRobotsTxt, buildSitemapXml } from "./src/seo/generate.ts";
 
-// Emits robots.txt and sitemap.xml from the route registry so the crawl surface
-// always matches the routes the app serves. Both honour VITE_SITE_INDEXABLE:
-// a build that is not marked indexable ships a blanket disallow.
+// Emits robots.txt, sitemap.xml and llms.txt from the route registry so the
+// crawl surface always matches the routes the app serves. All honour
+// VITE_SITE_INDEXABLE: a build that is not marked indexable ships a blanket
+// disallow and no llms.txt.
 function seoFiles(env: Record<string, string>): Plugin {
   return {
     name: "takewing-seo-files",
     apply: "build",
     generateBundle() {
-      const rawOrigin = env["VITE_SITE_ORIGIN"]?.trim() || "https://takewing.ai";
+      const rawOrigin = env["VITE_SITE_ORIGIN"]?.trim() || "https://aiapi.deals";
       const origin = rawOrigin.endsWith("/") ? rawOrigin.slice(0, -1) : rawOrigin;
       const indexable = env["VITE_SITE_INDEXABLE"] === "true";
       const lastmod = new Date().toISOString().slice(0, 10);
@@ -34,6 +35,8 @@ function seoFiles(env: Record<string, string>): Plugin {
         fileName: "_redirects",
         source: buildRedirects(),
       });
+      const llms = buildLlmsTxt({ origin, indexable });
+      if (llms) this.emitFile({ type: "asset", fileName: "llms.txt", source: llms });
     },
   };
 }
@@ -72,7 +75,7 @@ export default defineConfig(({ mode, isPreview }) => {
           const page = publicRoutes.find(route => route.path === path);
           if (page) request.url = (path === '/' ? '/index.html' : `${path}/index.html`) + url.search;
           else if (spaPaths.includes(path) || path === '/dashboard' || path.startsWith('/dashboard/')) request.url = '/spa.html' + url.search;
-          else if (!path.startsWith('/assets/') && !['/index.html','/spa.html','/404.html','/favicon.svg','/og-image.png','/site.webmanifest','/robots.txt','/sitemap.xml','/_redirects','/_headers'].includes(path)) {
+          else if (!path.startsWith('/assets/') && !['/index.html','/spa.html','/404.html','/favicon.svg','/og-image.png','/site.webmanifest','/robots.txt','/sitemap.xml','/llms.txt','/_redirects','/_headers'].includes(path)) {
             response.statusCode = 404;
             response.setHeader('Content-Type', 'text/html; charset=utf-8');
             try { response.end(await readFile(resolve(outputDirectory, '404.html'))); }

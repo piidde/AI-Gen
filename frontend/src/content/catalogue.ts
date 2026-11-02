@@ -49,7 +49,19 @@ export const snapshot = {
 } as const;
 
 const support: ReviewStatus = { status: "awaiting-evidence", reason: "B01/B02: AIAPI.deals support, public API ID and production price not approved." };
-const textLimitations = ["Upstream context limits, token accounting, tools, vision and streaming require integration evidence."];
+const textLimitations = ["Token counts come from our provider and can differ slightly from the official API."];
+
+// Plain-language notes for the evidence gaps in docs/MODEL_PRICING.md. Visitors
+// see what a gap means for them, not the internal code.
+const gapNotes: Record<string, string> = {
+  A1: "The official counterpart of this variant is not published, so no official price is shown.",
+  A2: "This variant has had maintenance windows. Check the status page before you depend on it.",
+  A3: "This variant accepts fewer quality settings than the official API.",
+  A4: "VIP is a separate channel from our provider, not a separate official model.",
+  A5: "Google offers this model as preview and stable versions. Our provider does not say which one answers.",
+  A7: "CL and VIP are separate channels from our provider. They are not guaranteed to be faster.",
+  A8: "This name has no exact match in Google's model list, so no official price is shown.",
+};
 
 type ImageRow = [id: string, family: string, provider: "OpenAI" | "Google", resolutions: string[], gaps: string[]];
 // Rows are newest model first; every model list keeps this order (owner request, 2026-10-17).
@@ -109,9 +121,9 @@ export const catalogue: CatalogueReference[] = [
       ? { status: "verified", reason: "Official identifier documented; intermediary routing unverified." }
       : { status: "awaiting-evidence", reason: `Alias/channel mapping: ${gaps.join(", ")}.` },
     availability: listed(upstreamId)!.closed ? "unavailable-notice" : "unknown",
-    limitations: ["Listed resolutions only; per request is not per image. Quality, input costs, output counts and routing require evidence.", "No verified speed or stability comparison."],
-    rates: [{ component: "image-request", credits: listed(upstreamId)!.request ?? null, unit: "requests", per: "1", conditions: "Listed flat request tariff; accepted settings unverified", official: [],
-      comparison: { status: "unavailable", reason: "No equivalent official total per request; token/output-only prices cannot substitute." } }],
+    limitations: ["Only the listed resolutions are available. The price is per request.", ...gaps.flatMap(gap => gapNotes[gap] ?? [])],
+    rates: [{ component: "image-request", credits: listed(upstreamId)!.request ?? null, unit: "requests", per: "1", conditions: "Flat price per request.", official: [],
+      comparison: { status: "unavailable", reason: "Official image prices are per output and exclude input, so they are not an exact match for a flat request price." } }],
   })),
   ...texts.filter(([id]) => listed(id)).map(([upstreamId, family, official, threshold]): CatalogueReference => {
     const live = listed(upstreamId)!;
@@ -124,7 +136,7 @@ export const catalogue: CatalogueReference[] = [
       upstreamId, publicApiId: null, family, provider, modality: "text", listedResolutions: [], support,
       identity: official ? { status: "verified", reason: "Exact official ID documented; intermediary served version unverified." }
         : { status: "awaiting-evidence", reason: "A8: preview alias/version or retirement unresolved." },
-      availability: live.closed ? "unavailable-notice" : "unknown", gaps: official ? [] : ["A8"], limitations: textLimitations,
+      availability: live.closed ? "unavailable-notice" : "unknown", gaps: official ? [] : ["A8"], limitations: official ? textLimitations : [...textLimitations, gapNotes.A8!],
       rates: (["input", "output", "cached-input"] as const).map((component, index): ReferenceRate => {
         const references: OfficialRate[] = [];
         const usd = official?.[index];
@@ -133,9 +145,9 @@ export const catalogue: CatalogueReference[] = [
         const long = longContext[upstreamId]?.[index];
         if (long != null) references.push({ usd: long, unit: "tokens", per: "1000000", conditions: conditions.replace(`<=${threshold}`, `>${threshold}`), source, recheckOn });
         const credits = [live.input, live.output, live.cache][index] ?? null;
-        return { component, credits, unit: "tokens", per: "1000000", conditions: "Directory tariff; upstream context/accounting equivalence unverified", official: references,
+        return { component, credits, unit: "tokens", per: "1000000", conditions: "Our price per 1M tokens.", official: references,
           comparison: { status: official && credits !== null ? "awaiting-evidence" : "unavailable",
-            reason: !official ? "A8: official model mapping unresolved." : credits === null ? "Upstream cache tariff unknown, not zero." : "Confirm upstream context, token buckets and equivalent Standard settings before comparison." } };
+            reason: !official ? "No official price to compare against." : credits === null ? "Our provider does not list a cache price for this model." : "Compared with the official Standard price. Token counting can differ slightly." } };
       }),
     };
   }),

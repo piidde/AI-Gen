@@ -149,7 +149,7 @@ test("catalogue filters, neutral detail links, modal Escape and focus return", a
   ).toBe("rgb(17, 17, 17)");
   await details.click();
   // Availability follows the GrsAI snapshot, which may mark the first variant closed.
-  await expect(page.getByRole("dialog")).toContainText(/Availability not verified|Temporarily unavailable/);
+  await expect(page.getByRole("dialog")).toContainText(/Available at last price check|Temporarily unavailable/);
   await page.keyboard.press("Escape");
   await expect(details).toBeFocused();
   await page.getByRole("searchbox", { name: "Search models" }).fill("no match");

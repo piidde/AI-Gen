@@ -43,7 +43,7 @@
 .top-models-fill { display:block; }
 .overview-chart-card .plot { height:280px; margin-top:26px; }
 .overview-page .news time { display:block; margin-top:8px; font-family:var(--font-mono); font-size:11px; }
-.overview-page .news { border-left:0; padding-left:24px; }
+.overview-page .news { padding-left:24px; }
 .overview-page .news article + article { border-top:1px solid var(--border); margin-top:0; }
 @media(max-width:650px) { .overview-chart-card .section-title { flex-wrap:wrap; } .overview-chart-card .plot { height:210px; } .overview-chart-card .legend { flex-wrap:wrap; } .overview-chart-card .legend span:last-child { flex-basis:100%; margin-left:0; } }
 

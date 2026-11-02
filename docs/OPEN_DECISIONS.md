@@ -222,8 +222,9 @@ Responses endpoint injects the full OpenAI Codex CLI system prompt (~21k charact
 ~4,400 tokens), and chat completions for GPT carry the same cached overhead. This
 suggests the provider serves GPT through a Codex/ChatGPT backend. Risks: resale and
 terms-of-service exposure and sudden loss of access. The Worker sends neutral default
-instructions to avoid the hidden cost. **OPEN (owner):** accept the risk, ask the
-provider, or source GPT elsewhere before advertising coding models broadly.
+instructions to avoid the hidden cost. **DECIDED (owner, 2026-11-02):** the routing
+risk is accepted; GPT and coding models (including Codex use) are marketed normally.
+The billing investigation below stays open because it concerns correct charges.
 
 **Update 2026-10-20 (gpt-5.6-sol, measured directly at GrsAI):** the hidden prompt is now
 ~22,400 tokens (some routes ~4,200 or ~9,000) and appears on chat and on Responses even
@@ -279,3 +280,28 @@ This does not establish universal savings: Sunburst2400 credits gives acquisitio
 
 
 H-044: A6 published mapping resolved from July1 announcement plus Chinese catalogue: Fast and2Lite both reference gemini-3.1-flash-lite-image,1K. Runtime routing still unverified. A1 bareGPT2.5 and A8 Gemini3Pro exact served ID remain open; detailed source findings in MODEL_PRICING.md.
+
+## OD-018 Legal texts and consumer sales
+
+Status: **DECIDED (owner, 2026-10-27)** for draft terms and privacy notice in
+`frontend/src/content/legal.ts`. Australian law governs because the operator sells
+through an Australian Stripe account; consumers are a target group. EU/UK
+consumers keep the 14-day withdrawal right and the GDPR applies to EU customers.
+The upstream provider is deliberately not named; the texts say "infrastructure
+partners". Operator identity appears only in the legal notice on `/contact`.
+Account deletion forfeits unused credits (BILLING.md); termination by us refunds
+unused purchased credits.
+
+**OPEN (owners) before indexing or public sales:**
+
+- Legal notice with operator name, address and email; both texts point to it.
+- GST registration threshold and EU VAT on digital services to EU consumers,
+  which applies from the first sale for non-EU sellers (Stripe Tax or advisor).
+- Checkout consent checkbox for immediate start, so the EU withdrawal right can
+  expire early. This is a billing change and needs extra review.
+- Whether a GDPR Art. 27 EU representative is required.
+- Real safeguards for transfers to infrastructure partners outside the EU, as
+  the privacy notice promises standard contractual clauses or equivalent.
+- Retention period for request records (OD-016) once decided; the notice
+  currently says "no longer than the account exists".
+- Review of both texts by a lawyer familiar with Australian and EU consumer law.
