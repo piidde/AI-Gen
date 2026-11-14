@@ -3,7 +3,7 @@
 export type UpstreamPrice = { closed: boolean; input?: string | null; output?: string | null; cache?: string | null; request?: string | null };
 
 export const upstreamSnapshot: { checkedOn: string; source: string; models: Record<string, UpstreamPrice> } = {
-  "checkedOn": "2026-10-17",
+  "checkedOn": "2026-11-14",
   "source": "https://grsai.com/dashboard/models",
   "models": {
     "gemini-2.5-flash": {
@@ -31,7 +31,7 @@ export const upstreamSnapshot: { checkedOn: string; source: string; models: Reco
       "cache": null
     },
     "gemini-3.1-flash-lite": {
-      "closed": true,
+      "closed": false,
       "input": "5000",
       "output": "30000",
       "cache": null
@@ -43,19 +43,19 @@ export const upstreamSnapshot: { checkedOn: string; source: string; models: Reco
       "cache": null
     },
     "gemini-3.5-flash": {
-      "closed": true,
+      "closed": false,
       "input": "24000",
       "output": "200000",
       "cache": null
     },
     "gemini-3.5-flash-lite": {
-      "closed": true,
+      "closed": false,
       "input": "6000",
       "output": "50000",
       "cache": null
     },
     "gemini-3.7-flash": {
-      "closed": true,
+      "closed": false,
       "input": "12000",
       "output": "70000",
       "cache": null
@@ -65,12 +65,6 @@ export const upstreamSnapshot: { checkedOn: string; source: string; models: Reco
       "input": "12000",
       "output": "70000",
       "cache": null
-    },
-    "gpt-5.5": {
-      "closed": false,
-      "input": "44000",
-      "output": "270000",
-      "cache": "4500"
     },
     "gpt-5.6-sol": {
       "closed": false,
@@ -96,6 +90,12 @@ export const upstreamSnapshot: { checkedOn: string; source: string; models: Reco
       "output": "90000",
       "cache": "1800"
     },
+    "gpt-6.1-terra": {
+      "closed": false,
+      "input": "18000",
+      "output": "90000",
+      "cache": "1800"
+    },
     "gpt-image-2": {
       "closed": false,
       "request": "600"
@@ -109,15 +109,27 @@ export const upstreamSnapshot: { checkedOn: string; source: string; models: Reco
       "request": "600"
     },
     "gpt-image-2.5-flare": {
-      "closed": true,
+      "closed": false,
       "request": "2000"
     },
     "gpt-image-2.5-sunburst": {
-      "closed": true,
+      "closed": false,
+      "request": "2400"
+    },
+    "gpt-image-2.6": {
+      "closed": false,
+      "request": "600"
+    },
+    "gpt-image-2.6-flare": {
+      "closed": false,
+      "request": "2000"
+    },
+    "gpt-image-2.6-sunburst": {
+      "closed": false,
       "request": "2400"
     },
     "nano-banana-2": {
-      "closed": true,
+      "closed": false,
       "request": "1200"
     },
     "nano-banana-2-2k-cl": {
@@ -137,7 +149,7 @@ export const upstreamSnapshot: { checkedOn: string; source: string; models: Reco
       "request": "440"
     },
     "nano-banana-2.1": {
-      "closed": true,
+      "closed": false,
       "request": "1200"
     },
     "nano-banana-fast": {
@@ -145,7 +157,7 @@ export const upstreamSnapshot: { checkedOn: string; source: string; models: Reco
       "request": "440"
     },
     "nano-banana-pro": {
-      "closed": true,
+      "closed": false,
       "request": "1800"
     },
     "nano-banana-pro-4k-vip": {
